@@ -62,7 +62,7 @@ func (r *AuthUserRoleResource) Configure(_ context.Context, req resource.Configu
 func (r *AuthUserRoleResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
 	var data authUserRoleModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
-	validateAuthIDs(&resp.Diagnostics, map[string]types.String{"project_id": data.ProjectID, "user_id": data.UserID, "role_id": data.RoleID, "destroy_role_id": data.DestroyRoleID})
+	validateCatalystIDs(&resp.Diagnostics, map[string]types.String{"project_id": data.ProjectID, "user_id": data.UserID, "role_id": data.RoleID, "destroy_role_id": data.DestroyRoleID})
 }
 func (r *AuthUserRoleResource) ready(diags *diag.Diagnostics) bool {
 	if r.client == nil {

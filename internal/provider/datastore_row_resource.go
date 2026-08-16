@@ -61,7 +61,7 @@ func (r *DataStoreRowResource) Configure(_ context.Context, req resource.Configu
 func (r *DataStoreRowResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
 	var d dataStoreRowModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &d)...)
-	validateAuthIDs(&resp.Diagnostics, map[string]types.String{"project_id": d.ProjectID, "table_id": d.TableID})
+	validateCatalystIDs(&resp.Diagnostics, map[string]types.String{"project_id": d.ProjectID, "table_id": d.TableID})
 	if !d.Values.IsUnknown() && !d.Values.IsNull() {
 		if _, err := catalyst.ParseDataStoreValues(d.Values.ValueString()); err != nil {
 			resp.Diagnostics.AddAttributeError(path.Root("values_json"), "Invalid Data Store values", err.Error())

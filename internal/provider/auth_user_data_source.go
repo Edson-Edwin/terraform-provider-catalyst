@@ -51,7 +51,7 @@ func (d *AuthUserDataSource) Configure(_ context.Context, req datasource.Configu
 	}
 	d.client = client
 }
-func validateAuthIDs(diags *diag.Diagnostics, values map[string]types.String) {
+func validateCatalystIDs(diags *diag.Diagnostics, values map[string]types.String) {
 	for name, v := range values {
 		if !v.IsUnknown() && !v.IsNull() && !catalyst.ValidID(v.ValueString()) {
 			diags.AddAttributeError(path.Root(name), "Invalid Catalyst ID", "Specify a positive integer written as a string.")
@@ -61,7 +61,7 @@ func validateAuthIDs(diags *diag.Diagnostics, values map[string]types.String) {
 func (d *AuthUserDataSource) ValidateConfig(ctx context.Context, req datasource.ValidateConfigRequest, resp *datasource.ValidateConfigResponse) {
 	var data authUserModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
-	validateAuthIDs(&resp.Diagnostics, map[string]types.String{"project_id": data.ProjectID, "user_id": data.UserID})
+	validateCatalystIDs(&resp.Diagnostics, map[string]types.String{"project_id": data.ProjectID, "user_id": data.UserID})
 }
 func (d *AuthUserDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var data authUserModel
