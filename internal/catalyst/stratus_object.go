@@ -98,6 +98,18 @@ func (c *Client) stratusOrigin(bucket string) string {
 	return "https://" + bucket + environment + ".zohostratus." + c.region.stratusSuffix
 }
 func (c *Client) GetStratusBucket(ctx context.Context, project, bucket string) (*StratusBucket, error) {
+	details, err := c.GetStratusBucketDetails(ctx, project, bucket)
+	if err != nil {
+		return nil, err
+	}
+	if *details.Meta.Versioning {
+		return nil, errors.New("versioned Stratus buckets are not supported by this object resource")
+	}
+	return details, nil
+}
+
+// GetStratusBucketDetails reads metadata for both versioned and unversioned buckets.
+func (c *Client) GetStratusBucketDetails(ctx context.Context, project, bucket string) (*StratusBucket, error) {
 	base, err := stratusPath(project)
 	if err != nil {
 		return nil, err
@@ -144,9 +156,6 @@ func (c *Client) GetStratusBucket(ctx context.Context, project, bucket string) (
 	}
 	if len(items) != 1 || items[0].Name != bucket || items[0].Meta.Versioning == nil || items[0].URL != c.stratusOrigin(bucket) {
 		return nil, errors.New("incomplete bucket metadata or unexpected regional transfer origin")
-	}
-	if *items[0].Meta.Versioning {
-		return nil, errors.New("versioned Stratus buckets are not supported by this object resource")
 	}
 	return &items[0], nil
 }

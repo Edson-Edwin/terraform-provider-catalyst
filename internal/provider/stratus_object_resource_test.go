@@ -37,6 +37,8 @@ resource "catalyst_stratus_object" "test" {
 `, project, bucket, key, source, source, contentType)
 }
 func TestStratusObjectLifecycle(t *testing.T) {
+	const managedKey = "nested/binary ?#.bin"
+	const neighboringKey = managedKey + ".bak"
 	clearEnvironment(t)
 	t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 	t.Setenv("CATALYST_ACCESS_TOKEN", "offline-test")
@@ -49,6 +51,7 @@ func TestStratusObjectLifecycle(t *testing.T) {
 	contentType := ""
 	metadata := map[string]string{}
 	exists := false
+	neighborObserved := false
 	creates, updates, deletes := 0, 0, 0
 	p := &CatalystProvider{httpClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		mu.Lock()
@@ -93,14 +96,26 @@ func TestStratusObjectLifecycle(t *testing.T) {
 			case strings.HasSuffix(req.URL.Path, "/signature"):
 				body = fmt.Sprintf(`{"status":"success","data":{"signature":"token=secret","expiry_time":%d}}`, time.Now().Add(time.Hour).UnixMilli())
 			case strings.HasSuffix(req.URL.Path, "/objects"):
-				objects := []map[string]string{}
+				if req.URL.Query().Get("prefix") != managedKey {
+					return nil, errors.New("absence check used the wrong prefix")
+				}
+				objects := []map[string]string{{"key": neighboringKey}}
+				neighborObserved = true
 				if exists {
-					objects = append(objects, map[string]string{"key": "nested/binary ?#.bin"})
+					objects = append(objects, map[string]string{"key": managedKey})
 				}
 				b, _ := json.Marshal(map[string]any{"status": "success", "data": map[string]any{"contents": objects, "truncated": false}})
 				body = string(b)
 			case strings.HasSuffix(req.URL.Path, "/object"):
 				if req.Method == "PUT" {
+					var deletion struct {
+						Objects []struct {
+							Key string `json:"key"`
+						} `json:"objects"`
+					}
+					if json.NewDecoder(req.Body).Decode(&deletion) != nil || len(deletion.Objects) != 1 || deletion.Objects[0].Key != managedKey {
+						return nil, errors.New("destroy did not send exactly the managed key")
+					}
 					exists = false
 					deletes++
 					body = `{"status":"success","data":{}}`
@@ -108,7 +123,7 @@ func TestStratusObjectLifecycle(t *testing.T) {
 					status = 404
 				} else {
 					hash := sha256.Sum256(content)
-					b, _ := json.Marshal(map[string]any{"status": "success", "data": map[string]any{"key": "nested/binary ?#.bin", "size": len(content), "content_type": contentType, "etag": hex.EncodeToString(hash[:]), "meta_data": metadata}})
+					b, _ := json.Marshal(map[string]any{"status": "success", "data": map[string]any{"key": managedKey, "size": len(content), "content_type": contentType, "etag": hex.EncodeToString(hash[:]), "meta_data": metadata}})
 					body = string(b)
 				}
 			default:
@@ -117,8 +132,8 @@ func TestStratusObjectLifecycle(t *testing.T) {
 		}
 		return &http.Response{StatusCode: status, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 	})}}
-	config := stratusObjectConfig("123", "test-bucket", "nested/binary ?#.bin", source, "application/octet-stream")
-	updated := stratusObjectConfig("123", "test-bucket", "nested/binary ?#.bin", source, "text/plain")
+	config := stratusObjectConfig("123", "test-bucket", managedKey, source, "application/octet-stream")
+	updated := stratusObjectConfig("123", "test-bucket", managedKey, source, "text/plain")
 	bare := updated
 	updated = strings.Replace(updated, `resource "catalyst_stratus_object" "test" {`, `resource "catalyst_stratus_object" "test" {
  metadata={owner="terraform",site="website"}`, 1)
@@ -131,7 +146,7 @@ func TestStratusObjectLifecycle(t *testing.T) {
 		return nil
 	}, Steps: []resource.TestStep{
 		{Config: config, Check: resource.TestCheckResourceAttr("catalyst_stratus_object.test", "size", "5")},
-		{ResourceName: "catalyst_stratus_object.test", ImportState: true, ImportStateId: "123/test-bucket/nested/binary ?#.bin", ImportStateVerify: true, ImportStateVerifyIgnore: []string{"source"}},
+		{ResourceName: "catalyst_stratus_object.test", ImportState: true, ImportStateId: "123/test-bucket/" + managedKey, ImportStateVerify: true, ImportStateVerifyIgnore: []string{"source"}},
 		{Config: config, PlanOnly: true},
 		{Config: updated, Check: resource.TestCheckResourceAttr("catalyst_stratus_object.test", "content_type", "text/plain")},
 		{Config: bare, Check: resource.TestCheckResourceAttr("catalyst_stratus_object.test", "metadata.%", "0")},
@@ -141,6 +156,9 @@ func TestStratusObjectLifecycle(t *testing.T) {
 	}})
 	if creates != 2 || updates != 3 || deletes != 1 {
 		t.Fatalf("unexpected lifecycle: creates=%d updates=%d deletes=%d", creates, updates, deletes)
+	}
+	if !neighborObserved {
+		t.Fatal("test did not exercise an existing object with a matching key prefix")
 	}
 }
 func TestStratusObjectFailureRetainsState(t *testing.T) {
