@@ -4,17 +4,97 @@ package catalyst
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"slices"
 	"strings"
 )
 
+type Organization struct {
+	ID      ID     `json:"id"`
+	Name    string `json:"name"`
+	Default *bool  `json:"is_default"`
+}
+
+// ListOrganizations returns the organizations visible to this OAuth identity.
+func (c *Client) ListOrganizations(ctx context.Context) ([]Organization, error) {
+	organizations, err := getList[Organization](ctx, c, "/baas/v1/orgs")
+	if err != nil {
+		return nil, err
+	}
+	seen := map[ID]bool{}
+	for _, organization := range organizations {
+		if !ValidID(string(organization.ID)) || strings.TrimSpace(organization.Name) == "" || seen[organization.ID] {
+			return nil, errors.New("the Catalyst API returned incomplete or duplicate organization metadata")
+		}
+		seen[organization.ID] = true
+	}
+	slices.SortFunc(organizations, func(a, b Organization) int {
+		return strings.Compare(string(a.ID), string(b.ID))
+	})
+	return organizations, nil
+}
+
 // JobPool contains public metadata needed to identify an existing scheduling pool.
 type JobPool struct {
 	ID   ID     `json:"id"`
 	Name string `json:"name"`
 	Type string `json:"type"`
+}
+
+// JobPoolDetails includes capacity for the target types that report it.
+type JobPoolDetails struct {
+	JobPool
+	MemoryMB *int64
+	Count    *int64
+}
+
+// GetJobPool reads one existing pool by its precision-preserving numeric ID.
+func (c *Client) GetJobPool(ctx context.Context, projectID, poolID string) (*JobPoolDetails, error) {
+	if !ValidID(projectID) || !ValidID(poolID) {
+		return nil, errors.New("project and job pool IDs must be positive integers written as strings")
+	}
+	res, err := c.get(ctx, "/baas/v1/project/"+projectID+"/job_scheduling/jobpool/"+poolID)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return nil, apiResponseError("Catalyst job pool lookup", res)
+	}
+	var envelope struct {
+		Status string `json:"status"`
+		Data   struct {
+			JobPool
+			Capacity struct {
+				Memory json.Number `json:"memory"`
+				Count  json.Number `json:"number"`
+			} `json:"capacity"`
+		} `json:"data"`
+	}
+	if decode(res.Body, &envelope) != nil || envelope.Status != "success" || string(envelope.Data.ID) != poolID ||
+		strings.TrimSpace(envelope.Data.Name) == "" || strings.TrimSpace(envelope.Data.Type) == "" {
+		return nil, errors.New("invalid job pool metadata or a different pool ID")
+	}
+	result := &JobPoolDetails{JobPool: envelope.Data.JobPool}
+	for _, field := range []struct {
+		value  json.Number
+		target **int64
+	}{
+		{envelope.Data.Capacity.Memory, &result.MemoryMB},
+		{envelope.Data.Capacity.Count, &result.Count},
+	} {
+		if field.value == "" {
+			continue
+		}
+		value, err := field.value.Int64()
+		if err != nil || value < 0 {
+			return nil, errors.New("invalid job pool capacity returned by Catalyst")
+		}
+		*field.target = &value
+	}
+	return result, nil
 }
 
 // ListProjects returns visible projects in deterministic ID order.

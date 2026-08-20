@@ -1,0 +1,1811 @@
+{
+  "schema_version": 1,
+  "reviewed": "2026-11-24",
+  "inventory_complete": false,
+  "scope": "Operation states describe the existing Terraform implementation, not API availability or live verification. API classifications can cover read operations only. inventory_only entries retain historical notes and still need a fresh service/field contract audit. No coverage percentage or complete service claim is made.",
+  "capabilities": [
+    {
+      "id": "projects.project",
+      "priority": "P0",
+      "review": "source_reviewed",
+      "api_contract": "documented",
+      "operations": {
+        "create": "implemented",
+        "read": "implemented",
+        "update": "replacement",
+        "delete": "implemented",
+        "import": "implemented"
+      },
+      "evidence": "Offline Terraform lifecycle passes. Creation returned HTTP 400 PROJECT_CREATION_NOT_ALLOWED in the 2026-11-01 India CLI OAuth recheck. Three separately authorized direct API deletions succeeded on 2026-11-08; no full Terraform create/delete lifecycle is established.",
+      "blockers": [
+        "account_eligibility",
+        "api_contract",
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Obtain Zoho clarification on unattended project creation and eligible OAuth/account context, then rerun only the existing disposable-project acceptance gate.",
+      "sources": [
+        "coverage/capabilities.json",
+        "internal/provider/project_resource.go",
+        "internal/catalyst/project_management.go",
+        "https://github.com/catalystbyzoho/zcatalyst-sdk-js/blob/9e870262459c4ed13e99e7db6fb68148199a56e7/packages/auth-admin/src/index.ts",
+        "https://docs.catalyst.zoho.com/en/api/code-reference/general/projects/create-new-project/"
+      ],
+      "remaining_gaps": [
+        "unattended creation rejected in the tested account",
+        "remote name/timezone updates"
+      ]
+    },
+    {
+      "id": "scheduling.webhook_cron_expression",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "documented",
+      "operations": {
+        "create": "implemented",
+        "read": "implemented",
+        "update": "implemented",
+        "delete": "implemented",
+        "import": "implemented"
+      },
+      "evidence": "Historical India Development subset recorded in coverage/capabilities.json; no live execution in this audit. The scope and limits of that evidence remain in the inventory note. The schema requires an existing Webhook pool and one schedule form. Historical India Development tests exercised the lifecycle while disabled.",
+      "blockers": [
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Repeat the documented lifecycle with fresh disposable fixtures; audit the remaining field contracts without expanding the historical live claim.",
+      "sources": [
+        "coverage/capabilities.json",
+        "internal/provider/webhook_cron_resource.go",
+        "https://docs.catalyst.zoho.com/en/job-scheduling/help/implementation/manage-cron/"
+      ],
+      "remaining_gaps": [
+        "regional/Production lifecycle evidence"
+      ]
+    },
+    {
+      "id": "scheduling.pool",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "official_sdk",
+      "operations": {
+        "create": "not_implemented",
+        "read": "implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "List has historical India Development evidence. Specific lookup and capacity fields follow the REST and JavaScript SDK contracts with offline verification.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Establish pool create/read/update/delete, capacity defaults and deletion behavior before adding a resource.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://github.com/catalystbyzoho/zcatalyst-sdk-js/blob/9e870262459c4ed13e99e7db6fb68148199a56e7/packages/job-scheduling/src/index.ts",
+        "https://docs.catalyst.zoho.com/en/api/code-reference/job-scheduling/jobpool/get-jobpool/"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "scheduling.function_cron",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "documented",
+      "operations": {
+        "create": "implemented",
+        "read": "implemented",
+        "update": "implemented",
+        "delete": "implemented",
+        "import": "implemented"
+      },
+      "evidence": "Historical India Development subset recorded in coverage/capabilities.json; no live execution in this audit. The scope and limits of that evidence remain in the inventory note. The schema targets a deployed Job Function and existing Function pool. It defaults to disabled and manages pre-defined schedules.",
+      "blockers": [
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Repeat the documented lifecycle with fresh disposable fixtures; audit the remaining field contracts without expanding the historical live claim.",
+      "sources": [
+        "coverage/capabilities.json",
+        "internal/provider/function_cron_resource.go",
+        "https://docs.catalyst.zoho.com/en/job-scheduling/help/implementation/manage-cron/"
+      ],
+      "remaining_gaps": [
+        "eligible Circuit targets are tracked separately",
+        "legacy Cron Function triggers"
+      ]
+    },
+    {
+      "id": "scheduling.appsail_cron",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "documented",
+      "operations": {
+        "create": "implemented",
+        "read": "implemented",
+        "update": "implemented",
+        "delete": "implemented",
+        "import": "implemented"
+      },
+      "evidence": "Historical India Development subset recorded in coverage/capabilities.json; no live execution in this audit. The scope and limits of that evidence remain in the inventory note. The schema resolves a path against the AppSail origin and requires an existing AppSail pool. It defaults to disabled.",
+      "blockers": [
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Repeat the documented lifecycle with fresh disposable fixtures; audit the remaining field contracts without expanding the historical live claim.",
+      "sources": [
+        "coverage/capabilities.json",
+        "internal/provider/appsail_cron_resource.go",
+        "https://docs.catalyst.zoho.com/en/job-scheduling/help/implementation/manage-cron/"
+      ],
+      "remaining_gaps": [
+        "regional/Production lifecycle evidence"
+      ]
+    },
+    {
+      "id": "scheduling.circuit_cron",
+      "priority": "P2",
+      "review": "source_reviewed",
+      "api_contract": "documented",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "Zoho documents Circuit targets with regional restrictions. An eligible fixture and a Terraform target lifecycle are still needed.",
+      "blockers": [
+        "api_contract",
+        "implementation",
+        "live_fixture"
+      ],
+      "next_action": "Verify the documented Circuit target in an eligible data center using a disabled schedule and a disposable Circuit and job pool. Zoho lists India, EU, AU and CA as unavailable.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://docs.catalyst.zoho.com/en/job-scheduling/help/jobpool/introduction/",
+        "https://docs.catalyst.zoho.com/en/api/code-reference/job-scheduling/cron/update-cron/update-cron-cron-expressions/",
+        "https://docs.catalyst.zoho.com/en/job-scheduling/help/cron/introduction/"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "scheduling.recurring_calendar_schedule",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "documented",
+      "operations": {
+        "create": "implemented",
+        "read": "implemented",
+        "update": "implemented",
+        "delete": "implemented",
+        "import": "implemented"
+      },
+      "evidence": "Historical India Development subset recorded in coverage/capabilities.json; no live execution in this audit. The scope and limits of that evidence remain in the inventory note. The managed scheduling schemas support daily/monthly/yearly forms. Week-based schedules require one weekday.",
+      "blockers": [
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Repeat the documented lifecycle with fresh disposable fixtures; audit the remaining field contracts without expanding the historical live claim.",
+      "sources": [
+        "coverage/capabilities.json",
+        "internal/provider/function_cron_resource.go",
+        "internal/provider/webhook_cron_resource.go",
+        "internal/provider/appsail_cron_resource.go",
+        "https://docs.catalyst.zoho.com/en/job-scheduling/help/implementation/manage-cron/"
+      ],
+      "remaining_gaps": [
+        "eligible Circuit targets"
+      ]
+    },
+    {
+      "id": "scheduling.one_time_schedule",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "documented",
+      "operations": {
+        "create": "implemented",
+        "read": "implemented",
+        "update": "implemented",
+        "delete": "implemented",
+        "import": "implemented"
+      },
+      "evidence": "Historical India Development subset recorded in coverage/capabilities.json; no live execution in this audit. The scope and limits of that evidence remain in the inventory note. The managed scheduling schemas accept Unix-second timestamps and omit end time for one-time schedules.",
+      "blockers": [
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Repeat the documented lifecycle with fresh disposable fixtures; audit the remaining field contracts without expanding the historical live claim.",
+      "sources": [
+        "coverage/capabilities.json",
+        "internal/provider/function_cron_resource.go",
+        "internal/provider/webhook_cron_resource.go",
+        "internal/provider/appsail_cron_resource.go",
+        "https://docs.catalyst.zoho.com/en/job-scheduling/help/implementation/manage-cron/"
+      ],
+      "remaining_gaps": [
+        "eligible Circuit targets"
+      ]
+    },
+    {
+      "id": "scheduling.periodic_schedule",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "documented",
+      "operations": {
+        "create": "implemented",
+        "read": "implemented",
+        "update": "implemented",
+        "delete": "implemented",
+        "import": "implemented"
+      },
+      "evidence": "Historical India Development subset recorded in coverage/capabilities.json; no live execution in this audit. The scope and limits of that evidence remain in the inventory note. The managed scheduling schemas support elapsed intervals with a recurring end time.",
+      "blockers": [
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Repeat the documented lifecycle with fresh disposable fixtures; audit the remaining field contracts without expanding the historical live claim.",
+      "sources": [
+        "coverage/capabilities.json",
+        "internal/provider/function_cron_resource.go",
+        "internal/provider/webhook_cron_resource.go",
+        "internal/provider/appsail_cron_resource.go",
+        "https://docs.catalyst.zoho.com/en/job-scheduling/help/implementation/manage-cron/"
+      ],
+      "remaining_gaps": [
+        "eligible Circuit targets"
+      ]
+    },
+    {
+      "id": "filestore.file",
+      "priority": "P4",
+      "review": "source_reviewed",
+      "api_contract": "documented",
+      "operations": {
+        "create": "implemented",
+        "read": "implemented",
+        "update": "implemented",
+        "delete": "implemented",
+        "import": "implemented"
+      },
+      "evidence": "Historical India Development subset recorded in coverage/capabilities.json; no live execution in this audit. The scope and limits of that evidence remain in the inventory note. The resource continues to register for existing state and emits its deprecation notice. Post-sunset live access remains unverified.",
+      "blockers": [
+        "live_fixture",
+        "live_verification",
+        "deprecation"
+      ],
+      "next_action": "Reconfirm post-sunset availability and plan migration/state compatibility before any new provisioning work.",
+      "sources": [
+        "coverage/capabilities.json",
+        "internal/provider/filestore_file_resource.go",
+        "https://docs.catalyst.zoho.com/en/announcements/2026/filestore-sunset/"
+      ],
+      "remaining_gaps": [
+        "post-sunset availability and migration/state compatibility"
+      ]
+    },
+    {
+      "id": "filestore.folder",
+      "priority": "P4",
+      "review": "source_reviewed",
+      "api_contract": "documented",
+      "operations": {
+        "create": "not_implemented",
+        "read": "implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "Existing read/list implementation and its historical source references are recorded in coverage/capabilities.json; no management lifecycle is implemented. The deprecated data source still lists folder identities for compatibility. Post-sunset live access remains unverified.",
+      "blockers": [
+        "api_contract",
+        "implementation",
+        "deprecation"
+      ],
+      "next_action": "Reconfirm post-sunset availability and plan migration/state compatibility before any new provisioning work.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://docs.catalyst.zoho.com/en/announcements/2026/filestore-sunset/",
+        "internal/provider/inventory_data_source.go"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "datastore.table",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "console_only_documented",
+      "operations": {
+        "create": "not_implemented",
+        "read": "implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "The official help describes schema creation in the console. The provider reads existing metadata.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Confirm a supported schema provisioning lifecycle; existing metadata reads do not provide table ownership.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://docs.catalyst.zoho.com/en/cloud-scale/help/data-store/tables/"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "datastore.column",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "console_only_documented",
+      "operations": {
+        "create": "not_implemented",
+        "read": "implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "The official help describes adding columns in the console. The provider reads existing column metadata.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Establish type/default/nullable changes and destructive-update rules; depends on table ownership.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://docs.catalyst.zoho.com/en/cloud-scale/help/data-store/tables/"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "datastore.table_permission",
+      "priority": "P2",
+      "review": "source_reviewed",
+      "api_contract": "unknown",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "The console documents permissions by role and table. A public contract for reading, changing and resetting the assignment remains unverified.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Confirm permission ownership, inherited defaults and revocation behavior before providing writes.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://docs.catalyst.zoho.com/en/cloud-scale/help/data-store/scopes-and-permissions/"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "datastore.configuration_row",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "documented",
+      "operations": {
+        "create": "implemented",
+        "read": "implemented",
+        "update": "implemented",
+        "delete": "implemented",
+        "import": "implemented"
+      },
+      "evidence": "Historical India Development subset recorded in coverage/capabilities.json; no live execution in this audit. The scope and limits of that evidence remain in the inventory note. The schema owns scalar configuration columns and clears removed values. Table definitions and row permissions are separate prerequisites.",
+      "blockers": [
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Repeat the documented lifecycle with fresh disposable fixtures; audit the remaining field contracts without expanding the historical live claim.",
+      "sources": [
+        "coverage/capabilities.json",
+        "internal/provider/datastore_row_resource.go",
+        "https://docs.catalyst.zoho.com/en/sdk/javascript/v1/cloudscale/datastore/update-rows/"
+      ],
+      "remaining_gaps": [
+        "non-scalar fields",
+        "schema/index/permission prerequisites"
+      ]
+    },
+    {
+      "id": "datastore.index",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "unknown",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "The vendor documents a search index toggle on a Data Store column. That does not establish a distinct general-purpose index resource or a public management API.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Determine which index settings belong to the column lifecycle and whether any separately owned index API exists.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://docs.catalyst.zoho.com/en/cloud-scale/help/data-store/columns/",
+        "https://docs.catalyst.zoho.com/en/faq/cloud-scale/search-in-catalyst/"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "cache.segment",
+      "priority": "P3",
+      "review": "source_reviewed",
+      "api_contract": "console_only_documented",
+      "operations": {
+        "create": "not_implemented",
+        "read": "implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "The vendor explicitly specifies console-only segment creation. The provider lists existing segments.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Verify provisioning beyond the documented console workflow and define deletion ownership.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://docs.catalyst.zoho.com/en/faq/cloud-scale/cache-create-segment/"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "stratus.bucket",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "official_sdk",
+      "operations": {
+        "create": "not_implemented",
+        "read": "implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "Official SDK bucket read contract and existing provider metadata client. Terraform bucket lookup is offline-tested, including versioned bucket readback.",
+      "blockers": [
+        "api_contract",
+        "implementation",
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Verify the new metadata read in a disposable bucket, then audit bucket provisioning and the remaining settings.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://github.com/catalystbyzoho/zcatalyst-sdk-js/blob/9e870262459c4ed13e99e7db6fb68148199a56e7/packages/stratus/src/stratus.ts",
+        "https://docs.catalyst.zoho.com/en/cloud-scale/help/stratus/buckets/create-bucket/",
+        "internal/catalyst/stratus_object.go",
+        "https://github.com/catalystbyzoho/zcatalyst-sdk-js/blob/9e870262459c4ed13e99e7db6fb68148199a56e7/packages/stratus/src/bucket.ts",
+        "https://docs.catalyst.zoho.com/en/cloud-scale/help/stratus/stratus-config/general-settings/",
+        "https://github.com/catalystbyzoho/zcatalyst-sdk-js/blob/9e870262459c4ed13e99e7db6fb68148199a56e7/packages/stratus/src/utils/interface.ts"
+      ],
+      "remaining_gaps": [
+        "bucket provisioning and deletion contract",
+        "encryption, caching and audit consent are not exposed by the provider"
+      ]
+    },
+    {
+      "id": "stratus.object",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "documented",
+      "operations": {
+        "create": "implemented",
+        "read": "implemented",
+        "update": "implemented",
+        "delete": "implemented",
+        "import": "implemented"
+      },
+      "evidence": "Historical India Development subset recorded in coverage/capabilities.json; no live execution in this audit. The scope and limits of that evidence remain in the inventory note. The schema owns one object in an existing unversioned bucket. Version history and TTL remain outside that ownership contract.",
+      "blockers": [
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Repeat the documented lifecycle with fresh disposable fixtures; audit the remaining field contracts without expanding the historical live claim.",
+      "sources": [
+        "coverage/capabilities.json",
+        "internal/provider/stratus_object_resource.go",
+        "https://docs.catalyst.zoho.com/en/cloud-scale/help/stratus/stratus-config/general-settings/"
+      ],
+      "remaining_gaps": [
+        "versioned key ownership",
+        "TTL and lifecycle semantics",
+        "files above 100 MiB"
+      ]
+    },
+    {
+      "id": "stratus.multipart_transfer",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "documented",
+      "operations": {
+        "create": "implemented",
+        "read": "implemented",
+        "update": "implemented",
+        "delete": "implemented",
+        "import": "implemented"
+      },
+      "evidence": "Historical India Development subset recorded in coverage/capabilities.json; no live execution in this audit. The scope and limits of that evidence remain in the inventory note. The client initiates sessions, uploads numbered parts and completes an upload. Abort, resume and session reconciliation remain open.",
+      "blockers": [
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Repeat the documented lifecycle with fresh disposable fixtures; audit the remaining field contracts without expanding the historical live claim.",
+      "sources": [
+        "coverage/capabilities.json",
+        "internal/provider/stratus_object_resource.go",
+        "internal/catalyst/stratus_multipart.go"
+      ],
+      "remaining_gaps": [
+        "public abort/resume lifecycle",
+        "uncertain-session reconciliation"
+      ]
+    },
+    {
+      "id": "stratus.versioning",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "official_sdk",
+      "operations": {
+        "create": "not_implemented",
+        "read": "implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "Official SDK bucket read contract and existing provider metadata client. Terraform bucket lookup is offline-tested, including versioned bucket readback.",
+      "blockers": [
+        "api_contract",
+        "implementation",
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Verify enabling/disabling, version-history ownership and safe object deletion behavior.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "internal/catalyst/stratus_object.go",
+        "https://github.com/catalystbyzoho/zcatalyst-sdk-js/blob/9e870262459c4ed13e99e7db6fb68148199a56e7/packages/stratus/src/bucket.ts",
+        "https://docs.catalyst.zoho.com/en/cloud-scale/help/stratus/stratus-config/general-settings/"
+      ],
+      "remaining_gaps": [],
+      "read_fields": [
+        {
+          "api_field": "bucket_meta.versioning",
+          "data_source": "catalyst_stratus_bucket",
+          "attribute": "versioning_enabled"
+        }
+      ]
+    },
+    {
+      "id": "stratus.bucket_cors",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "official_sdk",
+      "operations": {
+        "create": "not_implemented",
+        "read": "implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "Official SDK read contract with offline Terraform protocol verification. Zoho documents adding and removing rules in the console.",
+      "blockers": [
+        "api_contract",
+        "implementation",
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Verify CORS readback in a disposable bucket, then check for a supported write/reset API.",
+      "sources": [
+        "internal/catalyst/stratus_cors.go",
+        "https://docs.catalyst.zoho.com/en/sdk/javascript/v1/cloudscale/stratus/get-bucket-cors/",
+        "https://docs.catalyst.zoho.com/en/cloud-scale/help/stratus/stratus-config/bucket-cors/"
+      ],
+      "remaining_gaps": [
+        "CORS management API and live read evidence"
+      ]
+    },
+    {
+      "id": "stratus.bucket_policy",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "official_sdk",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "The service documents custom permissions. Stable policy read, write and reset contracts remain unverified.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Audit bucket permissions and public access reset/readback. CORS is tracked separately.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://github.com/catalystbyzoho/zcatalyst-sdk-js/blob/9e870262459c4ed13e99e7db6fb68148199a56e7/packages/stratus/src/cors.ts",
+        "https://docs.catalyst.zoho.com/en/cloud-scale/help/stratus/stratus-permissions/"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "nosql.table",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "console_only_documented",
+      "operations": {
+        "create": "not_implemented",
+        "read": "implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "Zoho specifies console-only table management. Table metadata is available to the provider.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Establish supported table provisioning, key/TTL changes and deletion semantics.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://docs.catalyst.zoho.com/en/cloud-scale/help/nosql/create-manage-tables/"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "nosql.index",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "console_only_documented",
+      "operations": {
+        "create": "not_implemented",
+        "read": "implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "The official guide documents index configuration in the console. The provider reads index identities and statuses from table metadata.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Establish local/global index creation, async readiness and deletion; depends on table management.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://docs.catalyst.zoho.com/en/cloud-scale/help/nosql/create-manage-tables/"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "functions.function",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "documented",
+      "operations": {
+        "create": "implemented",
+        "read": "implemented",
+        "update": "implemented",
+        "delete": "implemented",
+        "import": "implemented"
+      },
+      "evidence": "Zoho documents additional languages and Function types. The provider currently manages the recorded Node.js subset. Additional deploy, configuration and artifact readback contracts need tests.",
+      "blockers": [
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Repeat the documented lifecycle with fresh disposable fixtures; audit the remaining field contracts without expanding the historical live claim.",
+      "sources": [
+        "coverage/capabilities.json",
+        "internal/provider/function_resource.go",
+        "https://docs.catalyst.zoho.com/en/serverless/help/functions/introduction/",
+        "https://docs.catalyst.zoho.com/en/serverless/getting-started/components-of-serverless/"
+      ],
+      "remaining_gaps": [
+        "additional languages and integration/browser function types",
+        "persistent trigger management"
+      ]
+    },
+    {
+      "id": "appsail.service",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "documented",
+      "operations": {
+        "create": "implemented",
+        "read": "implemented",
+        "update": "implemented",
+        "delete": "implemented",
+        "import": "implemented"
+      },
+      "evidence": "The CLI documents an OCI deployment flow. The earlier test did not establish repeatable configuration and artifact readback. The provider manages the recorded managed-runtime ZIP subset.",
+      "blockers": [
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Repeat the documented lifecycle with fresh disposable fixtures; audit the remaining field contracts without expanding the historical live claim.",
+      "sources": [
+        "coverage/capabilities.json",
+        "internal/provider/appsail_resource.go",
+        "internal/catalyst/appsail_container_contract_acc_test.go",
+        "https://docs.catalyst.zoho.com/en/serverless/help/appsail/custom-runtimes/deploy-from-cli/"
+      ],
+      "remaining_gaps": [
+        "managed containers with reliable artifact/configuration readback",
+        "custom domains",
+        "explicit scaling control contracts"
+      ]
+    },
+    {
+      "id": "gateway.configuration_and_rules",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "documented",
+      "operations": {
+        "create": "implemented",
+        "read": "implemented",
+        "update": "implemented",
+        "delete": "reset_on_destroy",
+        "import": "implemented"
+      },
+      "evidence": "Historical India Development subset recorded in coverage/capabilities.json; no live execution in this audit. The scope and limits of that evidence remain in the inventory note. The schema owns the complete custom ruleset, validates supported targets and scopes, and rejects unsupported settings. Client-route live evidence remains open.",
+      "blockers": [
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Repeat the documented lifecycle with fresh disposable fixtures; audit the remaining field contracts without expanding the historical live claim.",
+      "sources": [
+        "coverage/capabilities.json",
+        "internal/provider/gateway_resource.go",
+        "internal/provider/gateway_ruleset_resource.go",
+        "templates/guides/service_expansion.md.tmpl"
+      ],
+      "remaining_gaps": [
+        "live client-route lifecycle",
+        "throttling and system-route ownership"
+      ]
+    },
+    {
+      "id": "authentication.user_role_assignment",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "official_sdk",
+      "operations": {
+        "create": "implemented",
+        "read": "implemented",
+        "update": "implemented",
+        "delete": "reset_on_destroy",
+        "import": "implemented"
+      },
+      "evidence": "Offline SDK-contract and Terraform lifecycle evidence only; a disposable end-user is still needed for live verification. The SDK update contract assigns an existing role to a user. Destroy resets the assignment to a specified fallback role. A live disposable-user check remains open.",
+      "blockers": [
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Prepare a disposable end-user and existing roles in the test project, then verify assignment/import/drift/fallback without account invitations or deletion.",
+      "sources": [
+        "coverage/capabilities.json",
+        "internal/provider/auth_user_role_resource.go",
+        "https://github.com/catalystbyzoho/zcatalyst-sdk-js/blob/9e870262459c4ed13e99e7db6fb68148199a56e7/packages/auth/src/user-management.ts"
+      ],
+      "remaining_gaps": [
+        "live role assignment with a disposable end-user"
+      ]
+    },
+    {
+      "id": "authentication.configuration",
+      "priority": "P2",
+      "review": "source_reviewed",
+      "api_contract": "unknown",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "Zoho documents configuring the login mode and identity providers through the console. A Terraform management contract was not established.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Find supported login/signup/social-provider/domain configuration APIs; console UI support alone is insufficient.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "docs/guides/authentication_connections.md",
+        "https://docs.catalyst.zoho.com/en/tutorials/embedded-auth/python/configure-embedded-login/"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "authentication.role_and_permission",
+      "priority": "P2",
+      "review": "source_reviewed",
+      "api_contract": "unknown",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "Vendor docs describe defining roles in Catalyst. The modular SDK user update can assign an existing role. A role and permission definition lifecycle was not established.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Establish role CRUD/default-role/permission behavior; distinguish this from existing-user role assignment.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "docs/guides/authentication_connections.md",
+        "https://docs.catalyst.zoho.com/en/faq/cloud-scale/authentication-roles/"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "connections.connection",
+      "priority": "P2",
+      "review": "source_reviewed",
+      "api_contract": "official_sdk",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "Existing inventory classification retained for further contract review; no Terraform management or fresh live lifecycle evidence is claimed.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Find definition CRUD; runtime credential retrieval is not connection provisioning.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "docs/guides/authentication_connections.md"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "circuits.definition",
+      "priority": "P2",
+      "review": "source_reviewed",
+      "api_contract": "unknown",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "The console defines circuits. SDK methods execute, inspect and abort runs. Definition provisioning and readback remain open.",
+      "blockers": [
+        "api_contract",
+        "implementation",
+        "live_fixture"
+      ],
+      "next_action": "Audit definition versioning, readback, updates and deletion in an eligible region.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://docs.catalyst.zoho.com/en/serverless/help/circuits/implementation/",
+        "https://github.com/catalystbyzoho/zcatalyst-sdk-js/blob/9e870262459c4ed13e99e7db6fb68148199a56e7/packages/circuit/src/index.ts"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "signals.rule",
+      "priority": "P2",
+      "review": "source_reviewed",
+      "api_contract": "unknown",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "Zoho documents configuring Signals publishers, filters and targets in the console. A supported rule lifecycle API was not verified.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Audit persistent trigger/rule CRUD and initially disabled fixtures to prevent unintended execution.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://docs.catalyst.zoho.com/en/cloud-scale/help/data-streams/implementation/publish-data-signals/"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "datastreams.channel",
+      "priority": "P3",
+      "review": "source_reviewed",
+      "api_contract": "unknown",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "Zoho documents channel creation, configuration and deletion in the console. The SDK subscribe operation establishes a runtime WebSocket subscription.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Find the supported lifecycle for channels, including access settings and safe deletion.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://docs.catalyst.zoho.com/en/cloud-scale/help/data-streams/channels-overview/",
+        "https://docs.catalyst.zoho.com/en/sdk/javascript/v1/cloudscale/data-streams/websocket-connection/"
+      ],
+      "remaining_gaps": [
+        "channel identity and lifecycle contract",
+        "access configuration and reset behavior"
+      ]
+    },
+    {
+      "id": "hosting.client_deployment",
+      "priority": "P2",
+      "review": "source_reviewed",
+      "api_contract": "official_cli_candidate",
+      "operations": {
+        "create": "not_implemented",
+        "read": "implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "The official CLI reads version history and uses history_id, app_version and status for pull and delete selection. The provider now reads those fields through a dedicated data source with offline protocol tests.",
+      "blockers": [
+        "api_contract",
+        "implementation",
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Run the read-only version history gate against an existing hosted client. For writes, verify ZIP identity and drift, activation and safe ownership of the active version.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://docs.catalyst.zoho.com/en/cloud-scale/help/web-client-hosting/key-concepts/",
+        "https://docs.catalyst.zoho.com/en/release-notes/cli/",
+        "coverage/catalog_review.md#web-client-hosting",
+        "https://github.com/catalystbyzoho/zcatalyst-cli/blob/ed1eef8f32f870201c2a3c72b607318ca11a0861/src/endpoints/lib/client.ts",
+        "https://github.com/catalystbyzoho/zcatalyst-cli/blob/ed1eef8f32f870201c2a3c72b607318ca11a0861/src/pull/features/client.ts",
+        "internal/provider/web_client_versions_data_source.go"
+      ],
+      "remaining_gaps": [
+        "active-version protection, activation and exact-version deletion"
+      ],
+      "read_fields": [
+        {
+          "api_field": "history_id",
+          "data_source": "catalyst_web_client_versions",
+          "attribute": "versions.history_id"
+        },
+        {
+          "api_field": "app_version",
+          "data_source": "catalyst_web_client_versions",
+          "attribute": "versions.version"
+        },
+        {
+          "api_field": "status",
+          "data_source": "catalyst_web_client_versions",
+          "attribute": "versions.live"
+        }
+      ]
+    },
+    {
+      "id": "hosting.domain_mapping",
+      "priority": "P2",
+      "review": "source_reviewed",
+      "api_contract": "unknown",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "The console workflow includes CNAME verification. A mapping lifecycle and usable TLS/readiness contract remain unverified.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Confirm public mapping/read/delete operations and use a disposable domain for DNS and TLS verification.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://docs.catalyst.zoho.com/en/cloud-scale/help/domain-mappings/implementation/"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "slate.application_configuration",
+      "priority": "P3",
+      "review": "source_reviewed",
+      "api_contract": "official_cli_candidate",
+      "operations": {
+        "create": "not_implemented",
+        "read": "implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "The provider reads Slate app identities via the CLI's list endpoint. Configuration, environment variables and creator profiles are omitted.",
+      "blockers": [
+        "api_contract",
+        "implementation",
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Verify a known Slate fixture, then establish configuration updates, safe cleanup and deployment ownership.",
+      "sources": [
+        "https://github.com/catalystbyzoho/zcatalyst-cli/blob/ed1eef8f32f870201c2a3c72b607318ca11a0861/src/endpoints/lib/slate.ts",
+        "https://github.com/catalystbyzoho/zcatalyst-cli/blob/ed1eef8f32f870201c2a3c72b607318ca11a0861/src/util_modules/config/lib/slate.ts",
+        "https://docs.catalyst.zoho.com/en/slate/help/deploy-from-cli/",
+        "internal/catalyst/inventory.go"
+      ],
+      "remaining_gaps": [
+        "live read verification",
+        "app configuration readback including defaults",
+        "stable update/delete/activation contract"
+      ],
+      "read_fields": [
+        {
+          "api_field": "id",
+          "data_source": "catalyst_slate_apps",
+          "attribute": "apps.id"
+        },
+        {
+          "api_field": "name",
+          "data_source": "catalyst_slate_apps",
+          "attribute": "apps.name"
+        }
+      ]
+    },
+    {
+      "id": "pipelines.pipeline_configuration",
+      "priority": "P3",
+      "review": "source_reviewed",
+      "api_contract": "documented",
+      "operations": {
+        "create": "not_implemented",
+        "read": "implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "The exact-ID pipeline lookup returns the allowlisted name and status. The provider verifies both the returned pipeline ID and its parent project.",
+      "blockers": [
+        "api_contract",
+        "implementation",
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Verify a live fixture and audit editable pipeline definitions, runner settings and source integration ownership.",
+      "sources": [
+        "https://docs.catalyst.zoho.com/en/api/code-reference/pipelines/get-pipeline-details/",
+        "internal/catalyst/pipelines.go"
+      ],
+      "remaining_gaps": [
+        "live read verification",
+        "definition fields and list support",
+        "management API for create, update and delete"
+      ],
+      "read_fields": [
+        {
+          "api_field": "name",
+          "data_source": "catalyst_pipeline",
+          "attribute": "name"
+        },
+        {
+          "api_field": "pipeline_status",
+          "data_source": "catalyst_pipeline",
+          "attribute": "status"
+        }
+      ]
+    },
+    {
+      "id": "mail.domain_and_sender",
+      "priority": "P3",
+      "review": "source_reviewed",
+      "api_contract": "unknown",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "Zoho documents domain and sender verification in the console. The inspected Mail SDK exposes sending. Domain and sender definition management was not verified.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Verify domain/sender ownership and DNS verification without sending mail during lifecycle tests.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://docs.catalyst.zoho.com/en/cloud-scale/help/mail/email-configuration/"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "mail.template",
+      "priority": "P3",
+      "review": "source_reviewed",
+      "api_contract": "unknown",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "Authentication verification and password-reset templates can be customized in the console. The inspected Mail SDK send operation does not manage those templates.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Audit Authentication template content, default restoration and safe lifecycle ownership.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://docs.catalyst.zoho.com/en/cloud-scale/help/authentication/email-templates/customizing-email-templates/"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "notifications.configuration",
+      "priority": "P3",
+      "review": "source_reviewed",
+      "api_contract": "unknown",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "The reviewed SDK and help describe subscription and send behavior. A durable application notification-settings lifecycle remains unverified.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Identify persistent web/mobile settings and exclude device registration and message delivery.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://docs.catalyst.zoho.com/en/cloud-scale/help/push-notifications/web/",
+        "https://github.com/catalystbyzoho/zcatalyst-sdk-js/blob/9e870262459c4ed13e99e7db6fb68148199a56e7/packages/push-notification/src/index.browser.ts"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "search.configuration",
+      "priority": "P3",
+      "review": "source_reviewed",
+      "api_contract": "unknown",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "Zoho describes enabling search on Data Store columns. This configuration depends on the schema management contract.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Audit searchable column settings together with the Data Store schema.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://docs.catalyst.zoho.com/en/faq/cloud-scale/search-in-catalyst/"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "zia.persistent_configuration_audit",
+      "priority": "P3",
+      "review": "source_reviewed",
+      "api_contract": "unknown",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "The inspected module exposes inference calls, including text, image and OCR processing. Durable configuration in this module remains unverified.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Check which durable Zia configurations have their own lifecycle before adding Terraform types.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://github.com/catalystbyzoho/zcatalyst-sdk-js/blob/9e870262459c4ed13e99e7db6fb68148199a56e7/packages/zia/src/index.ts"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "smartbrowz.persistent_configuration_audit",
+      "priority": "P3",
+      "review": "source_reviewed",
+      "api_contract": "unknown",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "The inspected SDK exposes browser grid retrieval and stop operations plus rendering and enrichment requests. A managed configuration lifecycle was not established.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Distinguish durable templates/settings from grid sessions and individual rendering requests.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://github.com/catalystbyzoho/zcatalyst-sdk-js/blob/9e870262459c4ed13e99e7db6fb68148199a56e7/packages/smartbrowz/src/index.ts",
+        "https://github.com/catalystbyzoho/zcatalyst-sdk-js/blob/9e870262459c4ed13e99e7db6fb68148199a56e7/packages/smartbrowz/src/browser-grid.ts"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "convokraft.bot_configuration",
+      "priority": "P3",
+      "review": "source_reviewed",
+      "api_contract": "unknown",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "The documented console workflow creates a bot and configures actions. Read, update, delete and training contracts remain unverified.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Establish identity, supported write APIs and separate async training from configuration.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://docs.catalyst.zoho.com/en/convokraft/help/bots/create-a-bot/"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "quickml.deployment_configuration",
+      "priority": "P3",
+      "review": "source_reviewed",
+      "api_contract": "unknown",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "The inspected SDK serves predictions against an existing endpoint. The console guide documents endpoint setup, distinct from prediction.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Verify deployment CRUD, readiness and rollback before exposing a managed resource.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://docs.catalyst.zoho.com/en/quickml/help/endpoints/llm-serving-endpoint/",
+        "https://github.com/catalystbyzoho/zcatalyst-sdk-js/blob/9e870262459c4ed13e99e7db6fb68148199a56e7/packages/quick-ml/src/index.ts"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "devops.alert_and_event_configuration",
+      "priority": "P3",
+      "review": "source_reviewed",
+      "api_contract": "unknown",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "The console configures alerts for cron, logs and event listeners. A public definition lifecycle remains unverified.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Verify alert and receiver settings CRUD, then test with disabled or isolated notifications.",
+      "sources": [
+        "coverage/capabilities.json",
+        "docs/guides/service_expansion.md",
+        "https://docs.catalyst.zoho.com/en/devops/help/application-alerts/implementation/"
+      ],
+      "remaining_gaps": []
+    },
+    {
+      "id": "nosql.configuration_item",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "documented",
+      "operations": {
+        "create": "implemented",
+        "read": "implemented",
+        "update": "implemented",
+        "delete": "implemented",
+        "import": "implemented"
+      },
+      "evidence": "Historical India Development subset recorded in coverage/capabilities.json; no live execution in this audit. The scope and limits of that evidence remain in the inventory note. The schema owns a typed item in an existing table. Table provisioning and index settings remain separate API gaps.",
+      "blockers": [
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Repeat the documented lifecycle with fresh disposable fixtures; audit the remaining field contracts without expanding the historical live claim.",
+      "sources": [
+        "coverage/capabilities.json",
+        "internal/provider/nosql_item_resource.go",
+        "https://docs.catalyst.zoho.com/en/api/code-reference/cloud-scale/nosql/insert-item/"
+      ],
+      "remaining_gaps": [
+        "table/index provisioning and TTL configuration"
+      ]
+    },
+    {
+      "id": "stratus.object_versions",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "documented",
+      "operations": {
+        "create": "not_implemented",
+        "read": "implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "The documented REST listing returns an exact object key, continuation metadata, version IDs, latest flags, size, ETag and last-modified text. Offline tests cover bounded pagination and Terraform state.",
+      "blockers": [
+        "api_contract",
+        "implementation",
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Run the object-versions read gate with an existing versioned test object. Audit delete-marker representations and version ownership before adding writes.",
+      "sources": [
+        "https://docs.catalyst.zoho.com/en/sdk/nodejs/v2/cloud-scale/stratus/list-object-versions/",
+        "internal/catalyst/stratus_versions.go",
+        "internal/provider/stratus_versions_data_source.go",
+        "coverage/catalog_review.md"
+      ],
+      "remaining_gaps": [
+        "live verification for a versioned object",
+        "delete-marker representation",
+        "owned version write/deletion contract"
+      ],
+      "read_fields": [
+        {
+          "api_field": "version[].version_id",
+          "data_source": "catalyst_stratus_object_versions",
+          "attribute": "versions.version_id"
+        },
+        {
+          "api_field": "version[].is_latest",
+          "data_source": "catalyst_stratus_object_versions",
+          "attribute": "versions.is_latest"
+        },
+        {
+          "api_field": "version[].size",
+          "data_source": "catalyst_stratus_object_versions",
+          "attribute": "versions.size_bytes"
+        },
+        {
+          "api_field": "version[].etag",
+          "data_source": "catalyst_stratus_object_versions",
+          "attribute": "versions.etag"
+        },
+        {
+          "api_field": "version[].last_modified",
+          "data_source": "catalyst_stratus_object_versions",
+          "attribute": "versions.last_modified"
+        }
+      ]
+    },
+    {
+      "id": "authentication.application_user",
+      "priority": "P2",
+      "review": "source_reviewed",
+      "api_contract": "documented",
+      "operations": {
+        "create": "not_implemented",
+        "read": "implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "Exact user lookup already exposes allowlisted access metadata. Zoho documents signup and user deletion. Adding a user to an existing application organization takes a ZAAID. Neither create route has been verified for Terraform ownership.",
+      "blockers": [
+        "api_contract",
+        "implementation",
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Confirm invitation and confirmation behavior, safe duplicate recovery by immutable user identity, update/reset rules and deletion effects with an isolated test identity.",
+      "sources": [
+        "https://docs.catalyst.zoho.com/en/api/code-reference/cloud-scale/authentication/add-new-user/",
+        "https://docs.catalyst.zoho.com/en/api/code-reference/cloud-scale/authentication/delete-user/",
+        "internal/provider/auth_user_data_source.go",
+        "coverage/catalog_review.md"
+      ],
+      "remaining_gaps": [
+        "paginated user discovery",
+        "signup/invitation lifecycle",
+        "profile mutation support and privacy",
+        "independent user ownership and deletion"
+      ],
+      "read_fields": [
+        {
+          "api_field": "role_details.role_id",
+          "data_source": "catalyst_auth_user",
+          "attribute": "role_id"
+        },
+        {
+          "api_field": "role_details.role_name",
+          "data_source": "catalyst_auth_user",
+          "attribute": "role_name"
+        },
+        {
+          "api_field": "user_type",
+          "data_source": "catalyst_auth_user",
+          "attribute": "user_type"
+        },
+        {
+          "api_field": "status",
+          "data_source": "catalyst_auth_user",
+          "attribute": "status"
+        }
+      ]
+    },
+    {
+      "id": "environments.production_lifecycle",
+      "priority": "P2",
+      "review": "source_reviewed",
+      "api_contract": "console_only_documented",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "Zoho documents enabling and disabling Production in the console. Provider environment selection routes service requests to an already configured environment.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Ask Zoho for a supported environment lifecycle and readiness API before implementing an environment resource.",
+      "sources": [
+        "https://docs.catalyst.zoho.com/en/deployment-and-billing/environments/production-environment/",
+        "docs/guides/environments.md"
+      ],
+      "remaining_gaps": [
+        "production readiness, enable, disable and re-enable",
+        "billing eligibility"
+      ]
+    },
+    {
+      "id": "environments.deployment",
+      "priority": "P2",
+      "review": "source_reviewed",
+      "api_contract": "console_only_documented",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "Zoho explicitly documents Development-to-Production promotion as console-only and says there is no public API or CLI to start it or read its status. Deployment types also describe a separate Production-to-Development flow.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Keep promotion documented as a console step. Look for a supported preview, promotion and status contract before reclassifying it.",
+      "sources": [
+        "https://docs.catalyst.zoho.com/en/faq/general/deploy-to-production-from-cli-or-ci/",
+        "https://docs.catalyst.zoho.com/en/deployment-and-billing/environments/deployment-types/",
+        "coverage/catalog_review.md"
+      ],
+      "remaining_gaps": [
+        "deployment diff, selected component deployment and status",
+        "reverse migration and rollback contract"
+      ]
+    },
+    {
+      "id": "projects.iac_bootstrap",
+      "priority": "P1",
+      "review": "source_reviewed",
+      "api_contract": "official_cli_candidate",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "Zoho's IaC import creates a new project from a project-template ZIP. Current CLI documentation describes browser session confirmation. This workflow has a separate identity and lifecycle from direct project creation.",
+      "blockers": [
+        "api_contract",
+        "account_eligibility",
+        "implementation"
+      ],
+      "next_action": "Confirm whether Zoho supports a browser-free import mode and a stable status-to-project-ID contract. Audit the template fields for supported provisionable configurations.",
+      "sources": [
+        "https://docs.catalyst.zoho.com/en/cli/v1/export-and-import-projects/import-project/",
+        "https://docs.catalyst.zoho.com/en/getting-started/set-up-a-catalyst-project/iac-settings/",
+        "coverage/catalog_review.md",
+        "https://github.com/catalystbyzoho/zcatalyst-cli/blob/ed1eef8f32f870201c2a3c72b607318ca11a0861/src/commands/iac/import.ts",
+        "https://github.com/catalystbyzoho/zcatalyst-cli/blob/ed1eef8f32f870201c2a3c72b607318ca11a0861/src/endpoints/lib/iac.ts"
+      ],
+      "remaining_gaps": [
+        "unattended eligibility",
+        "async import job recovery and exactly-once project identity",
+        "template-defined child ownership"
+      ]
+    },
+    {
+      "id": "signals.event_bus",
+      "priority": "P2",
+      "review": "source_reviewed",
+      "api_contract": "unknown",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "The CLI event generation path uses legacy Event Listeners. Zoho documents Signals as a distinct replacement. The older lookup supplies no verified evidence for current Signals inventory.",
+      "blockers": [
+        "api_contract",
+        "implementation"
+      ],
+      "next_action": "Look for supported current Signals inventory and lifecycle methods for publishers, rules and targets.",
+      "sources": [
+        "https://github.com/catalystbyzoho/zcatalyst-cli/blob/ed1eef8f32f870201c2a3c72b607318ca11a0861/src/endpoints/lib/event-bus.ts",
+        "https://github.com/catalystbyzoho/zcatalyst-cli/blob/ed1eef8f32f870201c2a3c72b607318ca11a0861/src/event_generate/index.ts",
+        "https://docs.catalyst.zoho.com/en/signals/getting-started/quick-start-guide/",
+        "internal/catalyst/inventory.go",
+        "https://docs.catalyst.zoho.com/en/announcements/2025/fs-el-cron-deprecation-announcement/"
+      ],
+      "remaining_gaps": [
+        "current Signals inventory endpoint",
+        "publisher and bus ownership",
+        "scopes and regional availability"
+      ]
+    },
+    {
+      "id": "environments.inventory",
+      "priority": "P2",
+      "review": "source_reviewed",
+      "api_contract": "official_cli_candidate",
+      "operations": {
+        "create": "not_implemented",
+        "read": "implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "The CLI lists environment metadata by project. The provider reads IDs, names and optional status, type and default flag without exporting keys or block reasons.",
+      "blockers": [
+        "api_contract",
+        "implementation",
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Verify existing environment metadata with the new project and minimum usable OAuth scope.",
+      "sources": [
+        "https://github.com/catalystbyzoho/zcatalyst-cli/blob/ed1eef8f32f870201c2a3c72b607318ca11a0861/src/endpoints/lib/env.ts",
+        "https://github.com/catalystbyzoho/zcatalyst-cli/blob/ed1eef8f32f870201c2a3c72b607318ca11a0861/src/util_modules/project.ts",
+        "internal/catalyst/environments.go"
+      ],
+      "remaining_gaps": [
+        "live read verification",
+        "narrower OAuth scope eligibility"
+      ],
+      "read_fields": [
+        {
+          "api_field": "env_zgid",
+          "data_source": "catalyst_project_environments",
+          "attribute": "environments.id"
+        },
+        {
+          "api_field": "env_name",
+          "data_source": "catalyst_project_environments",
+          "attribute": "environments.name"
+        },
+        {
+          "api_field": "env_status",
+          "data_source": "catalyst_project_environments",
+          "attribute": "environments.status"
+        },
+        {
+          "api_field": "env_type",
+          "data_source": "catalyst_project_environments",
+          "attribute": "environments.type"
+        },
+        {
+          "api_field": "is_default",
+          "data_source": "catalyst_project_environments",
+          "attribute": "environments.is_default"
+        }
+      ]
+    },
+    {
+      "id": "convokraft.smarttrain_material",
+      "priority": "P2",
+      "review": "source_reviewed",
+      "api_contract": "documented",
+      "operations": {
+        "create": "not_implemented",
+        "read": "implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "The provider reads existing material metadata through the full GET example path. The documented method and sample use different path prefixes, and live verification is pending.",
+      "blockers": [
+        "api_contract",
+        "implementation",
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Verify the exact read route and SmartTrain capability with an existing Development bot. Confirm identity, URL normalization, async readiness and exact delete behavior before enabling managed writes.",
+      "sources": [
+        "https://docs.catalyst.zoho.com/en/api/code-reference/convokraft/get-training-materials/",
+        "https://docs.catalyst.zoho.com/en/convokraft/help/smarttrain/",
+        "internal/catalyst/convokraft.go"
+      ],
+      "remaining_gaps": [
+        "live GET routing and response envelope",
+        "create recovery without adoption of someone else's material",
+        "replacement and exact-ID deletion contract"
+      ],
+      "read_fields": [
+        {
+          "api_field": "rag_training_data[].id",
+          "data_source": "catalyst_smarttrain_materials",
+          "attribute": "materials.id"
+        },
+        {
+          "api_field": "rag_training_data[].title",
+          "data_source": "catalyst_smarttrain_materials",
+          "attribute": "materials.title"
+        },
+        {
+          "api_field": "rag_training_data[].source",
+          "data_source": "catalyst_smarttrain_materials",
+          "attribute": "materials.source"
+        },
+        {
+          "api_field": "rag_training_data[].status",
+          "data_source": "catalyst_smarttrain_materials",
+          "attribute": "materials.status"
+        }
+      ]
+    },
+    {
+      "id": "organizations.organization",
+      "priority": "P2",
+      "review": "source_reviewed",
+      "api_contract": "official_cli_candidate",
+      "operations": {
+        "create": "not_implemented",
+        "read": "implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "The official CLI lists organizations. The provider projects IDs, names and the optional default flag with offline verification.",
+      "blockers": [
+        "api_contract",
+        "implementation",
+        "live_fixture",
+        "live_verification"
+      ],
+      "next_action": "Verify an account-wide read with known organization IDs and audit the minimum scope and separate organization lifecycle.",
+      "sources": [
+        "https://github.com/catalystbyzoho/zcatalyst-cli/blob/ed1eef8f32f870201c2a3c72b607318ca11a0861/src/endpoints/lib/org.ts",
+        "internal/catalyst/discovery.go"
+      ],
+      "remaining_gaps": [
+        "live organization visibility and minimum OAuth scope",
+        "organization management and membership ownership"
+      ],
+      "read_fields": [
+        {
+          "api_field": "id",
+          "data_source": "catalyst_organizations",
+          "attribute": "organizations.id"
+        },
+        {
+          "api_field": "name",
+          "data_source": "catalyst_organizations",
+          "attribute": "organizations.name"
+        },
+        {
+          "api_field": "is_default",
+          "data_source": "catalyst_organizations",
+          "attribute": "organizations.is_default"
+        }
+      ]
+    },
+    {
+      "id": "mdm.application_version",
+      "priority": "P3",
+      "review": "source_reviewed",
+      "api_contract": "console_only_documented",
+      "operations": {
+        "create": "not_implemented",
+        "read": "not_implemented",
+        "update": "not_implemented",
+        "delete": "not_implemented",
+        "import": "not_implemented"
+      },
+      "evidence": "Zoho documents mobile app enablement and hosting, version history and deletion through the console. The documented availability excludes India and other named data centers.",
+      "blockers": [
+        "api_contract",
+        "implementation",
+        "account_eligibility"
+      ],
+      "next_action": "Confirm a supported API, eligible Development fixture and app-version lifecycle before implementation.",
+      "sources": [
+        "https://docs.catalyst.zoho.com/en/cloud-scale/help/mobile-device-management/introduction/",
+        "https://docs.catalyst.zoho.com/en/cloud-scale/help/mobile-device-management/implementation/"
+      ],
+      "remaining_gaps": [
+        "readback, upload, update and exact-version deletion contract",
+        "nonreversible MDM enablement and cross-service ownership"
+      ]
+    }
+  ]
+}

@@ -170,6 +170,10 @@ func (c *Client) request(ctx context.Context, method, path string, body []byte) 
 }
 
 func (c *Client) requestContent(ctx context.Context, method, path string, body []byte, contentType string) (*http.Response, error) {
+	return c.requestContentForProject(ctx, method, path, body, contentType, "")
+}
+
+func (c *Client) requestContentForProject(ctx context.Context, method, path string, body []byte, contentType, projectHeader string) (*http.Response, error) {
 	refreshed, retries := false, 0
 	for {
 		if err := ctx.Err(); err != nil {
@@ -189,6 +193,10 @@ func (c *Client) requestContent(ctx context.Context, method, path string, body [
 			req.Header.Set("Content-Type", contentType)
 		}
 		req.Header.Set("Environment", c.config.Environment)
+		if projectHeader != "" {
+			req.Header.Set("X-CATALYST-projectid", projectHeader)
+			req.Header.Set("X-CATALYST-Environment", c.config.Environment)
+		}
 		if c.config.OrganizationID != "" {
 			req.Header.Set("CATALYST-ORG", c.config.OrganizationID)
 		}

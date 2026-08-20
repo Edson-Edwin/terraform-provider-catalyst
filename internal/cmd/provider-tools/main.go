@@ -34,13 +34,23 @@ func run() error {
 		root = parent
 	}
 	if len(os.Args) < 2 {
-		return errors.New("use coverage-status, verify-release, verify-registry or release-readiness")
+		return errors.New("use coverage-status, coverage-audit, verify-release, verify-registry or release-readiness")
 	}
 	tool := releasetools.New(root)
 	ctx := context.Background()
 	switch os.Args[1] {
 	case "coverage-status":
 		return tool.Coverage(os.Stdout)
+	case "coverage-audit":
+		flags := flag.NewFlagSet("coverage-audit", flag.ContinueOnError)
+		asJSON := flags.Bool("json", false, "print the validated operation matrix and backlog as JSON")
+		if err := flags.Parse(os.Args[2:]); err != nil {
+			return err
+		}
+		if flags.NArg() != 0 {
+			return errors.New("coverage-audit accepts only the optional -json flag")
+		}
+		return tool.WriteAudit(os.Stdout, *asJSON)
 	case "verify-registry":
 		if len(os.Args) != 3 {
 			return errors.New("verify-registry requires an exact version")

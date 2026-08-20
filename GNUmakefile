@@ -41,10 +41,20 @@ verify: dev
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_project validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_projects validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_job_pools validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_job_pool validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_datastore_tables validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_filestore_folders validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_cache_segments validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_stratus_buckets validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_stratus_bucket validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_stratus_bucket_cors validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_stratus_object_versions validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_web_client_versions validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_project_environments validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_organizations validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_slate_apps validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_pipeline validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_smarttrain_materials validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_webhook_cron validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_filestore_file validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/provider plan -input=false -lock=false
@@ -148,12 +158,18 @@ testacc-inventory:
 testacc-file:
 	TF_ACC=1 go test -race -count=1 -timeout=5m -run '^TestAccFilestoreFile$$' ./internal/provider
 
-.PHONY: testacc-inventory testacc-file
+testacc-infrastructure-details:
+	TF_ACC=1 go test -race -count=1 -v -timeout=5m -run '^TestAccInfrastructureDetails$$' ./internal/provider
+
+.PHONY: testacc-inventory testacc-file testacc-infrastructure-details
 
 coverage-status:
 	go run ./internal/cmd/provider-tools coverage-status
 
-.PHONY: coverage-status
+coverage-audit:
+	go run ./internal/cmd/provider-tools coverage-audit
+
+.PHONY: coverage-status coverage-audit
 
 testacc-function:
 	TF_ACC=1 go test -race -count=1 -timeout=5m -run '^TestAccFunction$$' ./internal/provider
@@ -180,10 +196,13 @@ testacc-function-variants:
 
 .PHONY: testacc-function-variants
 
+testacc-stratus-versions:
+	TF_ACC=1 go test -race -count=1 -v -timeout=5m -run '^TestAccStratusObjectVersions$$' ./internal/provider
+
 testacc-stratus-object:
 	TF_ACC=1 go test -race -count=1 -timeout=15m -run '^TestAccStratusObject$$' ./internal/provider
 
-.PHONY: testacc-stratus-object
+.PHONY: testacc-stratus-object testacc-stratus-versions
 
 testacc-function-background:
 	TF_ACC=1 go test -race -count=1 -timeout=15m -run '^TestAccFunctionBackgroundVariants$$' ./internal/provider
@@ -237,7 +256,18 @@ testacc-appsail-health:
 testacc-auth-user-role:
 	TF_ACC=1 go test -race -count=1 -timeout=5m -run '^TestAccAuthUserRole$$' ./internal/provider
 
-.PHONY: testacc-auth-user-role
+testacc-auth-user:
+	TF_ACC=1 go test -race -count=1 -timeout=5m -run '^TestAccAuthUserDataSource$$' ./internal/provider
+
+testacc-web-client-versions:
+	TF_ACC=1 go test -race -count=1 -timeout=5m -run '^TestAccWebClientVersions$$' ./internal/provider
+
+# Select one or more read-only services using DISCOVERY_TEST (regular expression).
+DISCOVERY_TEST ?= project_environments
+testacc-extended-discovery:
+	TF_ACC=1 go test -race -count=1 -v -timeout=10m -run '^TestAccExtendedDiscovery$$/$(DISCOVERY_TEST)' ./internal/provider
+
+.PHONY: testacc-auth-user-role testacc-auth-user testacc-web-client-versions testacc-extended-discovery
 
 testacc-datastore-row:
 	TF_ACC=1 go test -race -count=1 -timeout=5m -run '^TestAccDataStoreRow$$' ./internal/provider

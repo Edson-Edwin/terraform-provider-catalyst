@@ -8,12 +8,17 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Edson-Edwin/terraform-provider-catalyst/internal/releasetools"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 )
 
 func TestCapabilityInventoryMatchesProvider(t *testing.T) {
 	root := filepath.Join("..", "..")
+	audit, err := releasetools.New(root).Audit()
+	if err != nil {
+		t.Fatalf("capability operation audit is inconsistent: %v", err)
+	}
 	raw, err := os.ReadFile(filepath.Join(root, "coverage", "capabilities.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -89,6 +94,30 @@ func TestCapabilityInventoryMatchesProvider(t *testing.T) {
 	for name := range schemas.DataSourceSchemas {
 		if !sources[name] {
 			t.Fatalf("uncatalogued source %s", name)
+		}
+	}
+	for _, entry := range audit.Capabilities {
+		for _, field := range entry.ReadFields {
+			attributes := schemas.DataSourceSchemas[field.DataSource].Block.Attributes
+			steps := strings.Split(field.Attribute, ".")
+			for index, name := range steps {
+				var found *tfprotov6.SchemaAttribute
+				for _, candidate := range attributes {
+					if candidate.Name == name {
+						found = candidate
+						break
+					}
+				}
+				if found == nil || !found.Computed {
+					t.Fatalf("%s maps %s to missing or non-computed field %s.%s", entry.ID, field.APIField, field.DataSource, field.Attribute)
+				}
+				if index < len(steps)-1 {
+					if found.NestedType == nil {
+						t.Fatalf("%s maps %s to a field below non-nested attribute %s", entry.ID, field.APIField, name)
+					}
+					attributes = found.NestedType.Attributes
+				}
+			}
 		}
 	}
 }

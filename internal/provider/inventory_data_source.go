@@ -131,3 +131,7 @@ func (d *InventoryDataSource) Read(ctx context.Context, req datasource.ReadReque
 func NewFunctionsDataSource() datasource.DataSource {
 	return &InventoryDataSource{suffix: "functions", collection: "functions", description: "List existing serverless Function identities. Requires `ZohoCatalyst.functions.ALL` and project access. Uses the official CLI's metadata API. It does not deploy or invoke Functions and does not expose environment variables.", list: (*catalyst.Client).ListFunctionIdentities}
 }
+
+func NewSlateAppsDataSource() datasource.DataSource {
+	return &InventoryDataSource{suffix: "slate_apps", collection: "apps", description: "List existing Slate app identities using the official CLI's Slate API. Requires `ZohoCatalyst.Slate.app.READ` and project access. Reads IDs and names. App configuration, environment variables and build logs are omitted. Verified offline.", list: (*catalyst.Client).ListSlateApps}
+}

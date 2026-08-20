@@ -154,7 +154,15 @@ func (p *CatalystProvider) Configure(ctx context.Context, req provider.Configure
 }
 
 func (p *CatalystProvider) DataSources(_ context.Context) []func() datasource.DataSource {
-	return []func() datasource.DataSource{NewProjectDataSource, NewProjectsDataSource, NewJobPoolsDataSource, NewTablesDataSource, NewFoldersDataSource, NewCacheSegmentsDataSource, NewBucketsDataSource, NewFunctionsDataSource, NewNoSQLTablesDataSource, NewNoSQLTableDataSource, NewDataStoreTableDataSource, NewAuthUserDataSource}
+	return []func() datasource.DataSource{
+		NewProjectDataSource, NewProjectsDataSource, NewOrganizationsDataSource, NewProjectEnvironmentsDataSource,
+		NewJobPoolsDataSource, NewJobPoolDataSource,
+		NewTablesDataSource, NewFoldersDataSource, NewCacheSegmentsDataSource,
+		NewBucketsDataSource, NewStratusBucketDataSource, NewStratusCORSDataSource, NewStratusVersionsDataSource,
+		NewFunctionsDataSource, NewNoSQLTablesDataSource, NewNoSQLTableDataSource, NewDataStoreTableDataSource,
+		NewAuthUserDataSource, NewWebClientVersionsDataSource, NewSlateAppsDataSource,
+		NewPipelineDataSource, NewSmartTrainMaterialsDataSource,
+	}
 }
 
 func (p *CatalystProvider) Resources(_ context.Context) []func() resource.Resource {

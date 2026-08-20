@@ -33,6 +33,14 @@ func (c *Client) ListCacheSegments(ctx context.Context, projectID string) ([]Nam
 	return c.listNamed(ctx, projectID, "segment", "id", "segment_name")
 }
 
+// ListSlateApps uses the Slate project path and projects only IDs and names.
+func (c *Client) ListSlateApps(ctx context.Context, projectID string) ([]NamedResource, error) {
+	if !ValidID(projectID) {
+		return nil, errors.New("project id must be a positive integer written as a string")
+	}
+	return c.listNamedAt(ctx, "/slate/v1/project/"+projectID+"/app", "id", "name")
+}
+
 func inventoryPath(projectID, collection string) (string, error) {
 	if !ValidID(projectID) {
 		return "", errors.New("project id must be a positive integer written as a string")
@@ -45,6 +53,10 @@ func (c *Client) listNamed(ctx context.Context, projectID, collection, idKey, na
 	if err != nil {
 		return nil, err
 	}
+	return c.listNamedAt(ctx, path, idKey, nameKey)
+}
+
+func (c *Client) listNamedAt(ctx context.Context, path, idKey, nameKey string) ([]NamedResource, error) {
 	raw, err := getList[map[string]json.RawMessage](ctx, c, path)
 	if err != nil {
 		return nil, err

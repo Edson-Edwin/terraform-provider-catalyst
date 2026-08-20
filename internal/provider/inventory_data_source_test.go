@@ -15,12 +15,13 @@ import (
 )
 
 var inventoryFixtures = map[string]struct{ collection, endpoint, body string }{
-	"nosql_tables":      {"tables", "nosqltable", `{"id":9007199254740993123,"name":"Example"}`},
-	"functions":         {"functions", "function", `{"id":9007199254740993123,"name":"Example","stack":"node22","type":"basicio"}`},
-	"datastore_tables":  {"tables", "table", `{"table_id":9007199254740993123,"table_name":"Example"}`},
-	"filestore_folders": {"folders", "folder", `{"id":9007199254740993123,"folder_name":"Example"}`},
-	"cache_segments":    {"segments", "segment", `{"id":9007199254740993123,"segment_name":"Example"}`},
-	"stratus_buckets":   {"buckets", "bucket", `{"bucket_name":"Example","bucket_url":"https://example.zohostratus.in"}`},
+	"nosql_tables":      {"tables", "/baas/v1/project/123/nosqltable", `{"id":9007199254740993123,"name":"Example"}`},
+	"functions":         {"functions", "/baas/v1/project/123/function", `{"id":9007199254740993123,"name":"Example","stack":"node22","type":"basicio"}`},
+	"datastore_tables":  {"tables", "/baas/v1/project/123/table", `{"table_id":9007199254740993123,"table_name":"Example"}`},
+	"filestore_folders": {"folders", "/baas/v1/project/123/folder", `{"id":9007199254740993123,"folder_name":"Example"}`},
+	"cache_segments":    {"segments", "/baas/v1/project/123/segment", `{"id":9007199254740993123,"segment_name":"Example"}`},
+	"stratus_buckets":   {"buckets", "/baas/v1/project/123/bucket", `{"bucket_name":"Example","bucket_url":"https://example.zohostratus.in"}`},
+	"slate_apps":        {"apps", "/slate/v1/project/123/app", `{"id":9007199254740993123,"name":"Example","app_config":{"env_variables":["excluded"]}}`},
 }
 
 // Real Terraform validates list state, precision, refresh and stable plans.
@@ -37,7 +38,7 @@ func TestInventoryTerraform(t *testing.T) {
 					count = "0"
 				}
 				p := &CatalystProvider{httpClient: &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
-					if r.Method != "GET" || r.URL.Path != "/baas/v1/project/123/"+fixture.endpoint {
+					if r.Method != "GET" || r.URL.Path != fixture.endpoint {
 						return nil, fmt.Errorf("unexpected inventory request")
 					}
 					return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"status":"success","data":[` + content + `]}`)), Header: make(http.Header)}, nil

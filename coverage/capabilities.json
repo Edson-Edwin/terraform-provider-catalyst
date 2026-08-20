@@ -1,13 +1,14 @@
 {
   "schema_version": 1,
-  "updated": "2026-10-23",
+  "updated": "2026-11-24",
   "inventory_complete": false,
   "scope": "Draft baseline of persistent infrastructure; service/field audit is not complete. No numeric 10-point rating is computed.",
   "excluded_runtime_actions": [
     "send email or notification",
     "execute query or function",
     "submit one-off job",
-    "perform AI inference"
+    "perform AI inference",
+    "subscribe to a live WebSocket channel"
   ],
   "capabilities": [
     {
@@ -24,7 +25,7 @@
         "catalyst_project",
         "catalyst_projects"
       ],
-      "note": "Experimental documented project create/read/delete lifecycle with default-on local deletion protection, immutable-name replacement, import and recovery state. Offline Terraform lifecycle and permission/recovery tests pass. Live creation still returns PROJECT_CREATION_NOT_ALLOWED in the current account; no live create/delete success is claimed."
+      "note": "Experimental documented project create/read/delete lifecycle with default-on local deletion protection, immutable-name replacement, import and recovery state. Offline Terraform lifecycle and permission/recovery tests pass. The 2026-11-01 India OAuth creation recheck returned PROJECT_CREATION_NOT_ALLOWED. Three separately authorized direct API deletions succeeded on 2026-11-08; those operations do not establish a full Terraform-managed create/delete lifecycle."
     },
     {
       "id": "scheduling.webhook_cron_expression",
@@ -48,9 +49,10 @@
       "api_evidence": "documented",
       "resources": [],
       "data_sources": [
-        "catalyst_job_pools"
+        "catalyst_job_pools",
+        "catalyst_job_pool"
       ],
-      "note": "Management API and lifecycle verification required."
+      "note": "List pools and look up a specific pool by ID, including reported capacity. The list has historical India Development evidence and the specific lookup has offline verification. Pool provisioning remains unverified."
     },
     {
       "id": "scheduling.function_cron",
@@ -205,7 +207,9 @@
       "phase": 5,
       "status": "managed",
       "api_evidence": "live_india",
-      "resources": ["catalyst_datastore_row"],
+      "resources": [
+        "catalyst_datastore_row"
+      ],
       "data_sources": [],
       "note": "Configuration/seed rows in existing tables. Precision-preserving scalar JSON, generated ROWID, import, owned-column updates/removal through explicit null PATCH, drift repair, recreation after deletion and confirmed destroy. System profiles are excluded. Official SDK PATCH contract and live India Development Terraform create/import/update/null-clear/stable-plan/destroy verified. Table/column/index/permission provisioning remains unimplemented."
     },
@@ -239,12 +243,13 @@
       "object": "bucket",
       "phase": 4,
       "status": "discovery",
-      "api_evidence": "documented",
+      "api_evidence": "official_sdk_contract_offline",
       "resources": [],
       "data_sources": [
-        "catalyst_stratus_buckets"
+        "catalyst_stratus_buckets",
+        "catalyst_stratus_bucket"
       ],
-      "note": "Discovery documented; bucket provisioning and policy APIs need verification."
+      "note": "Read existing bucket identity, regional endpoint and versioning flag. The bucket details data source has offline verification. Bucket provisioning and versioning writes remain unverified."
     },
     {
       "id": "stratus.object",
@@ -266,7 +271,9 @@
       "phase": 4,
       "status": "managed",
       "api_evidence": "live_india",
-      "resources": ["catalyst_stratus_object"],
+      "resources": [
+        "catalyst_stratus_object"
+      ],
       "data_sources": [],
       "note": "Opt-in multipart_part_size_mb=5..20; default 0 preserves single upload. SDK initiate/numbered part/complete protocol, regional signed-transfer isolation, overwrite guards and no ambiguous mutation replay. Live 6 MiB/two-part create/import/update/stable-plan/destroy passed in India Development. Limit remains 100 MiB. Public abort/resume lifecycle is not established; failed sessions report upload IDs and uncertain completion retains object identity."
     },
@@ -275,11 +282,26 @@
       "service": "stratus",
       "object": "versioning",
       "phase": 4,
-      "status": "unimplemented",
-      "api_evidence": "unknown",
+      "status": "discovery",
+      "api_evidence": "official_sdk_contract_offline",
       "resources": [],
-      "data_sources": [],
-      "note": "Management API and lifecycle verification required."
+      "data_sources": [
+        "catalyst_stratus_bucket"
+      ],
+      "note": "Read existing bucket identity, regional endpoint and versioning flag. The bucket details data source has offline verification. Bucket provisioning and versioning writes remain unverified."
+    },
+    {
+      "id": "stratus.bucket_cors",
+      "service": "stratus",
+      "object": "bucket_cors",
+      "phase": 4,
+      "status": "discovery",
+      "api_evidence": "official_sdk_contract_offline",
+      "resources": [],
+      "data_sources": [
+        "catalyst_stratus_bucket_cors"
+      ],
+      "note": "Reads existing bucket CORS domains and allowed methods through the official JavaScript SDK contract. Offline verification only. Management remains a console prerequisite."
     },
     {
       "id": "stratus.bucket_policy",
@@ -368,8 +390,12 @@
       "phase": 4,
       "status": "managed",
       "api_evidence": "official_sdk_contract_offline",
-      "resources": ["catalyst_auth_user_role"],
-      "data_sources": ["catalyst_auth_user"],
+      "resources": [
+        "catalyst_auth_user_role"
+      ],
+      "data_sources": [
+        "catalyst_auth_user"
+      ],
       "note": "Experimental existing end-user assignment to existing role using the documented SDK PUT contract. Specific-user role/account metadata discovery excludes profiles from state. Explicit destroy fallback; no invitations/deletions; import, drift, stable plans, recovery and fallback destruction tested offline. No disposable application user was available, so live write/readback compatibility remains unverified. Role definition and permission provisioning remain unimplemented."
     },
     {
@@ -428,26 +454,28 @@
       "note": "Management API and lifecycle verification required."
     },
     {
-      "id": "datastreams.subscription",
+      "id": "datastreams.channel",
       "service": "datastreams",
-      "object": "subscription",
+      "object": "channel",
       "phase": 6,
       "status": "unimplemented",
       "api_evidence": "unknown",
       "resources": [],
       "data_sources": [],
-      "note": "Management API and lifecycle verification required."
+      "note": "Durable Data Streams channels and access configuration are documented in the console. Runtime WebSocket subscriptions are excluded. A supported channel management API has not been verified."
     },
     {
       "id": "hosting.client_deployment",
       "service": "hosting",
       "object": "client_deployment",
       "phase": 7,
-      "status": "unimplemented",
+      "status": "discovery",
       "api_evidence": "official_cli_candidate",
       "resources": [],
-      "data_sources": [],
-      "note": "Management API and lifecycle verification required."
+      "data_sources": [
+        "catalyst_web_client_versions"
+      ],
+      "note": "Read existing version history using the official CLI endpoint. Hosting deployment, version activation and deletion need live API lifecycle evidence."
     },
     {
       "id": "hosting.domain_mapping",
@@ -465,22 +493,26 @@
       "service": "slate",
       "object": "application_configuration",
       "phase": 7,
-      "status": "unimplemented",
-      "api_evidence": "unknown",
+      "status": "discovery",
+      "api_evidence": "official_cli_candidate",
       "resources": [],
-      "data_sources": [],
-      "note": "Management API and lifecycle verification required."
+      "data_sources": [
+        "catalyst_slate_apps"
+      ],
+      "note": "The provider reads Slate app identities via the CLI's list endpoint. Configuration, environment variables and creator profiles are omitted."
     },
     {
       "id": "pipelines.pipeline_configuration",
       "service": "pipelines",
       "object": "pipeline_configuration",
       "phase": 7,
-      "status": "unimplemented",
-      "api_evidence": "unknown",
+      "status": "discovery",
+      "api_evidence": "documented",
       "resources": [],
-      "data_sources": [],
-      "note": "Management API and lifecycle verification required."
+      "data_sources": [
+        "catalyst_pipeline"
+      ],
+      "note": "The exact-ID pipeline lookup returns the allowlisted name and status. The provider verifies both the returned pipeline ID and its parent project."
     },
     {
       "id": "mail.domain_and_sender",
@@ -593,6 +625,126 @@
       ],
       "data_sources": [],
       "note": "Persistent configuration/seed item in an existing ONLINE table. Exact primary-key ownership, conditional no-overwrite creation, consistent reads, per-item status checks, import, complete item updates/attribute removal, typed JSON and confirmed deletion. Live Terraform lifecycle/drift repair/external deletion passed. This is data management, not table/index provisioning or transactional application data."
+    },
+    {
+      "id": "stratus.object_versions",
+      "service": "stratus",
+      "object": "object_versions",
+      "phase": 4,
+      "status": "discovery",
+      "api_evidence": "documented",
+      "resources": [],
+      "data_sources": [
+        "catalyst_stratus_object_versions"
+      ],
+      "note": "The documented REST listing returns an exact object key, continuation metadata and version IDs with latest flags. Offline tests cover bounded pagination and Terraform state."
+    },
+    {
+      "id": "authentication.application_user",
+      "service": "authentication",
+      "object": "application_user",
+      "phase": 5,
+      "status": "discovery",
+      "api_evidence": "documented",
+      "resources": [],
+      "data_sources": [
+        "catalyst_auth_user"
+      ],
+      "note": "Exact user lookup already exposes allowlisted access metadata. Zoho documents signup and user deletion. Adding a user to an existing application organization takes a ZAAID. Neither create route has been verified for Terraform ownership."
+    },
+    {
+      "id": "environments.production_lifecycle",
+      "service": "environments",
+      "object": "production_lifecycle",
+      "phase": 5,
+      "status": "unimplemented",
+      "api_evidence": "console_only_documented",
+      "resources": [],
+      "data_sources": [],
+      "note": "Zoho documents enabling and disabling Production in the console. Provider environment selection routes service requests to an already configured environment."
+    },
+    {
+      "id": "environments.deployment",
+      "service": "environments",
+      "object": "deployment",
+      "phase": 5,
+      "status": "unimplemented",
+      "api_evidence": "console_only_documented",
+      "resources": [],
+      "data_sources": [],
+      "note": "Zoho explicitly documents Development-to-Production promotion as console-only and says there is no public API or CLI to start it or read its status. Deployment types also describe a separate Production-to-Development flow."
+    },
+    {
+      "id": "projects.iac_bootstrap",
+      "service": "projects",
+      "object": "iac_bootstrap",
+      "phase": 4,
+      "status": "unimplemented",
+      "api_evidence": "official_cli_candidate",
+      "resources": [],
+      "data_sources": [],
+      "note": "Zoho's IaC import creates a new project from a project-template ZIP. Current CLI documentation describes browser session confirmation. This workflow has a separate identity and lifecycle from direct project creation."
+    },
+    {
+      "id": "signals.event_bus",
+      "service": "signals",
+      "object": "event_bus",
+      "phase": 5,
+      "status": "unimplemented",
+      "api_evidence": "unknown",
+      "resources": [],
+      "data_sources": [],
+      "note": "The official CLI's event-bus lookup targets legacy Event Listeners. Current Signals read and write contracts need separate verification."
+    },
+    {
+      "id": "environments.inventory",
+      "service": "environments",
+      "object": "inventory",
+      "phase": 5,
+      "status": "discovery",
+      "api_evidence": "official_cli_candidate",
+      "resources": [],
+      "data_sources": [
+        "catalyst_project_environments"
+      ],
+      "note": "The CLI lists environment metadata by project. The provider reads IDs, names and optional status, type and default flag without exporting keys or block reasons."
+    },
+    {
+      "id": "convokraft.smarttrain_material",
+      "service": "convokraft",
+      "object": "smarttrain_material",
+      "phase": 5,
+      "status": "discovery",
+      "api_evidence": "documented",
+      "resources": [],
+      "data_sources": [
+        "catalyst_smarttrain_materials"
+      ],
+      "note": "The provider reads existing material metadata through the full GET example path. The documented method and sample use different path prefixes, and live verification is pending."
+    },
+    {
+      "id": "organizations.organization",
+      "service": "organizations",
+      "object": "organization",
+      "phase": 5,
+      "status": "discovery",
+      "api_evidence": "official_cli_candidate",
+      "resources": [],
+      "data_sources": [
+        "catalyst_organizations"
+      ],
+      "note": "The official CLI lists organizations. The provider projects IDs, names and the optional default flag with offline verification."
+    },
+    {
+      "id": "mdm.application_version",
+      "service": "mdm",
+      "object": "application_version",
+      "phase": 5,
+      "status": "unimplemented",
+      "api_evidence": "console_only_documented",
+      "resources": [],
+      "data_sources": [],
+      "note": "Zoho documents mobile app enablement and hosting, version history and deletion through the console. The documented availability excludes India and other named data centers."
     }
   ]
 }
