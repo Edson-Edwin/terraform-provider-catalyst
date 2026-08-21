@@ -3,6 +3,22 @@
 # Prerequisites must belong to the same existing India Development project.
 project_id = "YOUR_EXISTING_PROJECT_ID"
 
+# Optional read-only lookups. Enable them when you have matching permissions.
+# job_pool_lookup_id      = "YOUR_EXISTING_JOB_POOL_ID"
+# stratus_cors_bucket_name = "your-existing-bucket"
+# read_web_client_versions = true
+# extra_discovery = {
+#   organizations = true
+#   environments = true
+#   slate        = true
+#   pipeline_id  = "YOUR_EXISTING_PIPELINE_ID"
+#   bot_id       = "YOUR_EXISTING_SMARTTRAIN_BOT_ID"
+# }
+# stratus_version_lookup = {
+#   bucket_name = "your-existing-versioned-bucket"
+#   object_key  = "assets/config.json"
+# }
+
 appsail = {
   name            = "terraformexamplewebsite"
   source          = "/absolute/path/to/website.zip"

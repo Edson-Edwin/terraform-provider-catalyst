@@ -1,6 +1,6 @@
 # All currently registered Catalyst resources and data sources
 
-`main.tf` contains all **13 resource types and 12 data source types** currently
+`main.tf` contains all **13 resource types and 15 data source types** currently
 registered by this provider. It uses one provider, configured for India
 Development. It demonstrates supported subsets, not complete Catalyst service
 coverage. AppSail and Function applications must be built separately.
@@ -18,11 +18,15 @@ and deprecated sections are commented out independently.
 | Projects | `catalyst_project` (experimental, separate additional project) | `catalyst_projects`, `catalyst_project` |
 | AppSail | `catalyst_appsail` | None |
 | Functions | `catalyst_function` (map supports multiple Functions/types) | `catalyst_functions` |
-| Stratus | `catalyst_stratus_object`, including optional multipart transfers | `catalyst_stratus_buckets` |
+| Stratus | `catalyst_stratus_object`, including optional multipart transfers | `catalyst_stratus_buckets`, `catalyst_stratus_bucket`, `catalyst_stratus_bucket_cors`, `catalyst_stratus_object_versions` |
+| Web Client Hosting | | `catalyst_web_client_versions` |
+| Organizations and project environments | | `catalyst_organizations`, `catalyst_project_environments` |
+| Slate | | `catalyst_slate_apps` |
+| Pipelines and ConvoKraft | | `catalyst_pipeline`, `catalyst_smarttrain_materials` |
 | NoSQL | `catalyst_nosql_item` | `catalyst_nosql_tables`, `catalyst_nosql_table` |
 | Data Store | `catalyst_datastore_row` | `catalyst_datastore_tables`, `catalyst_datastore_table` |
 | API Gateway | `catalyst_api_gateway`, `catalyst_api_gateway_ruleset` | None |
-| Job Scheduling | `catalyst_webhook_cron`, `catalyst_function_cron`, `catalyst_appsail_cron` | `catalyst_job_pools` |
+| Job Scheduling | `catalyst_webhook_cron`, `catalyst_function_cron`, `catalyst_appsail_cron` | `catalyst_job_pools`, `catalyst_job_pool` |
 | Authentication | `catalyst_auth_user_role` (experimental) | `catalyst_auth_user` |
 | Cache | None; discovery only | `catalyst_cache_segments` |
 | Legacy File Store | `catalyst_filestore_file` (deprecated) | `catalyst_filestore_folders` (deprecated) |
@@ -46,6 +50,8 @@ For each enabled input:
 - `functions`: Node22/24 ZIPs with matching `catalyst-config.json`, `package.json`,
   names/types and entry points. Event/cron triggers are separate prerequisites;
   scheduling here uses a **Job** Function.
+- `job_pool_lookup_id` and `stratus_cors_bucket_name`: optional existing IDs or names
+  for read-only details. The account needs permission to perform those reads.
 - `datastore`: an existing table with a nullable text column named `message`.
 - `nosql_table_id`: an existing ONLINE table with string keys `pk` and `sk`. The
   example exclusively owns the item `terraform` / `all_services_example`.

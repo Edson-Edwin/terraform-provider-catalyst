@@ -1,4 +1,4 @@
-# All 13 registered resources and 12 data sources in one configuration.
+# All 13 registered resources and 15 data sources in one configuration.
 # Optional objects default to null: no writes occur until you configure them.
 # Start with an existing isolated Development project. See README.md and
 # terraform.tfvars.example for prerequisites and inputs. This is a catalog of
@@ -148,7 +148,28 @@ variable "experimental_project" {
   description = "EXPERIMENTAL additional EMPTY project; current account creation was rejected. Does not replace project_id or create database/bucket prerequisites. Deletion guard stays enabled."
 }
 
-# Discovery: these read existing infrastructure; they do not provision it.
+variable "job_pool_lookup_id" {
+  type        = string
+  default     = null
+  description = "Optional existing job pool ID for a read of the pool's configured capacity."
+}
+
+variable "stratus_cors_bucket_name" {
+  type        = string
+  default     = null
+  description = "Optional existing Stratus bucket name for reads of its versioning status and CORS rules."
+}
+
+variable "stratus_version_lookup" {
+  type = object({
+    bucket_name = string
+    object_key  = string
+  })
+  default     = null
+  description = "Optional existing object in a versioned Stratus bucket. Reads version IDs without changing the object."
+}
+
+# Discovery reads existing infrastructure.
 data "catalyst_projects" "account" {}
 data "catalyst_project" "current" { id = var.project_id }
 data "catalyst_job_pools" "current" { project_id = var.project_id }
@@ -157,6 +178,80 @@ data "catalyst_nosql_tables" "current" { project_id = var.project_id }
 data "catalyst_stratus_buckets" "current" { project_id = var.project_id }
 data "catalyst_cache_segments" "current" { project_id = var.project_id }
 data "catalyst_functions" "current" { project_id = var.project_id }
+
+data "catalyst_job_pool" "selected" {
+  count      = var.job_pool_lookup_id == null ? 0 : 1
+  project_id = var.project_id
+  id         = var.job_pool_lookup_id
+}
+
+data "catalyst_stratus_bucket_cors" "selected" {
+  count       = var.stratus_cors_bucket_name == null ? 0 : 1
+  project_id  = var.project_id
+  bucket_name = var.stratus_cors_bucket_name
+}
+
+data "catalyst_stratus_bucket" "selected" {
+  count       = var.stratus_cors_bucket_name == null ? 0 : 1
+  project_id  = var.project_id
+  bucket_name = var.stratus_cors_bucket_name
+}
+
+data "catalyst_stratus_object_versions" "selected" {
+  count       = var.stratus_version_lookup == null ? 0 : 1
+  project_id  = var.project_id
+  bucket_name = var.stratus_version_lookup.bucket_name
+  object_key  = var.stratus_version_lookup.object_key
+}
+
+variable "read_web_client_versions" {
+  type        = bool
+  default     = false
+  description = "Read existing Web Client Hosting history for the selected project."
+}
+
+data "catalyst_web_client_versions" "selected" {
+  count      = var.read_web_client_versions ? 1 : 0
+  project_id = var.project_id
+}
+
+variable "extra_discovery" {
+  type = object({
+    organizations = optional(bool, false)
+    environments  = optional(bool, false)
+    slate         = optional(bool, false)
+    pipeline_id   = optional(string)
+    bot_id        = optional(string)
+  })
+  default     = {}
+  description = "Optional read-only lookups. Enable only services available to these project credentials."
+}
+
+data "catalyst_organizations" "visible" {
+  count = var.extra_discovery.organizations ? 1 : 0
+}
+
+data "catalyst_project_environments" "selected" {
+  count      = var.extra_discovery.environments ? 1 : 0
+  project_id = var.project_id
+}
+
+data "catalyst_slate_apps" "selected" {
+  count      = var.extra_discovery.slate ? 1 : 0
+  project_id = var.project_id
+}
+
+data "catalyst_pipeline" "selected" {
+  count      = var.extra_discovery.pipeline_id == null ? 0 : 1
+  project_id = var.project_id
+  id         = var.extra_discovery.pipeline_id
+}
+
+data "catalyst_smarttrain_materials" "selected" {
+  count      = var.extra_discovery.bot_id == null ? 0 : 1
+  project_id = var.project_id
+  bot_id     = var.extra_discovery.bot_id
+}
 
 data "catalyst_datastore_table" "configuration" {
   count      = var.datastore == null ? 0 : 1
@@ -375,6 +470,16 @@ output "website_url" { value = try(catalyst_appsail.website[0].url, null) }
 output "function_ids" { value = { for name, fn in catalyst_function.application : name => fn.id } }
 output "datastore_configuration_row_id" { value = try(catalyst_datastore_row.configuration[0].row_id, null) }
 output "experimental_project_id" { value = try(catalyst_project.experimental[0].id, null) }
+output "job_pool_details" { value = one(data.catalyst_job_pool.selected) }
+output "stratus_bucket_details" { value = one(data.catalyst_stratus_bucket.selected) }
+output "stratus_cors_rules" { value = one(data.catalyst_stratus_bucket_cors.selected[*].rules) }
+output "stratus_object_versions" { value = one(data.catalyst_stratus_object_versions.selected[*].versions) }
+output "web_client_versions" { value = one(data.catalyst_web_client_versions.selected[*].versions) }
+output "environments" { value = one(data.catalyst_project_environments.selected[*].environments) }
+output "organizations" { value = one(data.catalyst_organizations.visible[*].organizations) }
+output "slate_apps" { value = one(data.catalyst_slate_apps.selected[*].apps) }
+output "pipeline_name" { value = one(data.catalyst_pipeline.selected[*].name) }
+output "smarttrain_materials" { value = one(data.catalyst_smarttrain_materials.selected[*].materials) }
 
 output "inventory_counts" {
   description = "Discovery only; these counts are not newly provisioned resources or a service coverage score."
