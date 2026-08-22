@@ -93,6 +93,11 @@ jobs:
           terraform_version: '1.16.5'
           terraform_wrapper: false
       - run: make deps-check
+      - name: Validate capability audit and provider schema
+        if: needs.changes.outputs.runtime != 'true'
+        run: |
+          go run ./internal/cmd/provider-tools coverage-audit -json > /dev/null
+          go test -count=1 -run '^TestCapabilityInventoryMatchesProvider$' ./internal/provider
       - run: go vet ./...
       - run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
       - run: test -z "$(gofmt -l main.go internal tools/tools.go)"

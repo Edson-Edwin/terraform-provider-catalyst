@@ -42,6 +42,10 @@ release. See [RELEASING.md](RELEASING.md) for the signed draft process.
 See the [developer scripts guide](scripts/README.md) for the local setup and trial
 commands, including which commands contact Catalyst or can change cloud resources.
 
+Use `make coverage-audit` for the validated offline backlog, or
+`go run ./internal/cmd/provider-tools coverage-audit -json` for its operation matrix.
+Update both [coverage files](coverage/README.md) when changing capability support.
+
 Install Go 1.25.8 or newer, Terraform, Make, golangci-lint v2.15.0, and GoReleaser v2.18.3. Default tests need no Catalyst account or credentials.
 
 ```sh
@@ -98,6 +102,11 @@ make testacc-discovery
 ```
 
 These two targets read project/job-pool metadata and create no cloud objects. Pool discovery additionally needs `ZohoCatalyst.jobpool.READ`. `make testacc-inventory` reads all implemented inventories, including legacy File Store, and requires their respective scopes/service access. `make testacc-database-schema` additionally needs `CATALYST_TEST_DATASTORE_TABLE_ID` and `CATALYST_TEST_NOSQL_TABLE_ID` for existing schemas.
+
+`make testacc-infrastructure-details` performs live reads with an existing project,
+job pool and Stratus bucket. Set `CATALYST_TEST_PROJECT_ID`, `CATALYST_TEST_JOB_POOL_ID`
+and `CATALYST_TEST_BUCKET` and supply OAuth credentials with access to pool details,
+bucket metadata and bucket CORS configuration.
 
 ### Mutation test opt-ins
 
