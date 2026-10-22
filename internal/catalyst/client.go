@@ -232,7 +232,7 @@ func (c *Client) GetProject(ctx context.Context, id string) (*Project, error) {
 		_ = res.Body.Close()
 		return project, parseErr
 	}
-	return nil, errors.New("Catalyst authorization failed after refreshing the access token")
+	return nil, errors.New("authorization failed after refreshing the Catalyst access token")
 }
 
 func readProject(res *http.Response, id string) (*Project, error) {
@@ -244,13 +244,13 @@ func readProject(res *http.Response, id string) (*Project, error) {
 		Data   *Project `json:"data"`
 	}
 	if err := decode(res.Body, &envelope); err != nil {
-		return nil, errors.New("Catalyst returned an invalid project response")
+		return nil, errors.New("the Catalyst API returned an invalid project response")
 	}
 	if envelope.Status != "success" || envelope.Data == nil {
-		return nil, errors.New("Catalyst did not return a successful project response")
+		return nil, errors.New("the Catalyst API did not return a successful project response")
 	}
 	if string(envelope.Data.ID) != id || envelope.Data.Name == "" {
-		return nil, errors.New("Catalyst returned incomplete or mismatched project metadata")
+		return nil, errors.New("the Catalyst API returned incomplete or mismatched project metadata")
 	}
 	return envelope.Data, nil
 }

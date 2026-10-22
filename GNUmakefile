@@ -12,6 +12,7 @@ dev: build
 verify: dev
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/provider providers schema -json > bin/provider-schema.json
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/provider validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_project validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/provider plan -input=false -lock=false
 
 lint:
@@ -21,7 +22,7 @@ generate:
 	cd tools && go generate -tags generate ./...
 
 fmt:
-	gofmt -w main.go internal/provider tools/tools.go
+	gofmt -w main.go internal tools/tools.go
 	terraform fmt -recursive examples/
 
 test:
