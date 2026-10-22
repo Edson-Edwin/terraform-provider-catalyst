@@ -24,13 +24,14 @@ type Config struct {
 
 type endpoints struct{ api, accounts string }
 
-// Catalyst API hosts and OAuth accounts hosts have different suffixes in AU.
-// Source: https://docs.catalyst.zoho.com/en/api/introduction/multi-dc-support/
+// Regional Catalyst API hosts and canonical OAuth accounts hosts.
+// Sources: https://docs.catalyst.zoho.com/en/api/introduction/multi-dc-support/
+// and https://accounts.zoho.com/oauth/serverinfo (OAuth hostnames).
 var regions = map[string]endpoints{
 	"us": {"https://api.catalyst.zoho.com", "https://accounts.zoho.com"},
 	"eu": {"https://api.catalyst.zoho.eu", "https://accounts.zoho.eu"},
 	"in": {"https://api.catalyst.zoho.in", "https://accounts.zoho.in"},
-	"au": {"https://api.catalyst.zoho.com.au", "https://accounts.zoho.au"},
+	"au": {"https://api.catalyst.zoho.com.au", "https://accounts.zoho.com.au"},
 	"ca": {"https://api.catalyst.zohocloud.ca", "https://accounts.zohocloud.ca"},
 	"jp": {"https://api.catalyst.zoho.jp", "https://accounts.zoho.jp"},
 	"sa": {"https://api.catalyst.zoho.sa", "https://accounts.zoho.sa"},
