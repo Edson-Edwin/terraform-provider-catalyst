@@ -8,8 +8,8 @@ import (
 	"flag"
 	"log"
 
+	"github.com/Edson-Edwin/terraform-provider-catalyst/internal/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
-	"github.com/hashicorp/terraform-provider-scaffolding-framework/internal/provider"
 )
 
 var (
@@ -28,10 +28,8 @@ func main() {
 	flag.Parse()
 
 	opts := providerserver.ServeOpts{
-		// TODO: Update this string with the published name of your provider.
-		// Also update the tfplugindocs generate command to either remove the
-		// -provider-name flag or set its value to the updated provider name.
-		Address: "registry.terraform.io/hashicorp/scaffolding",
+		// This address must match required_providers and the development override.
+		Address: "registry.terraform.io/edson-edwin/catalyst",
 		Debug:   debug,
 	}
 

@@ -8,27 +8,42 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
-	"github.com/hashicorp/terraform-plugin-testing/echoprovider"
 )
 
-// testAccProtoV6ProviderFactories is used to instantiate a provider during acceptance testing.
-// The factory function is called for each Terraform CLI command to create a provider
-// server that the CLI can connect to and interact with.
-var testAccProtoV6ProviderFactories = map[string]func() (tfprotov6.ProviderServer, error){
-	"scaffolding": providerserver.NewProtocol6WithError(New("test")()),
+// TestProviderProtocol exercises the schema and configuration RPCs used by Terraform.
+func TestProviderProtocol(t *testing.T) {
+	server := providerserver.NewProtocol6(New("test")())()
+	schema, err := server.GetProviderSchema(t.Context(), &tfprotov6.GetProviderSchemaRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkDiagnostics(t, schema.Diagnostics)
+	if schema.Provider == nil || schema.Provider.Block == nil {
+		t.Fatal("provider schema is missing")
+	}
+
+	config := &tfprotov6.DynamicValue{JSON: []byte(`{}`)}
+	validated, err := server.ValidateProviderConfig(t.Context(), &tfprotov6.ValidateProviderConfigRequest{Config: config})
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkDiagnostics(t, validated.Diagnostics)
+
+	configured, err := server.ConfigureProvider(t.Context(), &tfprotov6.ConfigureProviderRequest{
+		TerraformVersion: "1.16.5",
+		Config:           config,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkDiagnostics(t, configured.Diagnostics)
 }
 
-// testAccProtoV6ProviderFactoriesWithEcho includes the echo provider alongside the scaffolding provider.
-// It allows for testing assertions on data returned by an ephemeral resource during Open.
-// The echoprovider is used to arrange tests by echoing ephemeral data into the Terraform state.
-// This lets the data be referenced in test assertions with state checks.
-var testAccProtoV6ProviderFactoriesWithEcho = map[string]func() (tfprotov6.ProviderServer, error){
-	"scaffolding": providerserver.NewProtocol6WithError(New("test")()),
-	"echo":        echoprovider.NewProviderServer(),
-}
-
-func testAccPreCheck(t *testing.T) {
-	// You can add code here to run prior to any test case execution, for example assertions
-	// about the appropriate environment variables being set are common to see in a pre-check
-	// function.
+func checkDiagnostics(t *testing.T, diagnostics []*tfprotov6.Diagnostic) {
+	t.Helper()
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Severity == tfprotov6.DiagnosticSeverityError {
+			t.Errorf("%s: %s", diagnostic.Summary, diagnostic.Detail)
+		}
+	}
 }

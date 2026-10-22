@@ -1,64 +1,75 @@
-# Terraform Provider Scaffolding (Terraform Plugin Framework)
+# Terraform Provider for Zoho Catalyst
 
-_This template repository is built on the [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework). The template repository built on the [Terraform Plugin SDK](https://github.com/hashicorp/terraform-plugin-sdk) can be found at [terraform-provider-scaffolding](https://github.com/hashicorp/terraform-provider-scaffolding). See [Which SDK Should I Use?](https://developer.hashicorp.com/terraform/plugin/framework-benefits) in the Terraform documentation for additional information._
+A community provider built with the Terraform Plugin Framework. The long-term goal is to manage Catalyst services through Terraform wherever supported management APIs exist.
 
-This repository is a *template* for a [Terraform](https://www.terraform.io) provider. It is intended as a starting point for creating Terraform providers, containing:
-
-- A resource and a data source (`internal/provider/`),
-- Examples (`examples/`) and generated documentation (`docs/`),
-- Miscellaneous meta files.
-
-These files contain boilerplate code that you will need to edit to create your own Terraform provider. Tutorials for creating Terraform providers can be found on the [HashiCorp Developer](https://developer.hashicorp.com/terraform/tutorials/providers-plugin-framework) platform. _Terraform Plugin Framework specific guides are titled accordingly._
-
-Please see the [GitHub template repository documentation](https://help.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template) for how to create a new repository from this template on GitHub.
-
-Once you've written your provider, you'll want to [publish it on the Terraform Registry](https://developer.hashicorp.com/terraform/registry/providers/publishing) so that others can use it.
+**Current status:** a working provider skeleton. Terraform can load its schema and accept an empty provider configuration. Authentication, API calls, resources, and data sources are not implemented yet. This provider is not published on the Terraform Registry and is not an official Zoho product.
 
 ## Requirements
 
-- [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.0
-- [Go](https://golang.org/doc/install) >= 1.24
+- Go 1.25.8 or newer (see `go.mod`).
+- Terraform 1.13 or newer for the local development workflow.
+- Make and a POSIX shell.
 
-## Building the Provider
+## Build and verify locally
 
-1. Clone the repository
-1. Enter the repository directory
-1. Build the provider using the Go `install` command:
+From the repository root:
 
-```shell
-go install
+```sh
+go mod download
+make test
+make verify
 ```
 
-## Adding Dependencies
+`make verify` builds `bin/terraform-provider-catalyst`, creates an ignored `.terraformrc.local` pointing to that binary, retrieves the provider schema, validates the example, and runs a plan. Expect a development override warning and a successful **No changes** plan: the skeleton has nothing to manage yet. The retrieved schema is saved to `bin/provider-schema.json`.
 
-This provider uses [Go modules](https://github.com/golang/go/wiki/Modules).
-Please see the Go documentation for the most up to date information about using Go modules.
+The override applies only to the commands that use it; your global Terraform CLI configuration is not changed. No Zoho credentials are needed and no cloud resources are created.
 
-To add a new dependency `github.com/author/dependency` to your Terraform provider:
+To run Terraform manually after `make dev`:
 
-```shell
-go get github.com/author/dependency
-go mod tidy
+```sh
+export TF_CLI_CONFIG_FILE="$PWD/.terraformrc.local"
+terraform -chdir=examples/provider providers schema -json
+terraform -chdir=examples/provider validate
+terraform -chdir=examples/provider plan
 ```
 
-Then commit the changes to `go.mod` and `go.sum`.
+Skip `terraform init` for this standalone development example. The provider is not published, and `init` still attempts Registry version selection despite a development override. Run `unset TF_CLI_CONFIG_FILE` when finished using this override in your shell.
 
-## Using the Provider
+## Example configuration
 
-Fill this in for each provider
+```hcl
+terraform {
+  required_providers {
+    catalyst = {
+      source = "Edson-Edwin/catalyst"
+    }
+  }
+}
 
-## Developing the Provider
-
-If you wish to work on the provider, you'll first need [Go](http://www.golang.org) installed on your machine (see [Requirements](#requirements) above).
-
-To compile the provider, run `go install`. This will build the provider and put the provider binary in the `$GOPATH/bin` directory.
-
-To generate or update documentation, run `make generate`.
-
-In order to run the full suite of Acceptance tests, run `make testacc`.
-
-*Note:* Acceptance tests create real resources, and often cost money to run.
-
-```shell
-make testacc
+provider "catalyst" {}
 ```
+
+Terraform normalizes the provider address to `registry.terraform.io/edson-edwin/catalyst`, matching the server and local development override. This is an intended publishing address, not an existing Registry release.
+
+## Project structure
+
+- `main.go`: plugin entry point and provider address.
+- `internal/provider/provider.go`: metadata, empty schema, and resource/data source registration.
+- `internal/provider/provider_test.go`: protocol-level schema, validation, and configuration test.
+- `examples/provider/`: runnable Terraform example.
+- `tools/`: documentation generator; run `make generate` to refresh `docs/`.
+- `scripts/setup-dev.sh`: writes the local development override.
+
+## Next milestones
+
+1. OAuth authentication, token refresh, and data-center configuration.
+2. A project lookup data source backed by the Catalyst API.
+3. The first supported managed resource with lifecycle and import support.
+4. Broader service coverage, API tests, and acceptance tests against a dedicated Catalyst test account.
+5. Signed releases and Terraform Registry publication. The inherited release workflow requires `GPG_PRIVATE_KEY` and `PASSPHRASE` repository secrets before tagging a release.
+
+Each service needs an API capability review before promising Terraform lifecycle support.
+
+## License
+
+MPL-2.0. Based on HashiCorp's Terraform Provider Scaffolding Framework; original copyright notices are retained.

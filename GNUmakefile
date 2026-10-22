@@ -1,24 +1,30 @@
-default: fmt lint install generate
+.DEFAULT_GOAL := build
 
 build:
-	go build -v ./...
+	go build -o bin/terraform-provider-catalyst .
 
-install: build
-	go install -v ./...
+install:
+	go install .
+
+dev: build
+	sh scripts/setup-dev.sh
+
+verify: dev
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/provider providers schema -json > bin/provider-schema.json
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/provider validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/provider plan -input=false -lock=false
 
 lint:
 	golangci-lint run
 
 generate:
-	cd tools; go generate ./...
+	cd tools && go generate -tags generate ./...
 
 fmt:
-	gofmt -s -w -e .
+	gofmt -w main.go internal/provider tools/tools.go
+	terraform fmt -recursive examples/
 
 test:
-	go test -v -cover -timeout=120s -parallel=10 ./...
+	go test -race -count=1 ./...
 
-testacc:
-	TF_ACC=1 go test -v -cover -timeout 120m ./...
-
-.PHONY: fmt lint test testacc build install generate
+.PHONY: build install dev verify lint generate fmt test

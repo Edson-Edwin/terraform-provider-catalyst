@@ -33,3 +33,9 @@ website/vendor
 
 # Keep windows files with windows line endings
 *.winfile eol=crlf
+
+# Local provider development configuration and build output
+.terraformrc.local
+/terraform-provider-catalyst
+.terraform.lock.hcl
+*.tfstate*

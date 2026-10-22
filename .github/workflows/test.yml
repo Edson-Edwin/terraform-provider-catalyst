@@ -52,9 +52,9 @@ jobs:
           git diff --compact-summary --exit-code || \
             (echo; echo "Unexpected difference in directories after code generation. Run 'make generate' command and commit."; exit 1)
 
-  # Run acceptance tests in a matrix with Terraform CLI versions
+  # Verify the provider skeleton against supported Terraform CLI versions
   test:
-    name: 'Acceptance Tests: Terraform ${{ matrix.terraform }}'
+    name: 'Provider Verification: Terraform ${{ matrix.terraform }}'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -76,7 +76,6 @@ jobs:
           terraform_version: ${{ matrix.terraform }}
           terraform_wrapper: false
       - run: go mod download
-      - env:
-          TF_ACC: "1"
-        run: go test -v -cover ./internal/provider/
+      - run: make test
         timeout-minutes: 10
+      - run: make verify
