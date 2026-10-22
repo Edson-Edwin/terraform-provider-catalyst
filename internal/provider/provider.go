@@ -102,7 +102,7 @@ func (p *CatalystProvider) Configure(ctx context.Context, req provider.Configure
 }
 
 func (p *CatalystProvider) DataSources(_ context.Context) []func() datasource.DataSource {
-	return []func() datasource.DataSource{NewProjectDataSource}
+	return []func() datasource.DataSource{NewProjectDataSource, NewProjectsDataSource, NewJobPoolsDataSource}
 }
 
 func (p *CatalystProvider) Resources(_ context.Context) []func() resource.Resource { return nil }

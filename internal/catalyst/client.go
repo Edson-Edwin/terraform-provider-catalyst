@@ -204,14 +204,25 @@ func (c *Client) GetProject(ctx context.Context, id string) (*Project, error) {
 	if !ValidID(id) {
 		return nil, errors.New("project id must be a positive integer written as a string")
 	}
+	res, err := c.get(ctx, "/baas/v1/project/"+id)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	return readProject(res, id)
+}
+
+// get applies the same routing, credentials and bounded authorization retry to every read.
+// Callers own the response body. Only internally constructed paths are accepted here.
+func (c *Client) get(ctx context.Context, path string) (*http.Response, error) {
 	for attempt := 0; attempt < 2; attempt++ {
 		token, err := c.accessToken(ctx)
 		if err != nil {
 			return nil, err
 		}
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.apiURL+"/baas/v1/project/"+id, nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.apiURL+path, nil)
 		if err != nil {
-			return nil, errors.New("could not construct project request")
+			return nil, errors.New("could not construct Catalyst request")
 		}
 		req.Header.Set("Authorization", "Zoho-oauthtoken "+token)
 		req.Header.Set("Accept", "application/json")
@@ -221,16 +232,14 @@ func (c *Client) GetProject(ctx context.Context, id string) (*Project, error) {
 		}
 		res, err := c.http.Do(req)
 		if err != nil {
-			return nil, requestError(ctx, "Catalyst project request")
+			return nil, requestError(ctx, "Catalyst API request")
 		}
 		if res.StatusCode == http.StatusUnauthorized && c.config.RefreshToken != "" && attempt == 0 {
 			_ = res.Body.Close()
 			c.invalidate(token)
 			continue
 		}
-		project, parseErr := readProject(res, id)
-		_ = res.Body.Close()
-		return project, parseErr
+		return res, nil
 	}
 	return nil, errors.New("authorization failed after refreshing the Catalyst access token")
 }

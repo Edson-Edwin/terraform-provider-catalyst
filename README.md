@@ -2,7 +2,7 @@
 
 A community Terraform provider intended for public use, built with the Terraform Plugin Framework. Each user supplies their own Zoho credentials and selects their account's data center. No personal account credentials or organization settings are built into the provider.
 
-**Current status:** OAuth authentication and the read-only `catalyst_project` data source are implemented. Managed resources and Registry releases are not available yet. This is not an official Zoho provider. The long-term goal is broad Catalyst service coverage wherever supported management APIs exist.
+**Current status:** OAuth authentication and the read-only `catalyst_project`, `catalyst_projects`, and `catalyst_job_pools` data sources are implemented. Managed resources and Registry releases are not available yet. This is not an official Zoho provider. The long-term goal is broad Catalyst service coverage wherever supported management APIs exist.
 
 ## Requirements
 
@@ -23,7 +23,7 @@ make verify
 
 `make test` runs the client and provider protocol tests against mock API responses, with Go's race detector. It does not contact Zoho. Tests cover token refresh and caching, concurrent reads, authorization retries, error handling, numeric ID precision, configuration precedence, and Terraform state mapping.
 
-`make verify` builds `bin/terraform-provider-catalyst`, creates an ignored `.terraformrc.local`, reads the provider schema into `bin/provider-schema.json`, validates the provider-only example, and runs a no-op plan. This verifies local plugin loading without credentials or cloud resources. Expect a development override warning and **No changes**. It does not verify live authentication.
+`make verify` builds `bin/terraform-provider-catalyst`, creates an ignored `.terraformrc.local`, reads the provider schema into `bin/provider-schema.json`, validates the provider and data source examples, and runs a no-op plan. This verifies local plugin loading without credentials or cloud resources. Expect a development override warning and **No changes**. It does not verify live authentication.
 
 The override only applies to commands that select it; your global Terraform configuration is unchanged. Skip `terraform init` for these standalone local examples: the provider is not published, and `init` still attempts Registry version selection despite the override.
 
@@ -120,6 +120,32 @@ The data source also exposes `project_type`, `domain`, `domain_name`, and `timez
 
 Run `unset TF_CLI_CONFIG_FILE` when finished using the development override. The intended Registry address is `Edson-Edwin/catalyst`; it is not currently installable from the public Registry.
 
+## Discover projects and job pools
+
+`catalyst_projects` lists projects visible to your credentials and selected organization. It requires `ZOHOCATALYST.projects.Read`. `catalyst_job_pools` lists an existing project's scheduling pools and additionally requires `ZohoCatalyst.jobpool.READ`.
+
+```hcl
+data "catalyst_projects" "available" {}
+
+data "catalyst_job_pools" "available" {
+  project_id = "12345678901234567"
+}
+
+output "projects" {
+  value = data.catalyst_projects.available.projects
+}
+
+output "job_pools" {
+  value = data.catalyst_job_pools.available.pools
+}
+```
+
+Both lists use a stable lexicographic ID order, preserve numeric IDs as strings, and return `[]` when no items exist. An API error or malformed response produces an error, not an empty list. Project results contain the same metadata as `catalyst_project`; pool results contain `id`, `name`, and `type`. No creator profiles, emails, or credentials are stored in these results.
+
+Standalone examples are in `examples/data-sources/catalyst_projects` and `examples/data-sources/catalyst_job_pools`. With the development override enabled, use `terraform -chdir=examples/data-sources/catalyst_projects plan` to discover IDs. The job-pool example takes `TF_VAR_project_id`.
+
+Project listing and an empty pool listing have been verified live in India. Non-empty pool mapping is covered with mocked API responses. See [API coverage and implementation plan](API_COVERAGE.md) for the management API restrictions found during validation.
+
 ## Opt-in live acceptance test
 
 After configuring your own credentials and data center, run:
@@ -131,17 +157,19 @@ make testacc
 
 This test starts the provider through Terraform's protocol, reads the project into temporary local state, checks the exact ID and a non-empty name, then checks a second plan for stability. Its configuration contains only a data source: it does not create, update, or delete remote Catalyst resources. The test harness may run multiple reads and OAuth exchanges. Supply only one authentication mode and allow for Zoho's token/rate limits.
 
+For project and job-pool discovery, add the `ZohoCatalyst.jobpool.READ` scope to your credentials and run `make testacc-discovery` with the same `CATALYST_TEST_PROJECT_ID`. This read-only test checks that the selected project appears in the project list, checks that the pool list is known (empty is valid), and verifies a stable second plan.
+
 `make test` explicitly disables live acceptance testing. GitHub's default checks also remain offline. Live tests require credentials supplied by the person running them; no account IDs or credentials are included in the tests. A signed-in Catalyst CLI can supply credentials for local development, but automatic CLI credential discovery is not part of the provider's public authentication interface.
 
 ## Development and publication
 
 - `internal/catalyst/`: regional API client, token handling and HTTP tests.
-- `internal/provider/`: Terraform schema, configuration, project data source and protocol tests.
-- `examples/`: provider-only smoke test and live project lookup example.
+- `internal/provider/`: Terraform schema, configuration, discovery data sources and protocol tests.
+- `examples/`: provider-only smoke test and read-only discovery examples.
 - `make generate`: regenerates provider and data source documentation.
 - `make test`, `make verify`, `go vet ./...`: local checks; GitHub Actions runs tests and verification.
 
-Next milestones are a first managed resource with lifecycle/import support, and broader service coverage. Each service needs an API capability review before promising Terraform lifecycle support.
+Next milestones are a first managed resource with lifecycle/import support, and broader service coverage. The [API coverage plan](API_COVERAGE.md) records verified reads, project-creation restrictions, and the prerequisites for a cron resource. Each service needs an API capability review before promising Terraform lifecycle support.
 
 Public distribution requires a public source repository, a versioned release, signed provider checksums, and registration with the Terraform Registry. The release workflow requires `GPG_PRIVATE_KEY` and `PASSPHRASE` repository secrets before tagging a release. Repository setup alone does not publish the provider.
 

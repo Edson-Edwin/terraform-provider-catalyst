@@ -13,6 +13,8 @@ verify: dev
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/provider providers schema -json > bin/provider-schema.json
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/provider validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_project validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_projects validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_job_pools validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/provider plan -input=false -lock=false
 
 lint:
@@ -31,4 +33,7 @@ test:
 testacc:
 	TF_ACC=1 go test -race -count=1 -v -timeout=5m -run '^TestAccProjectDataSource$$' ./internal/provider
 
-.PHONY: build install dev verify lint generate fmt test testacc
+testacc-discovery:
+	TF_ACC=1 go test -race -count=1 -v -timeout=5m -run '^TestAccDiscoveryDataSources$$' ./internal/provider
+
+.PHONY: build install dev verify lint generate fmt test testacc testacc-discovery

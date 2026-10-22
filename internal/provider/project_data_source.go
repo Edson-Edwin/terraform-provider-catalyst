@@ -78,12 +78,7 @@ func (d *ProjectDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		resp.Diagnostics.AddError("Unable to read Catalyst project", err.Error())
 		return
 	}
-	data.ID = types.StringValue(string(project.ID))
-	data.Name = types.StringValue(project.Name)
-	data.ProjectType = optionalString(project.Type)
-	data.Domain = optionalString(project.DomainDetails.URL)
-	data.DomainName = optionalString(project.DomainDetails.Name)
-	data.Timezone = optionalString(project.Timezone)
+	data = projectState(project)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
