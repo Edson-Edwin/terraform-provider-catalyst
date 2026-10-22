@@ -15,6 +15,7 @@ verify: dev
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_project validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_projects validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_job_pools validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_webhook_cron validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/provider plan -input=false -lock=false
 
 lint:
@@ -36,4 +37,7 @@ testacc:
 testacc-discovery:
 	TF_ACC=1 go test -race -count=1 -v -timeout=5m -run '^TestAccDiscoveryDataSources$$' ./internal/provider
 
-.PHONY: build install dev verify lint generate fmt test testacc testacc-discovery
+testacc-cron:
+	TF_ACC=1 go test -race -count=1 -v -timeout=5m -run '^TestAccWebhookCronResource$$' ./internal/provider
+
+.PHONY: build install dev verify lint generate fmt test testacc testacc-discovery testacc-cron

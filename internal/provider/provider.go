@@ -43,7 +43,7 @@ func (p *CatalystProvider) Metadata(_ context.Context, _ provider.MetadataReques
 
 func (p *CatalystProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Read Zoho Catalyst project metadata. Authenticate using either an access token or OAuth refresh credentials. Environment variables are recommended for secrets. Managed resources are not implemented yet.",
+		MarkdownDescription: "Discover Zoho Catalyst projects and job pools, and manage webhook crons. Authenticate using either an access token or OAuth refresh credentials. Environment variables are recommended for secrets.",
 		Attributes: map[string]schema.Attribute{
 			"data_center":     schema.StringAttribute{Optional: true, MarkdownDescription: "Data center: `us`, `eu`, `in`, `au`, `ca`, `jp`, or `sa`. Falls back to `CATALYST_DATA_CENTER`, then `us`."},
 			"environment":     schema.StringAttribute{Optional: true, MarkdownDescription: "`Development` or `Production`. Falls back to `CATALYST_ENVIRONMENT`, then `Development`."},
@@ -105,7 +105,9 @@ func (p *CatalystProvider) DataSources(_ context.Context) []func() datasource.Da
 	return []func() datasource.DataSource{NewProjectDataSource, NewProjectsDataSource, NewJobPoolsDataSource}
 }
 
-func (p *CatalystProvider) Resources(_ context.Context) []func() resource.Resource { return nil }
+func (p *CatalystProvider) Resources(_ context.Context) []func() resource.Resource {
+	return []func() resource.Resource{NewWebhookCronResource}
+}
 
 // New constructs a provider factory for the plugin server and tests.
 func New(version string) func() provider.Provider {

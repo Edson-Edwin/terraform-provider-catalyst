@@ -3,6 +3,7 @@
 package catalyst
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -215,17 +216,25 @@ func (c *Client) GetProject(ctx context.Context, id string) (*Project, error) {
 // get applies the same routing, credentials and bounded authorization retry to every read.
 // Callers own the response body. Only internally constructed paths are accepted here.
 func (c *Client) get(ctx context.Context, path string) (*http.Response, error) {
+	return c.request(ctx, http.MethodGet, path, nil)
+}
+
+// request retries only a rejected HTTP 401, never ambiguous transport or server failures.
+func (c *Client) request(ctx context.Context, method, path string, body []byte) (*http.Response, error) {
 	for attempt := 0; attempt < 2; attempt++ {
 		token, err := c.accessToken(ctx)
 		if err != nil {
 			return nil, err
 		}
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.apiURL+path, nil)
+		req, err := http.NewRequestWithContext(ctx, method, c.apiURL+path, bytes.NewReader(body))
 		if err != nil {
 			return nil, errors.New("could not construct Catalyst request")
 		}
 		req.Header.Set("Authorization", "Zoho-oauthtoken "+token)
 		req.Header.Set("Accept", "application/json")
+		if body != nil {
+			req.Header.Set("Content-Type", "application/json")
+		}
 		req.Header.Set("Environment", c.config.Environment)
 		if c.config.OrganizationID != "" {
 			req.Header.Set("CATALYST-ORG", c.config.OrganizationID)
