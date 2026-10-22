@@ -26,6 +26,9 @@ fmt:
 	terraform fmt -recursive examples/
 
 test:
-	go test -race -count=1 ./...
+	TF_ACC=0 go test -race -count=1 ./...
 
-.PHONY: build install dev verify lint generate fmt test
+testacc:
+	TF_ACC=1 go test -race -count=1 -v -timeout=5m -run '^TestAccProjectDataSource$$' ./internal/provider
+
+.PHONY: build install dev verify lint generate fmt test testacc

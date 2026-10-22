@@ -94,7 +94,7 @@ terraform -chdir=examples/data-sources/catalyst_project validate
 terraform -chdir=examples/data-sources/catalyst_project plan
 ```
 
-The example performs a read-only request to the [Catalyst project API](https://docs.catalyst.zoho.com/en/api/code-reference/general/projects/get-specific-project/). It creates or changes no remote resources. A successful plan shows the project name and domain outputs. Live behavior requires verification against your account; automated tests use mock responses.
+The example performs a read-only request to the [Catalyst project API](https://docs.catalyst.zoho.com/en/api/code-reference/general/projects/get-specific-project/). It creates or changes no remote resources. A successful plan shows the project name and domain outputs. Live access-token and refresh-token project lookups have been verified in the India data center. Other accounts and regions should be verified using the opt-in acceptance test below. Default automated tests use mock responses.
 
 ```hcl
 terraform {
@@ -120,6 +120,19 @@ The data source also exposes `project_type`, `domain`, `domain_name`, and `timez
 
 Run `unset TF_CLI_CONFIG_FILE` when finished using the development override. The intended Registry address is `Edson-Edwin/catalyst`; it is not currently installable from the public Registry.
 
+## Opt-in live acceptance test
+
+After configuring your own credentials and data center, run:
+
+```sh
+export CATALYST_TEST_PROJECT_ID="your-existing-numeric-project-id"
+make testacc
+```
+
+This test starts the provider through Terraform's protocol, reads the project into temporary local state, checks the exact ID and a non-empty name, then checks a second plan for stability. Its configuration contains only a data source: it does not create, update, or delete remote Catalyst resources. The test harness may run multiple reads and OAuth exchanges. Supply only one authentication mode and allow for Zoho's token/rate limits.
+
+`make test` explicitly disables live acceptance testing. GitHub's default checks also remain offline. Live tests require credentials supplied by the person running them; no account IDs or credentials are included in the tests. A signed-in Catalyst CLI can supply credentials for local development, but automatic CLI credential discovery is not part of the provider's public authentication interface.
+
 ## Development and publication
 
 - `internal/catalyst/`: regional API client, token handling and HTTP tests.
@@ -128,7 +141,7 @@ Run `unset TF_CLI_CONFIG_FILE` when finished using the development override. The
 - `make generate`: regenerates provider and data source documentation.
 - `make test`, `make verify`, `go vet ./...`: local checks; GitHub Actions runs tests and verification.
 
-Next milestones are live acceptance validation, a first managed resource with lifecycle/import support, and broader service coverage. Each service needs an API capability review before promising Terraform lifecycle support.
+Next milestones are a first managed resource with lifecycle/import support, and broader service coverage. Each service needs an API capability review before promising Terraform lifecycle support.
 
 Public distribution requires a public source repository, a versioned release, signed provider checksums, and registration with the Terraform Registry. The release workflow requires `GPG_PRIVATE_KEY` and `PASSPHRASE` repository secrets before tagging a release. Repository setup alone does not publish the provider.
 
