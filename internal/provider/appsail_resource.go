@@ -30,17 +30,20 @@ var _ resource.ResourceWithValidateConfig = &AppSailResource{}
 
 type AppSailResource struct{ client *catalyst.Client }
 type appsailModel struct {
-	ID          types.String `tfsdk:"id"`
-	ProjectID   types.String `tfsdk:"project_id"`
-	Name        types.String `tfsdk:"name"`
-	Stack       types.String `tfsdk:"stack"`
-	Command     types.String `tfsdk:"startup_command"`
-	Port        types.Int64  `tfsdk:"port"`
-	Auth        types.Bool   `tfsdk:"catalyst_auth"`
-	Source      types.String `tfsdk:"source"`
-	SHA256      types.String `tfsdk:"source_sha256"`
-	Memory      types.Int64  `tfsdk:"memory"`
-	Environment types.Map    `tfsdk:"environment_variables"`
+	ID            types.String `tfsdk:"id"`
+	ProjectID     types.String `tfsdk:"project_id"`
+	Name          types.String `tfsdk:"name"`
+	Stack         types.String `tfsdk:"stack"`
+	Platform      types.String `tfsdk:"platform"`
+	URL           types.String `tfsdk:"url"`
+	LoginRedirect types.String `tfsdk:"login_redirect"`
+	Command       types.String `tfsdk:"startup_command"`
+	Port          types.Int64  `tfsdk:"port"`
+	Auth          types.Bool   `tfsdk:"catalyst_auth"`
+	Source        types.String `tfsdk:"source"`
+	SHA256        types.String `tfsdk:"source_sha256"`
+	Memory        types.Int64  `tfsdk:"memory"`
+	Environment   types.Map    `tfsdk:"environment_variables"`
 }
 
 func NewAppSailResource() resource.Resource { return &AppSailResource{} }
@@ -49,15 +52,18 @@ func (r *AppSailResource) Metadata(_ context.Context, req resource.MetadataReque
 }
 func (r *AppSailResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	replace := []planmodifier.String{stringplanmodifier.RequiresReplace()}
-	resp.Schema = schema.Schema{MarkdownDescription: "Deploy a Node.js 22 or 24 AppSail from a prebuilt ZIP using ZohoCatalyst.appsail read/create/update/delete scopes and project read access. Supports code, memory, startup command, port, authentication and complete environment-map updates, import and artifact drift detection. Names must be unique. Catalyst uses name-keyed upserts: keep project/name ownership exclusive across Terraform states and external tools; no atomic conditional-create primitive has been established. Compressed and expanded archives are limited to 100 MB. Sensitive environment values remain in Terraform state; source code does not. The provider verifies configuration and artifact persistence without invoking the app or proving runtime health. Authentication defaults to enabled. Import with project_id/appsail_id, then supply matching source/hash. Deletion is confirmed for up to two minutes. Live validation is limited to India Development.", Attributes: map[string]schema.Attribute{
+	resp.Schema = schema.Schema{MarkdownDescription: "Deploy a supported Node.js, Java SE or Python AppSail from a prebuilt ZIP using ZohoCatalyst.appsail read/create/update/delete scopes and project read access. Java requires platform=javase; Java/Python require an explicit runtime-appropriate startup_command. Supports code, memory, startup command, port, authentication and complete environment-map updates, import and artifact drift detection. Names must be unique. Catalyst uses name-keyed upserts: keep project/name ownership exclusive across Terraform states and external tools; no atomic conditional-create primitive has been established. Compressed and expanded archives are limited to 100 MB. Sensitive environment values remain in Terraform state; source code does not. The provider verifies configuration and artifact persistence without invoking the app or proving runtime health. Authentication defaults to enabled. Import with project_id/appsail_id, then supply matching source/hash. Deletion is confirmed for up to two minutes. Live validation is limited to India Development.", Attributes: map[string]schema.Attribute{
 		"id":                    schema.StringAttribute{Computed: true, MarkdownDescription: "AppSail ID as a precision-preserving string.", PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
+		"url":                   schema.StringAttribute{Computed: true, MarkdownDescription: "AppSail HTTPS endpoint reported by Catalyst. Its presence does not prove runtime health."},
+		"login_redirect":        schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("/"), MarkdownDescription: "Relative path after Catalyst login, for example /index.html. Defaults to /. Set / to reset to the root; the API ignores an empty reset. Custom paths require catalyst_auth=true. External URLs, queries and fragments are not supported."},
 		"project_id":            schema.StringAttribute{Required: true, MarkdownDescription: "Existing project ID.", PlanModifiers: replace},
 		"name":                  schema.StringAttribute{Required: true, MarkdownDescription: "Unique alphanumeric AppSail name starting with a letter, up to 100 characters. Changing it replaces the service.", PlanModifiers: replace},
-		"stack":                 schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("node22"), MarkdownDescription: "Supported runtimes: node22 or node24.", PlanModifiers: replace},
-		"startup_command":       schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("node index.js"), MarkdownDescription: "Command used to start the application; defaults to node index.js."},
+		"stack":                 schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("node22"), MarkdownDescription: "Managed runtimes: Node 16/18/20/22/24, Java 8/11/17/21/25 and Python 3.9/3.10/3.11/3.12/3.13. Runtime changes replace the service. See API_COVERAGE.md for live-verified combinations.", PlanModifiers: replace},
+		"platform":              schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString(""), PlanModifiers: replace, MarkdownDescription: "Java SE requires javase; omit for Node/Python. Changing platform replaces the service. WAR and custom/container runtimes are not supported."},
+		"startup_command":       schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("node index.js"), MarkdownDescription: "Command used to start the application. Defaults to node index.js for compatibility; Java/Python require an explicit appropriate command."},
 		"port":                  schema.Int64Attribute{Optional: true, Computed: true, Default: int64default.StaticInt64(9000), MarkdownDescription: "Application port: 80, 443, or 1025 through 65535. Defaults to 9000. Bind the app to the configured port or X_ZOHO_CATALYST_LISTEN_PORT."},
 		"catalyst_auth":         schema.BoolAttribute{Optional: true, Computed: true, Default: booldefault.StaticBool(true), MarkdownDescription: "Require Catalyst authentication for application access. Defaults to true."},
-		"source":                schema.StringAttribute{Required: true, MarkdownDescription: "Local prebuilt application ZIP with package.json at its root. Include application files and built dependencies before applying."},
+		"source":                schema.StringAttribute{Required: true, MarkdownDescription: "Local prebuilt application ZIP containing all application files and built dependencies. Node requires package.json at its root. Java/Python use their own application files. No dependencies are installed by the provider."},
 		"source_sha256":         schema.StringAttribute{Required: true, MarkdownDescription: "Lowercase hex SHA-256, usually filesha256(source). Changed contents update code in place. Refresh records the remote archive hash."},
 		"memory":                schema.Int64Attribute{Optional: true, Computed: true, Default: int64default.StaticInt64(128), MarkdownDescription: "Memory allocation in MB: 128, 256, 512, 1024 or 2048; defaults to 128."},
 		"environment_variables": schema.MapAttribute{Optional: true, Computed: true, Sensitive: true, ElementType: types.StringType, Default: mapdefault.StaticValue(types.MapValueMust(types.StringType, map[string]attr.Value{})), MarkdownDescription: "Complete desired environment-variable map. Removing keys clears them remotely. Values remain in Terraform state."},
@@ -99,7 +105,7 @@ func (r *AppSailResource) ValidateConfig(ctx context.Context, req resource.Valid
 		case "name":
 			valid = catalyst.ValidAppSailName(v)
 		case "stack":
-			valid = v == "node22" || v == "node24"
+			valid = catalyst.ValidAppSailStack(v)
 		case "startup_command":
 			valid = strings.TrimSpace(v) != "" && !strings.ContainsRune(v, 0)
 		case "source":
@@ -109,6 +115,23 @@ func (r *AppSailResource) ValidateConfig(ctx context.Context, req resource.Valid
 		}
 		if !valid {
 			resp.Diagnostics.AddAttributeError(tfpath.Root(key), "Invalid AppSail configuration", "Provide a valid "+key+" matching the documented supported values.")
+		}
+	}
+	if !data.Stack.IsNull() && !data.Stack.IsUnknown() {
+		if !data.Platform.IsUnknown() && !catalyst.ValidAppSailPlatform(data.Stack.ValueString(), data.Platform.ValueString()) {
+			resp.Diagnostics.AddAttributeError(tfpath.Root("platform"), "Invalid runtime platform", "Java requires platform=javase; omit platform for Node/Python. WAR/custom runtimes are not yet supported.")
+		}
+		if !strings.HasPrefix(data.Stack.ValueString(), "node") && !data.Command.IsUnknown() && (data.Command.IsNull() || data.Command.ValueString() == "node index.js") {
+			resp.Diagnostics.AddAttributeError(tfpath.Root("startup_command"), "Runtime startup command required", "Set an explicit Java or Python startup command matching your prebuilt application.")
+		}
+	}
+
+	if !data.LoginRedirect.IsNull() && !data.LoginRedirect.IsUnknown() {
+		if data.LoginRedirect.ValueString() == "" || !catalyst.ValidAppSailLoginRedirect(data.LoginRedirect.ValueString()) {
+			resp.Diagnostics.AddAttributeError(tfpath.Root("login_redirect"), "Invalid login redirect", "Use a relative absolute path starting with /, without an origin, query, fragment or backslash.")
+		}
+		if data.LoginRedirect.ValueString() != "" && data.LoginRedirect.ValueString() != "/" && !data.Auth.IsNull() && !data.Auth.IsUnknown() && !data.Auth.ValueBool() {
+			resp.Diagnostics.AddAttributeError(tfpath.Root("login_redirect"), "Authentication required", "login_redirect requires catalyst_auth=true.")
 		}
 	}
 	if !data.Memory.IsUnknown() && !data.Memory.IsNull() {
@@ -125,10 +148,13 @@ func (r *AppSailResource) ValidateConfig(ctx context.Context, req resource.Valid
 	}
 
 }
-func validateAppSailArchive(content []byte) error {
+func validateAppSailArchive(content []byte, stack ...string) error {
 	files, err := deploymentArchiveFiles(content)
 	if err != nil {
 		return err
+	}
+	if len(stack) > 0 && !strings.HasPrefix(stack[0], "node") {
+		return nil
 	}
 	file := files["package.json"]
 	if file == nil {
@@ -150,9 +176,10 @@ func (d *appsailModel) api(ctx context.Context) (catalyst.AppSailDeployment, dia
 	var diags diag.Diagnostics
 	variables := map[string]string{}
 	diags.Append(d.Environment.ElementsAs(ctx, &variables, false)...)
-	value := catalyst.AppSailDeployment{AppSailMetadata: catalyst.AppSailMetadata{Name: d.Name.ValueString(), Stack: d.Stack.ValueString()}}
+	value := catalyst.AppSailDeployment{AppSailMetadata: catalyst.AppSailMetadata{Name: d.Name.ValueString(), Stack: d.Stack.ValueString(), Platform: d.Platform.ValueString()}}
 	auth := d.Auth.ValueBool()
 	value.Configuration.Auth = &auth
+	value.Configuration.LoginRedirect = d.LoginRedirect.ValueString()
 	value.Configuration.Command = d.Command.ValueString()
 	value.Configuration.Port = catalyst.Integer(d.Port.ValueInt64())
 	value.Configuration.Memory = catalyst.Integer(d.Memory.ValueInt64())
@@ -164,6 +191,12 @@ func (d *appsailModel) populate(ctx context.Context, result *catalyst.AppSailDep
 	d.ID = types.StringValue(string(result.ID))
 	d.Name = types.StringValue(result.Name)
 	d.Stack = types.StringValue(result.Stack)
+	d.Platform = types.StringValue(result.Platform)
+	d.LoginRedirect = types.StringValue(result.Configuration.LoginRedirect)
+	d.URL = types.StringNull()
+	if result.URL != "" {
+		d.URL = types.StringValue(result.URL)
+	}
 	d.Command = types.StringValue(result.Configuration.Command)
 	d.Port = types.Int64Value(int64(result.Configuration.Port))
 	d.Auth = types.BoolValue(*result.Configuration.Auth)
@@ -177,7 +210,7 @@ func (d *appsailModel) populate(ctx context.Context, result *catalyst.AppSailDep
 func (r *AppSailResource) persist(ctx context.Context, data *appsailModel, creating bool, diags *diag.Diagnostics, setState func()) {
 	archive, err := readUploadSource(data.Source.ValueString(), data.SHA256.ValueString())
 	if err == nil {
-		err = validateAppSailArchive(archive)
+		err = validateAppSailArchive(archive, data.Stack.ValueString())
 	}
 	if err != nil {
 		diags.AddError("Invalid AppSail source", err.Error())
@@ -195,6 +228,7 @@ func (r *AppSailResource) persist(ctx context.Context, data *appsailModel, creat
 	result, err := r.client.DeployAppSail(ctx, data.ProjectID.ValueString(), id, desired, archive)
 	if result != nil && catalyst.ValidID(string(result.ID)) {
 		data.ID = types.StringValue(string(result.ID))
+		data.URL = optionalString(result.URL)
 		setState()
 	}
 	if err != nil {
@@ -233,22 +267,13 @@ func (r *AppSailResource) Read(ctx context.Context, req resource.ReadRequest, re
 	if resp.Diagnostics.HasError() || !r.ready(&resp.Diagnostics) {
 		return
 	}
-	result, err := r.client.GetAppSailDeployment(ctx, data.ProjectID.ValueString(), data.ID.ValueString())
+	result, hash, err := r.client.ReadStableAppSailDeployment(ctx, data.ProjectID.ValueString(), data.ID.ValueString())
 	if errors.Is(err, catalyst.ErrAppSailNotFound) {
 		resp.State.RemoveResource(ctx)
 		return
 	}
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read Catalyst AppSail", err.Error())
-		return
-	}
-	hash, err := r.client.AppSailSHA256(ctx, data.ProjectID.ValueString(), data.ID.ValueString())
-	if errors.Is(err, catalyst.ErrAppSailNotFound) {
-		resp.State.RemoveResource(ctx)
-		return
-	}
-	if err != nil {
-		resp.Diagnostics.AddError("Unable to read AppSail artifact", err.Error())
 		return
 	}
 	resp.Diagnostics.Append(data.populate(ctx, result, hash)...)

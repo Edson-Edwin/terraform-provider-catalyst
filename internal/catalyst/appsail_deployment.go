@@ -14,6 +14,7 @@ import (
 	"maps"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -25,12 +26,37 @@ var appsailName = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9]{0,99}$`)
 
 func ValidAppSailName(name string) bool { return appsailName.MatchString(name) }
 
+// Supported managed stacks are explicit; custom/container deployment uses a different protocol.
+func ValidAppSailStack(stack string) bool {
+	switch stack {
+	case "node16", "node18", "node20", "node22", "node24", "java8", "java11", "java17", "java21", "java25", "python_3_9", "python_3_10", "python_3_11", "python_3_12", "python_3_13":
+		return true
+	default:
+		return false
+	}
+}
+func ValidAppSailPlatform(stack, platform string) bool {
+	if strings.HasPrefix(stack, "java") {
+		return platform == "javase"
+	}
+	return platform == ""
+}
+
+func ValidAppSailLoginRedirect(value string) bool {
+	if value == "" {
+		return true
+	}
+	u, err := url.ParseRequestURI(value)
+	return err == nil && strings.HasPrefix(value, "/") && !strings.HasPrefix(value, "//") && u.Host == "" && !u.IsAbs() && u.RawQuery == "" && u.Fragment == "" && !strings.HasPrefix(u.Path, "//") && !strings.ContainsAny(u.Path, "\\\r\n") && !strings.ContainsAny(value, "?#\\\r\n")
+}
+
 type AppSailConfiguration struct {
-	Command     string  `json:"startup_command"`
-	Port        Integer `json:"port"`
-	Auth        *bool   `json:"catalyst_auth"`
-	Memory      Integer `json:"memory"`
-	Environment struct {
+	Command       string  `json:"startup_command"`
+	LoginRedirect string  `json:"login_redirect"`
+	Port          Integer `json:"port"`
+	Auth          *bool   `json:"catalyst_auth"`
+	Memory        Integer `json:"memory"`
+	Environment   struct {
 		Variables map[string]string `json:"variables"`
 	} `json:"environment"`
 }
@@ -115,6 +141,9 @@ func (c *Client) readAppSailDeployment(ctx context.Context, res *http.Response, 
 	if result.Configuration.Environment.Variables == nil {
 		result.Configuration.Environment.Variables = map[string]string{}
 	}
+	if result.Configuration.LoginRedirect == "" {
+		result.Configuration.LoginRedirect = "/"
+	}
 	return result, nil
 }
 func (c *Client) GetAppSailDeployment(ctx context.Context, project, id string) (*AppSailDeployment, error) {
@@ -145,7 +174,7 @@ func (c *Client) DeployAppSail(ctx context.Context, project, id string, desired 
 	if err != nil {
 		return nil, err
 	}
-	if (id != "" && !ValidID(id)) || !ValidAppSailName(desired.Name) || (desired.Stack != "node22" && desired.Stack != "node24") || int64(len(archive)) > MaxFileBytes || !validAppSailConfiguration(desired.Configuration) {
+	if (id != "" && !ValidID(id)) || !ValidAppSailName(desired.Name) || (!ValidAppSailStack(desired.Stack) || !ValidAppSailPlatform(desired.Stack, desired.Platform)) || int64(len(archive)) > MaxFileBytes || !validAppSailConfiguration(desired.Configuration) {
 		return nil, errors.New("invalid or unsupported AppSail configuration")
 	}
 	select {
@@ -159,7 +188,7 @@ func (c *Client) DeployAppSail(ctx context.Context, project, id string, desired 
 		if err != nil {
 			return nil, err
 		}
-		if current.Name != desired.Name || current.Stack != desired.Stack {
+		if current.Name != desired.Name || current.Stack != desired.Stack || current.Platform != desired.Platform {
 			return nil, errors.New("appsail identity/configuration changed; refresh the Terraform plan")
 		}
 	}
@@ -174,13 +203,22 @@ func (c *Client) DeployAppSail(ctx context.Context, project, id string, desired 
 	}
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
-	config, err := json.Marshal(map[string]any{"startup_command": desired.Configuration.Command, "port": desired.Configuration.Port, "catalyst_auth": desired.Configuration.Auth, "environment": desired.Configuration.Environment})
+	redirect := desired.Configuration.LoginRedirect
+	if redirect == "" {
+		redirect = "/"
+	}
+	config, err := json.Marshal(map[string]any{"startup_command": desired.Configuration.Command, "port": desired.Configuration.Port, "catalyst_auth": desired.Configuration.Auth, "login_redirect": redirect, "environment": desired.Configuration.Environment})
 	if err != nil {
 		return nil, errors.New("could not encode AppSail configuration")
 	}
 	for key, value := range map[string]string{"name": desired.Name, "stack": desired.Stack, "memory": fmt.Sprint(desired.Configuration.Memory), "configuration": string(config)} {
 		if err = writer.WriteField(key, value); err != nil {
 			return nil, errors.New("could not encode AppSail deployment")
+		}
+	}
+	if desired.Platform != "" {
+		if err = writer.WriteField("platform", desired.Platform); err != nil {
+			return nil, errors.New("could not encode AppSail platform")
 		}
 	}
 	part, err := writer.CreateFormFile("code", "appsail.zip")
@@ -310,7 +348,7 @@ func (c *Client) WaitAppSailDeleted(ctx context.Context, project, id string) err
 func validAppSailConfiguration(config AppSailConfiguration) bool {
 	memory := config.Memory
 	port := config.Port
-	return (memory == 128 || memory == 256 || memory == 512 || memory == 1024 || memory == 2048) && (port == 80 || port == 443 || (port >= 1025 && port <= 65535)) && config.Auth != nil && strings.TrimSpace(config.Command) != "" && !strings.ContainsRune(config.Command, 0)
+	return (memory == 128 || memory == 256 || memory == 512 || memory == 1024 || memory == 2048) && (port == 80 || port == 443 || (port >= 1025 && port <= 65535)) && config.Auth != nil && ValidAppSailLoginRedirect(config.LoginRedirect) && (config.LoginRedirect == "" || config.LoginRedirect == "/" || *config.Auth) && strings.TrimSpace(config.Command) != "" && !strings.ContainsRune(config.Command, 0)
 }
 
 // WaitAppSailDeployment reconciles independently replicated configuration and code.
@@ -331,7 +369,10 @@ func (c *Client) WaitAppSailDeployment(ctx context.Context, project, id string, 
 				return nil, hashErr
 			}
 			a, b := current.Configuration, desired.Configuration
-			if hashErr == nil && current.Name == desired.Name && current.Stack == desired.Stack && a.Memory == b.Memory && a.Command == b.Command && a.Port == b.Port && a.Auth != nil && b.Auth != nil && *a.Auth == *b.Auth && maps.Equal(a.Environment.Variables, b.Environment.Variables) && actualHash == hash {
+			if b.LoginRedirect == "" {
+				b.LoginRedirect = "/"
+			}
+			if hashErr == nil && current.Name == desired.Name && current.Stack == desired.Stack && current.Platform == desired.Platform && a.Memory == b.Memory && a.Command == b.Command && a.LoginRedirect == b.LoginRedirect && a.Port == b.Port && a.Auth != nil && b.Auth != nil && *a.Auth == *b.Auth && maps.Equal(a.Environment.Variables, b.Environment.Variables) && actualHash == hash {
 				matched = true
 				stable++
 				if stable == 3 {
@@ -344,6 +385,44 @@ func (c *Client) WaitAppSailDeployment(ctx context.Context, project, id string, 
 		}
 		if err := c.wait(ctx, 2*time.Second); err != nil {
 			return nil, err
+		}
+	}
+}
+
+// ReadStableAppSailDeployment requires independent metadata/artifact observations
+// to agree before refresh updates Terraform state. A single stale replica must not
+// undo a verified code/configuration update in the immediately following plan.
+func (c *Client) ReadStableAppSailDeployment(ctx context.Context, project, id string) (*AppSailDeployment, string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+	var previous *AppSailDeployment
+	previousHash := ""
+	stable := 0
+	for {
+		current, err := c.GetAppSailDeployment(ctx, project, id)
+		if err != nil {
+			return nil, "", err
+		}
+		hash, err := c.AppSailSHA256(ctx, project, id)
+		if err != nil {
+			return nil, "", err
+		}
+		same := false
+		if previous != nil {
+			a, b := previous.Configuration, current.Configuration
+			same = previous.Name == current.Name && previous.Stack == current.Stack && previous.Platform == current.Platform && previous.URL == current.URL && previousHash == hash && a.Memory == b.Memory && a.Command == b.Command && a.LoginRedirect == b.LoginRedirect && a.Port == b.Port && *a.Auth == *b.Auth && maps.Equal(a.Environment.Variables, b.Environment.Variables)
+		}
+		if same {
+			stable++
+		} else {
+			stable = 1
+		}
+		if stable == 3 {
+			return current, hash, nil
+		}
+		previous, previousHash = current, hash
+		if err = c.wait(ctx, 2*time.Second); err != nil {
+			return nil, "", err
 		}
 	}
 }

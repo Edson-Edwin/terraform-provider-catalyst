@@ -250,3 +250,37 @@ func TestAppSailDeleteReconcilesDefinitive404Only(t *testing.T) {
 		})
 	}
 }
+
+func TestAppSailStableRefreshRejectsAStaleReplica(t *testing.T) {
+	reads, downloads := 0, 0
+	c := testClient(t, Config{AccessToken: "test"}, func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/download") {
+			downloads++
+			writeResponse(t, w, "PK\x03\x04fixture")
+			return
+		}
+		reads++
+		memory := 256
+		if reads == 2 {
+			memory = 128
+		}
+		writeResponse(t, w, fmt.Sprintf(`{"status":"success","data":{"id":"123","name":"example","stack":"java25","deployment_type":"javase","url":"https://example.invalid","configuration":{"memory":%d,"startup_command":"java -jar website.jar","port":9000,"catalyst_auth":true,"login_redirect":"/home"}}}`, memory))
+	})
+	c.wait = func(ctx context.Context, _ time.Duration) error { return ctx.Err() }
+	got, hash, err := c.ReadStableAppSailDeployment(t.Context(), "456", "123")
+	if err != nil || got == nil || got.Configuration.Memory != 256 || got.Platform != "javase" || got.Configuration.LoginRedirect != "/home" || len(hash) != 64 || reads != 5 || downloads != 5 {
+		t.Fatalf("stale refresh was not reconciled: reads=%d downloads=%d error=%v", reads, downloads, err)
+	}
+}
+func TestAppSailLoginRedirectValidation(t *testing.T) {
+	for _, value := range []string{"", "/", "/index.html", "/app/dashboard"} {
+		if !ValidAppSailLoginRedirect(value) {
+			t.Errorf("valid redirect rejected %q", value)
+		}
+	}
+	for _, value := range []string{"https://example.com", "//example.com", "login", "/login?token=value", "/login#fragment", "/a\\b", "/\r\n"} {
+		if ValidAppSailLoginRedirect(value) {
+			t.Errorf("unsafe redirect accepted %q", value)
+		}
+	}
+}

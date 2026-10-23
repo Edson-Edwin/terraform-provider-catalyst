@@ -3,12 +3,12 @@
 page_title: "catalyst_appsail Resource - catalyst"
 subcategory: ""
 description: |-
-  Deploy a Node.js 22 or 24 AppSail from a prebuilt ZIP using ZohoCatalyst.appsail read/create/update/delete scopes and project read access. Supports code, memory, startup command, port, authentication and complete environment-map updates, import and artifact drift detection. Names must be unique. Catalyst uses name-keyed upserts: keep project/name ownership exclusive across Terraform states and external tools; no atomic conditional-create primitive has been established. Compressed and expanded archives are limited to 100 MB. Sensitive environment values remain in Terraform state; source code does not. The provider verifies configuration and artifact persistence without invoking the app or proving runtime health. Authentication defaults to enabled. Import with project_id/appsail_id, then supply matching source/hash. Deletion is confirmed for up to two minutes. Live validation is limited to India Development.
+  Deploy a supported Node.js, Java SE or Python AppSail from a prebuilt ZIP using ZohoCatalyst.appsail read/create/update/delete scopes and project read access. Java requires platform=javase; Java/Python require an explicit runtime-appropriate startup_command. Supports code, memory, startup command, port, authentication and complete environment-map updates, import and artifact drift detection. Names must be unique. Catalyst uses name-keyed upserts: keep project/name ownership exclusive across Terraform states and external tools; no atomic conditional-create primitive has been established. Compressed and expanded archives are limited to 100 MB. Sensitive environment values remain in Terraform state; source code does not. The provider verifies configuration and artifact persistence without invoking the app or proving runtime health. Authentication defaults to enabled. Import with project_id/appsail_id, then supply matching source/hash. Deletion is confirmed for up to two minutes. Live validation is limited to India Development.
 ---
 
 # catalyst_appsail (Resource)
 
-Deploy a Node.js 22 or 24 AppSail from a prebuilt ZIP using ZohoCatalyst.appsail read/create/update/delete scopes and project read access. Supports code, memory, startup command, port, authentication and complete environment-map updates, import and artifact drift detection. Names must be unique. Catalyst uses name-keyed upserts: keep project/name ownership exclusive across Terraform states and external tools; no atomic conditional-create primitive has been established. Compressed and expanded archives are limited to 100 MB. Sensitive environment values remain in Terraform state; source code does not. The provider verifies configuration and artifact persistence without invoking the app or proving runtime health. Authentication defaults to enabled. Import with project_id/appsail_id, then supply matching source/hash. Deletion is confirmed for up to two minutes. Live validation is limited to India Development.
+Deploy a supported Node.js, Java SE or Python AppSail from a prebuilt ZIP using ZohoCatalyst.appsail read/create/update/delete scopes and project read access. Java requires platform=javase; Java/Python require an explicit runtime-appropriate startup_command. Supports code, memory, startup command, port, authentication and complete environment-map updates, import and artifact drift detection. Names must be unique. Catalyst uses name-keyed upserts: keep project/name ownership exclusive across Terraform states and external tools; no atomic conditional-create primitive has been established. Compressed and expanded archives are limited to 100 MB. Sensitive environment values remain in Terraform state; source code does not. The provider verifies configuration and artifact persistence without invoking the app or proving runtime health. Authentication defaults to enabled. Import with project_id/appsail_id, then supply matching source/hash. Deletion is confirmed for up to two minutes. Live validation is limited to India Development.
 
 ## Example Usage
 
@@ -34,21 +34,24 @@ resource "catalyst_appsail" "example" {
 
 - `name` (String) Unique alphanumeric AppSail name starting with a letter, up to 100 characters. Changing it replaces the service.
 - `project_id` (String) Existing project ID.
-- `source` (String) Local prebuilt application ZIP with package.json at its root. Include application files and built dependencies before applying.
+- `source` (String) Local prebuilt application ZIP containing all application files and built dependencies. Node requires package.json at its root. Java/Python use their own application files. No dependencies are installed by the provider.
 - `source_sha256` (String) Lowercase hex SHA-256, usually filesha256(source). Changed contents update code in place. Refresh records the remote archive hash.
 
 ### Optional
 
 - `catalyst_auth` (Boolean) Require Catalyst authentication for application access. Defaults to true.
 - `environment_variables` (Map of String, Sensitive) Complete desired environment-variable map. Removing keys clears them remotely. Values remain in Terraform state.
+- `login_redirect` (String) Relative path after Catalyst login, for example /index.html. Defaults to /. Set / to reset to the root; the API ignores an empty reset. Custom paths require catalyst_auth=true. External URLs, queries and fragments are not supported.
 - `memory` (Number) Memory allocation in MB: 128, 256, 512, 1024 or 2048; defaults to 128.
+- `platform` (String) Java SE requires javase; omit for Node/Python. Changing platform replaces the service. WAR and custom/container runtimes are not supported.
 - `port` (Number) Application port: 80, 443, or 1025 through 65535. Defaults to 9000. Bind the app to the configured port or X_ZOHO_CATALYST_LISTEN_PORT.
-- `stack` (String) Supported runtimes: node22 or node24.
-- `startup_command` (String) Command used to start the application; defaults to node index.js.
+- `stack` (String) Managed runtimes: Node 16/18/20/22/24, Java 8/11/17/21/25 and Python 3.9/3.10/3.11/3.12/3.13. Runtime changes replace the service. See API_COVERAGE.md for live-verified combinations.
+- `startup_command` (String) Command used to start the application. Defaults to node index.js for compatibility; Java/Python require an explicit appropriate command.
 
 ### Read-Only
 
 - `id` (String) AppSail ID as a precision-preserving string.
+- `url` (String) AppSail HTTPS endpoint reported by Catalyst. Its presence does not prove runtime health.
 
 ## Import
 

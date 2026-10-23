@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -58,6 +59,11 @@ func TestAccStratusObject(t *testing.T) {
 	}
 	initial := stratusObjectConfig(project, bucket, key, first, "application/octet-stream")
 	updated := stratusObjectConfig(project, bucket, key, second, "text/plain")
+	bare := updated
+	initial = strings.Replace(initial, `resource "catalyst_stratus_object" "test" {`, `resource "catalyst_stratus_object" "test" {
+ metadata={owner="terraform",site="website"}`, 1)
+	updated = strings.Replace(updated, `resource "catalyst_stratus_object" "test" {`, `resource "catalyst_stratus_object" "test" {
+ metadata={owner="updated"}`, 1)
 	resource.Test(t, resource.TestCase{ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){"catalyst": providerserver.NewProtocol6WithError(New("test")())}, CheckDestroy: func(_ *terraform.State) error {
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), time.Minute)
 		defer cancel()
@@ -70,7 +76,11 @@ func TestAccStratusObject(t *testing.T) {
 		{Config: initial, Check: resource.TestCheckResourceAttr("catalyst_stratus_object.test", "size", "5")},
 		{ResourceName: "catalyst_stratus_object.test", ImportState: true, ImportStateId: project + "/" + bucket + "/" + key, ImportStateVerify: true, ImportStateVerifyIgnore: []string{"source"}},
 		{Config: updated, Check: resource.TestCheckResourceAttr("catalyst_stratus_object.test", "content_type", "text/plain")},
+		{Config: bare, Check: resource.TestCheckResourceAttr("catalyst_stratus_object.test", "metadata.%", "0")},
 		{PreConfig: func() {
+			if err := client.PutStratusObjectMetadata(t.Context(), project, bucket, key, map[string]string{"owner": "external"}); err != nil {
+				t.Fatal(err)
+			}
 			if _, err := client.PutStratusObject(t.Context(), project, bucket, key, "text/plain", []byte{9, 9, 9, 9, 9}, false); err != nil {
 				t.Fatal(err)
 			}

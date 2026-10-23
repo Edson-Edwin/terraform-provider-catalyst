@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"maps"
 	"mime"
 	"net/http"
 	"net/url"
@@ -44,12 +45,27 @@ type StratusBucket struct {
 	} `json:"bucket_meta"`
 }
 type StratusObject struct {
-	Key         string   `json:"key"`
-	Size        *Integer `json:"size"`
-	ContentType string   `json:"content_type"`
-	ETag        string   `json:"etag"`
-	VersionID   string   `json:"version_id"`
+	Key         string            `json:"key"`
+	Size        *Integer          `json:"size"`
+	ContentType string            `json:"content_type"`
+	ETag        string            `json:"etag"`
+	VersionID   string            `json:"version_id"`
+	Metadata    map[string]string `json:"meta_data,omitempty"`
 }
+
+var stratusMetadataText = regexp.MustCompile(`^[A-Za-z0-9 _-]+$`)
+
+func ValidStratusMetadata(values map[string]string) bool {
+	size := 0
+	for key, value := range values {
+		if !stratusMetadataText.MatchString(key) || !stratusMetadataText.MatchString(value) || strings.TrimSpace(key) == "" {
+			return false
+		}
+		size += len(key) + len(value) + 2
+	}
+	return size <= 2047
+}
+
 type stratusSignature struct {
 	Query string
 	Until time.Time
@@ -335,7 +351,7 @@ func (c *Client) GetStratusObject(ctx context.Context, project, bucket, key stri
 	}
 	for field := range raw {
 		switch field {
-		case "key", "size", "content_type", "etag", "version_id", "last_modified", "object_url", "key_type":
+		case "key", "size", "content_type", "etag", "version_id", "last_modified", "object_url", "key_type", "meta_data":
 		default:
 			return nil, errors.New("the Stratus object has unrepresented metadata; refusing to manage it")
 		}
@@ -345,10 +361,36 @@ func (c *Client) GetStratusObject(ctx context.Context, project, bucket, key stri
 	if json.Unmarshal(encoded, &result) != nil {
 		return nil, errors.New("invalid Stratus object metadata")
 	}
-	if result.Key != key || result.Size == nil || *result.Size < 0 || int64(*result.Size) > MaxFileBytes || !ValidObjectContentType(result.ContentType) || result.ETag == "" || result.VersionID != "" {
+	if result.Key != key || result.Size == nil || *result.Size < 0 || int64(*result.Size) > MaxFileBytes || !ValidObjectContentType(result.ContentType) || result.ETag == "" || result.VersionID != "" || !ValidStratusMetadata(result.Metadata) {
 		return nil, errors.New("incomplete, versioned or unsupported Stratus object metadata")
 	}
 	return &result, nil
+}
+
+// The official SDK's putMeta endpoint replaces the complete metadata map.
+// Upload overwrite headers do not reliably replace metadata on existing keys.
+func (c *Client) PutStratusObjectMetadata(ctx context.Context, project, bucket, key string, values map[string]string) error {
+	if !ValidStratusMetadata(values) {
+		return errors.New("metadata must use ASCII letters, digits, spaces, underscores or hyphens, within 2047 characters")
+	}
+	if _, err := c.GetStratusObject(ctx, project, bucket, key); err != nil {
+		return err
+	}
+	if values == nil {
+		values = map[string]string{}
+	}
+	body, _ := json.Marshal(map[string]any{"meta_data": values})
+	base, err := stratusPath(project)
+	if err != nil {
+		return err
+	}
+	res, err := c.request(ctx, http.MethodPut, base+"/bucket/object/metadata?"+url.Values{"bucket_name": {bucket}, "object_key": {key}}.Encode(), body)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	var result map[string]json.RawMessage
+	return stratusData(res, &result)
 }
 
 // PutStratusObject uses the service's overwrite=false guard for creation.
@@ -440,7 +482,7 @@ func (c *Client) ReadStratusObject(ctx context.Context, project, bucket, key str
 		}
 	}
 }
-func (c *Client) WaitStratusObject(ctx context.Context, project, bucket, key, contentType, hash string, size int64) (*StratusObject, error) {
+func (c *Client) WaitStratusObject(ctx context.Context, project, bucket, key, contentType, hash string, size int64, metadata ...map[string]string) (*StratusObject, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 	stable := 0
@@ -452,6 +494,9 @@ func (c *Client) WaitStratusObject(ctx context.Context, project, bucket, key, co
 		matched := false
 		if err == nil {
 			matched = actual == hash && int64(*current.Size) == size && current.ContentType == contentType
+			if len(metadata) > 0 {
+				matched = matched && maps.Equal(current.Metadata, metadata[0])
+			}
 		}
 		if matched {
 			stable++

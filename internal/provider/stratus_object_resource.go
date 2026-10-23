@@ -4,13 +4,16 @@ package provider
 import (
 	"context"
 	"errors"
+	"maps"
 	"strings"
 
 	"github.com/Edson-Edwin/terraform-provider-catalyst/internal/catalyst"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -32,6 +35,7 @@ type stratusObjectModel struct {
 	ContentType types.String `tfsdk:"content_type"`
 	Size        types.Int64  `tfsdk:"size"`
 	ETag        types.String `tfsdk:"etag"`
+	Metadata    types.Map    `tfsdk:"metadata"`
 }
 
 func NewStratusObjectResource() resource.Resource { return &StratusObjectResource{} }
@@ -41,7 +45,7 @@ func (r *StratusObjectResource) Metadata(_ context.Context, req resource.Metadat
 func (r *StratusObjectResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	replace := []planmodifier.String{stringplanmodifier.RequiresReplace()}
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manage an object in an existing unversioned Stratus bucket. Uploads local bytes and content type, supports in-place content updates, import, SHA-256 drift detection and confirmed deletion. This provider limits files to 100 MB; multipart uploads, versioned keys, TTL and custom metadata are not supported. The object key must belong exclusively to this resource; do not use keys with version history. Destroy permanently removes the managed key using the Stratus object deletion API. Creation checks absence and uses overwrite=false; an existing key requires explicit import. Temporary bucket signatures remain in memory and never enter Terraform state or diagnostics; transfers are restricted to the expected regional Stratus origin and do not forward OAuth headers. Source contents are not stored in state. Requires bucket read and object read/create/delete scopes. Import with project_id/bucket_name/object_key, retaining slashes in nested keys; then supply a matching local source/hash/content type. Live validation is limited to India Development.",
+		MarkdownDescription: "Manage an object in an existing unversioned Stratus bucket. Uploads local bytes and content type, supports in-place content updates, import, SHA-256 drift detection and confirmed deletion. This provider limits files to 100 MB; multipart uploads, versioned keys, TTL are not supported. Owns the complete custom metadata map; removing entries clears them remotely. The object key must belong exclusively to this resource; do not use keys with version history. Destroy permanently removes the managed key using the Stratus object deletion API. Creation checks absence and uses overwrite=false; an existing key requires explicit import. Temporary bucket signatures remain in memory and never enter Terraform state or diagnostics; transfers are restricted to the expected regional Stratus origin and do not forward OAuth headers. Source contents are not stored in state. Requires bucket read and object read/create/update/delete scopes; custom metadata needs ZohoCatalyst.buckets.objects.UPDATE. Import with project_id/bucket_name/object_key, retaining slashes in nested keys; then supply a matching local source/hash/content type. Live validation is limited to India Development.",
 		Attributes: map[string]schema.Attribute{
 			"id":            schema.StringAttribute{Computed: true, MarkdownDescription: "Composite project_id/bucket_name/object_key identity.", PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
 			"project_id":    schema.StringAttribute{Required: true, MarkdownDescription: "Existing project ID.", PlanModifiers: replace},
@@ -51,6 +55,7 @@ func (r *StratusObjectResource) Schema(_ context.Context, _ resource.SchemaReque
 			"source_sha256": schema.StringAttribute{Required: true, MarkdownDescription: "Lowercase hex SHA-256, usually filesha256(source). Refresh downloads bytes to detect changes independently of ETag."},
 			"content_type":  schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("application/octet-stream"), MarkdownDescription: "Canonical MIME content type; defaults to application/octet-stream."},
 			"size":          schema.Int64Attribute{Computed: true, MarkdownDescription: "Remote object size in bytes."},
+			"metadata":      schema.MapAttribute{Optional: true, Computed: true, ElementType: types.StringType, Default: mapdefault.StaticValue(types.MapValueMust(types.StringType, map[string]attr.Value{})), MarkdownDescription: "Complete custom metadata map. Keys/values use ASCII letters, digits, spaces, underscores and hyphens; total size is limited to 2047 characters including delimiters. Empty clears all metadata. Values remain in Terraform state; do not put secrets here."},
 			"etag":          schema.StringAttribute{Computed: true, MarkdownDescription: "Opaque ETag returned by Stratus; source_sha256 verifies actual content."},
 		}}
 }
@@ -102,8 +107,21 @@ func (r *StratusObjectResource) ValidateConfig(ctx context.Context, req resource
 			resp.Diagnostics.AddAttributeError(path.Root(key), "Invalid Stratus object configuration", "Provide a valid "+key+" matching the documented supported values.")
 		}
 	}
+	if !data.Metadata.IsNull() && !data.Metadata.IsUnknown() {
+		var metadata map[string]string
+		resp.Diagnostics.Append(data.Metadata.ElementsAs(ctx, &metadata, false)...)
+		if !resp.Diagnostics.HasError() && !catalyst.ValidStratusMetadata(metadata) {
+			resp.Diagnostics.AddAttributeError(path.Root("metadata"), "Invalid Stratus metadata", "Use ASCII letters, digits, spaces, underscores or hyphens, within 2047 total characters including delimiters.")
+		}
+	}
+
 }
 func (d *stratusObjectModel) populate(value *catalyst.StratusObject, hash string) {
+	values := map[string]attr.Value{}
+	for key, v := range value.Metadata {
+		values[key] = types.StringValue(v)
+	}
+	d.Metadata = types.MapValueMust(types.StringType, values)
 	d.ID = types.StringValue(d.ProjectID.ValueString() + "/" + d.Bucket.ValueString() + "/" + d.Key.ValueString())
 	d.SHA256 = types.StringValue(hash)
 	d.ContentType = types.StringValue(value.ContentType)
@@ -111,6 +129,16 @@ func (d *stratusObjectModel) populate(value *catalyst.StratusObject, hash string
 	d.ETag = types.StringValue(value.ETag)
 }
 func (r *StratusObjectResource) persist(ctx context.Context, data *stratusObjectModel, creating bool, diags *diag.Diagnostics, setState func()) {
+	var metadata map[string]string
+	diags.Append(data.Metadata.ElementsAs(ctx, &metadata, false)...)
+	if diags.HasError() {
+		return
+	}
+	if !catalyst.ValidStratusMetadata(metadata) {
+		diags.AddError("Invalid Stratus metadata", "Use supported characters within the 2047 character limit.")
+		return
+	}
+
 	body, err := readUploadSource(data.Source.ValueString(), data.SHA256.ValueString())
 	if err != nil {
 		diags.AddError("Invalid object source", err.Error())
@@ -132,6 +160,17 @@ func (r *StratusObjectResource) persist(ctx context.Context, data *stratusObject
 	if err != nil {
 		diags.AddError("Unable to verify Stratus object", "The confirmed upload identity is retained for recovery. "+err.Error())
 		return
+	}
+	if !maps.Equal(current.Metadata, metadata) {
+		if err = r.client.PutStratusObjectMetadata(ctx, data.ProjectID.ValueString(), data.Bucket.ValueString(), data.Key.ValueString(), metadata); err != nil {
+			diags.AddError("Unable to update Stratus metadata", "The object identity is retained for recovery: "+err.Error())
+			return
+		}
+		current, err = r.client.WaitStratusObject(ctx, data.ProjectID.ValueString(), data.Bucket.ValueString(), data.Key.ValueString(), data.ContentType.ValueString(), data.SHA256.ValueString(), int64(len(body)), metadata)
+		if err != nil {
+			diags.AddError("Unable to verify Stratus metadata", "The object identity is retained for recovery: "+err.Error())
+			return
+		}
 	}
 	data.populate(current, data.SHA256.ValueString())
 	setState()

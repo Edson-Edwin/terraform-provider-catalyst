@@ -46,6 +46,7 @@ func TestStratusObjectLifecycle(t *testing.T) {
 	var mu sync.Mutex
 	var content []byte
 	contentType := ""
+	metadata := map[string]string{}
 	exists := false
 	creates, updates, deletes := 0, 0, 0
 	p := &CatalystProvider{httpClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -79,6 +80,15 @@ func TestStratusObjectLifecycle(t *testing.T) {
 			}
 		} else {
 			switch {
+			case strings.HasSuffix(req.URL.Path, "/metadata"):
+				var payload struct {
+					Metadata map[string]string `json:"meta_data"`
+				}
+				if json.NewDecoder(req.Body).Decode(&payload) != nil {
+					return nil, errors.New("invalid metadata payload")
+				}
+				metadata = payload.Metadata
+				body = `{"status":"success","data":{"message":"Metadata added successfully"}}`
 			case strings.HasSuffix(req.URL.Path, "/signature"):
 				body = fmt.Sprintf(`{"status":"success","data":{"signature":"token=secret","expiry_time":%d}}`, time.Now().Add(time.Hour).UnixMilli())
 			case strings.HasSuffix(req.URL.Path, "/objects"):
@@ -97,7 +107,7 @@ func TestStratusObjectLifecycle(t *testing.T) {
 					status = 404
 				} else {
 					hash := sha256.Sum256(content)
-					b, _ := json.Marshal(map[string]any{"status": "success", "data": map[string]any{"key": "nested/binary ?#.bin", "size": len(content), "content_type": contentType, "etag": hex.EncodeToString(hash[:])}})
+					b, _ := json.Marshal(map[string]any{"status": "success", "data": map[string]any{"key": "nested/binary ?#.bin", "size": len(content), "content_type": contentType, "etag": hex.EncodeToString(hash[:]), "meta_data": metadata}})
 					body = string(b)
 				}
 			default:
@@ -108,6 +118,9 @@ func TestStratusObjectLifecycle(t *testing.T) {
 	})}}
 	config := stratusObjectConfig("123", "test-bucket", "nested/binary ?#.bin", source, "application/octet-stream")
 	updated := stratusObjectConfig("123", "test-bucket", "nested/binary ?#.bin", source, "text/plain")
+	bare := updated
+	updated = strings.Replace(updated, `resource "catalyst_stratus_object" "test" {`, `resource "catalyst_stratus_object" "test" {
+ metadata={owner="terraform",site="website"}`, 1)
 	resource.UnitTest(t, resource.TestCase{ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){"catalyst": providerserver.NewProtocol6WithError(p)}, CheckDestroy: func(_ *terraform.State) error {
 		mu.Lock()
 		defer mu.Unlock()
@@ -120,11 +133,12 @@ func TestStratusObjectLifecycle(t *testing.T) {
 		{ResourceName: "catalyst_stratus_object.test", ImportState: true, ImportStateId: "123/test-bucket/nested/binary ?#.bin", ImportStateVerify: true, ImportStateVerifyIgnore: []string{"source"}},
 		{Config: config, PlanOnly: true},
 		{Config: updated, Check: resource.TestCheckResourceAttr("catalyst_stratus_object.test", "content_type", "text/plain")},
+		{Config: bare, Check: resource.TestCheckResourceAttr("catalyst_stratus_object.test", "metadata.%", "0")},
 		{PreConfig: func() { mu.Lock(); content = bytes.Repeat([]byte{7}, 5); mu.Unlock() }, Config: updated},
 		{PreConfig: func() { mu.Lock(); exists = false; mu.Unlock() }, Config: updated},
 		{Config: updated, PlanOnly: true},
 	}})
-	if creates != 2 || updates != 2 || deletes != 1 {
+	if creates != 2 || updates != 3 || deletes != 1 {
 		t.Fatalf("unexpected lifecycle: creates=%d updates=%d deletes=%d", creates, updates, deletes)
 	}
 }

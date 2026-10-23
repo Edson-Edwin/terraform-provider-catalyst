@@ -14,10 +14,11 @@ import (
 // AppSailMetadata intentionally excludes environment variables. Its authenticated URL identifies the scheduling origin.
 // Endpoints follow the official CLI; deployment configuration uses a separate type.
 type AppSailMetadata struct {
-	ID    ID     `json:"id"`
-	Name  string `json:"name"`
-	Stack string `json:"stack"`
-	URL   string `json:"url,omitempty"`
+	ID       ID     `json:"id"`
+	Name     string `json:"name"`
+	Stack    string `json:"stack"`
+	URL      string `json:"url,omitempty"`
+	Platform string `json:"deployment_type,omitempty"`
 }
 
 func appsailPath(projectID, id string) (string, error) {

@@ -224,6 +224,9 @@ func TestAppSailCreateFailureRetainsIdentity(t *testing.T) {
 	if err = attrs["id"].As(&id); err != nil || id != "789" {
 		t.Fatal("created identity was lost")
 	}
+	if !attrs["url"].IsKnown() {
+		t.Fatal("recovery URL was left unknown")
+	}
 }
 func TestAppSailImportValidation(t *testing.T) {
 	server := providerserver.NewProtocol6(New("test")())()
