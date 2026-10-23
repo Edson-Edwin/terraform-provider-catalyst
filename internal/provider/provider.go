@@ -43,7 +43,7 @@ func (p *CatalystProvider) Metadata(_ context.Context, _ provider.MetadataReques
 
 func (p *CatalystProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Discover Zoho Catalyst projects and job pools, and manage webhook crons. Authenticate using either an access token or OAuth refresh credentials. Environment variables are recommended for secrets.",
+		MarkdownDescription: "Discover Zoho Catalyst projects, job pools, Data Store tables, File Store folders, Cache segments, Stratus buckets and Functions, and manage webhook crons, File Store files and Node.js Functions. Authenticate using either an access token or OAuth refresh credentials. Environment variables are recommended for secrets.",
 		Attributes: map[string]schema.Attribute{
 			"data_center":     schema.StringAttribute{Optional: true, MarkdownDescription: "Data center: `us`, `eu`, `in`, `au`, `ca`, `jp`, or `sa`. Falls back to `CATALYST_DATA_CENTER`, then `us`."},
 			"environment":     schema.StringAttribute{Optional: true, MarkdownDescription: "`Development` or `Production`. Falls back to `CATALYST_ENVIRONMENT`, then `Development`."},
@@ -102,11 +102,11 @@ func (p *CatalystProvider) Configure(ctx context.Context, req provider.Configure
 }
 
 func (p *CatalystProvider) DataSources(_ context.Context) []func() datasource.DataSource {
-	return []func() datasource.DataSource{NewProjectDataSource, NewProjectsDataSource, NewJobPoolsDataSource}
+	return []func() datasource.DataSource{NewProjectDataSource, NewProjectsDataSource, NewJobPoolsDataSource, NewTablesDataSource, NewFoldersDataSource, NewCacheSegmentsDataSource, NewBucketsDataSource, NewFunctionsDataSource}
 }
 
 func (p *CatalystProvider) Resources(_ context.Context) []func() resource.Resource {
-	return []func() resource.Resource{NewWebhookCronResource}
+	return []func() resource.Resource{NewWebhookCronResource, NewFilestoreFileResource, NewFunctionResource}
 }
 
 // New constructs a provider factory for the plugin server and tests.

@@ -1,0 +1,286 @@
+// SPDX-License-Identifier: MPL-2.0
+package catalyst
+
+import (
+	"bufio"
+	"bytes"
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"io"
+	"mime/multipart"
+	"net/http"
+	"regexp"
+	"time"
+)
+
+var ErrFunctionNotFound = errors.New("the Catalyst Function does not exist")
+var errFunctionPending = errors.New("function metadata is temporarily unavailable")
+var functionName = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]{0,99}$`)
+
+func ValidFunctionName(name string) bool { return functionName.MatchString(name) }
+
+type FunctionConfiguration struct {
+	Memory      Integer `json:"memory"`
+	Environment struct {
+		Variables map[string]string `json:"variables"`
+	} `json:"environment"`
+}
+type FunctionDeployment struct {
+	FunctionMetadata
+	Configuration FunctionConfiguration `json:"configuration"`
+}
+
+func (c *Client) functionError(ctx context.Context, res *http.Response, project, id string) error {
+	var failure apiFailure
+	if decode(res.Body, &failure) == nil && res.StatusCode == 404 && failure.Status == "failure" && failure.Data.Code == "INVALID_ID" {
+		return c.confirmFunctionAbsent(ctx, project, id)
+	}
+	return failureError("Catalyst Function request", res.StatusCode, failure)
+}
+
+// Catalyst returns success/data:null for a deleted Function. Confirm parent access
+// and absence from the complete listing before removing managed state.
+func (c *Client) confirmFunctionAbsent(ctx context.Context, project, id string) error {
+	if _, err := c.GetProject(ctx, project); err != nil {
+		return err
+	}
+	// Upsert can temporarily hide both metadata and listing entries. Require
+	// consecutive absent observations before interpreting this as deletion.
+	for attempt := 0; attempt < 3; attempt++ {
+		items, err := c.ListFunctions(ctx, project)
+		if err != nil {
+			return err
+		}
+		for _, item := range items {
+			if string(item.ID) == id {
+				return errFunctionPending
+			}
+		}
+		if attempt < 2 {
+			if err = c.wait(ctx, 2*time.Second); err != nil {
+				return err
+			}
+		}
+	}
+	return ErrFunctionNotFound
+}
+func readFunctionEventually[T any](ctx context.Context, c *Client, read func(context.Context) (*T, error)) (*T, error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+	for {
+		result, err := read(ctx)
+		if !errors.Is(err, errFunctionPending) {
+			return result, err
+		}
+		if err = c.wait(ctx, 2*time.Second); err != nil {
+			return nil, err
+		}
+	}
+}
+
+func (c *Client) readDeployment(ctx context.Context, res *http.Response, project, id string) (*FunctionDeployment, error) {
+	if res.StatusCode != 200 && res.StatusCode != 201 {
+		return nil, c.functionError(ctx, res, project, id)
+	}
+	var envelope struct {
+		Status string          `json:"status"`
+		Data   json.RawMessage `json:"data"`
+	}
+	if decode(res.Body, &envelope) != nil || envelope.Status != "success" {
+		return nil, errors.New("invalid Function deployment response")
+	}
+	if id != "" && string(envelope.Data) == "null" {
+		return nil, c.confirmFunctionAbsent(ctx, project, id)
+	}
+	var identity struct {
+		ID ID `json:"id"`
+	}
+	if json.Unmarshal(envelope.Data, &identity) != nil || !ValidID(string(identity.ID)) || (id != "" && string(identity.ID) != id) {
+		return nil, errors.New("invalid Function deployment identity")
+	}
+	result := &FunctionDeployment{FunctionMetadata: FunctionMetadata{ID: identity.ID}}
+	if json.Unmarshal(envelope.Data, result) != nil || !validFunction(result.FunctionMetadata) || (result.Configuration.Memory != 128 && result.Configuration.Memory != 256 && result.Configuration.Memory != 512) {
+		return &FunctionDeployment{FunctionMetadata: FunctionMetadata{ID: identity.ID}}, errors.New("incomplete Function deployment metadata")
+	}
+	if result.Configuration.Environment.Variables == nil {
+		result.Configuration.Environment.Variables = map[string]string{}
+	}
+	return result, nil
+}
+func (c *Client) GetFunctionDeployment(ctx context.Context, project, id string) (*FunctionDeployment, error) {
+	return readFunctionEventually(ctx, c, func(ctx context.Context) (*FunctionDeployment, error) {
+		return c.getFunctionDeploymentOnce(ctx, project, id)
+	})
+}
+func (c *Client) getFunctionDeploymentOnce(ctx context.Context, project, id string) (*FunctionDeployment, error) {
+	if !ValidID(id) {
+		return nil, errors.New("invalid Function ID")
+	}
+	path, err := functionPath(project, id)
+	if err != nil {
+		return nil, err
+	}
+	res, err := c.get(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	return c.readDeployment(ctx, res, project, id)
+}
+
+// DeployFunction serializes name checks and upserts per client, not across processes.
+// Catalyst's name-keyed API has no established conditional-create primitive.
+func (c *Client) DeployFunction(ctx context.Context, project, id string, desired FunctionDeployment, archive []byte) (*FunctionDeployment, error) {
+	path, err := functionPath(project, "")
+	if err != nil {
+		return nil, err
+	}
+	if (id != "" && !ValidID(id)) || !ValidFunctionName(desired.Name) || desired.Stack != "node22" || desired.Type != "basicio" || int64(len(archive)) > MaxFileBytes || (desired.Configuration.Memory != 128 && desired.Configuration.Memory != 256 && desired.Configuration.Memory != 512) {
+		return nil, errors.New("invalid or unsupported Function configuration")
+	}
+	select {
+	case c.functionWrites <- struct{}{}:
+		defer func() { <-c.functionWrites }()
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	if id != "" {
+		current, err := c.GetFunction(ctx, project, id)
+		if err != nil {
+			return nil, err
+		}
+		if current.Name != desired.Name || current.Stack != desired.Stack || current.Type != desired.Type {
+			return nil, errors.New("function identity/configuration changed; refresh the Terraform plan")
+		}
+	}
+	existing, err := c.ListFunctions(ctx, project)
+	if err != nil {
+		return nil, err
+	}
+	for _, item := range existing {
+		if item.Name == desired.Name && string(item.ID) != id {
+			return nil, errors.New("function name already exists; import it explicitly instead of overwriting it")
+		}
+	}
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	config, err := json.Marshal(desired.Configuration)
+	if err != nil {
+		return nil, errors.New("could not encode Function configuration")
+	}
+	for key, value := range map[string]string{"name": desired.Name, "stack": desired.Stack, "type": desired.Type, "configuration": string(config)} {
+		if err = writer.WriteField(key, value); err != nil {
+			return nil, errors.New("could not encode Function deployment")
+		}
+	}
+	part, err := writer.CreateFormFile("code", "function.zip")
+	if err != nil {
+		return nil, err
+	}
+	if _, err = part.Write(archive); err != nil {
+		return nil, err
+	}
+	if err = writer.Close(); err != nil {
+		return nil, err
+	}
+	res, err := c.requestContent(ctx, http.MethodPut, path+"/upsert", body.Bytes(), writer.FormDataContentType())
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	return c.readDeployment(ctx, res, project, id)
+}
+func (c *Client) FunctionSHA256(ctx context.Context, project, id string) (string, error) {
+	if !ValidID(id) {
+		return "", errors.New("invalid Function ID")
+	}
+	path, err := functionPath(project, id)
+	if err != nil {
+		return "", err
+	}
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+	for {
+		res, err := c.get(ctx, path+"/download")
+		if err != nil {
+			return "", err
+		}
+		if res.StatusCode == 404 {
+			_ = res.Body.Close()
+			// Artifact replicas can briefly return 404 while the Function still exists.
+			// Read its metadata before retrying; permission loss never means absence.
+			if _, err = c.GetFunction(ctx, project, id); err != nil {
+				return "", err
+			}
+			if err = c.wait(ctx, 2*time.Second); err != nil {
+				return "", err
+			}
+			continue
+		}
+		if res.StatusCode != 200 {
+			err = c.functionError(ctx, res, project, id)
+			_ = res.Body.Close()
+			return "", err
+		}
+		reader := bufio.NewReader(res.Body)
+		signature, err := reader.Peek(4)
+		if err != nil || !bytes.Equal(signature, []byte{'P', 'K', 3, 4}) {
+			_ = res.Body.Close()
+			return "", errors.New("function download did not return a ZIP artifact")
+		}
+		hash := sha256.New()
+		size, err := io.Copy(hash, io.LimitReader(reader, MaxFileBytes+1))
+		_ = res.Body.Close()
+		if err != nil || size > MaxFileBytes {
+			return "", errors.New("function archive could not be downloaded within the provider's 100 MB limit")
+		}
+		return hex.EncodeToString(hash.Sum(nil)), nil
+	}
+}
+
+func (c *Client) DeleteFunction(ctx context.Context, project, id string) error {
+	if !ValidID(id) {
+		return errors.New("invalid Function ID")
+	}
+	path, err := functionPath(project, id)
+	if err != nil {
+		return err
+	}
+	res, err := c.request(ctx, http.MethodDelete, path, nil)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != 200 {
+		return c.functionError(ctx, res, project, id)
+	}
+	var envelope struct {
+		Status string `json:"status"`
+		Data   struct {
+			ID ID `json:"id"`
+		} `json:"data"`
+	}
+	if decode(res.Body, &envelope) != nil || envelope.Status != "success" || string(envelope.Data.ID) != id {
+		return errors.New("the Catalyst did not confirm deletion of the requested Function")
+	}
+	return nil
+}
+func (c *Client) WaitFunctionDeleted(ctx context.Context, project, id string) error {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+	for {
+		_, err := c.GetFunction(ctx, project, id)
+		if errors.Is(err, ErrFunctionNotFound) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if err = c.wait(ctx, 2*time.Second); err != nil {
+			return err
+		}
+	}
+}

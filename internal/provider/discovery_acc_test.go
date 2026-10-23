@@ -43,3 +43,26 @@ output "contains_project" { value = contains([for p in data.catalyst_projects.te
 		},
 	})
 }
+
+// TestAccInventoryDataSources performs metadata reads only, including empty lists.
+func TestAccInventoryDataSources(t *testing.T) {
+	if os.Getenv("TF_ACC") != "1" {
+		t.Skip("set TF_ACC=1 and CATALYST_TEST_PROJECT_ID to test live inventory")
+	}
+	projectID := os.Getenv("CATALYST_TEST_PROJECT_ID")
+	if !catalyst.ValidID(projectID) {
+		t.Fatal("CATALYST_TEST_PROJECT_ID must identify an existing test project")
+	}
+	for kind, fixture := range inventoryFixtures {
+		t.Run(kind, func(t *testing.T) {
+			config := fmt.Sprintf("provider \"catalyst\" {}\ndata \"catalyst_%s\" \"test\" { project_id = %q }", kind, projectID)
+			resource.Test(t, resource.TestCase{
+				ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){"catalyst": providerserver.NewProtocol6WithError(New("test")())},
+				Steps: []resource.TestStep{
+					{Config: config, ConfigStateChecks: []statecheck.StateCheck{statecheck.ExpectKnownValue("data.catalyst_"+kind+".test", tfjsonpath.New(fixture.collection), knownvalue.NotNull())}},
+					{Config: config, PlanOnly: true},
+				},
+			})
+		})
+	}
+}

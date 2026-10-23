@@ -1,10 +1,8 @@
 # Visit https://goreleaser.com for documentation on how to customize this
 # behavior.
 version: 2
-before:
-  hooks:
-    # this is just an example and not a requirement for provider building/publishing
-    - go mod tidy
+snapshot:
+  version_template: '{{ .Version }}-dev.{{ .ShortCommit }}'
 builds:
 - env:
     # goreleaser does not work with CGO, it could also complicate
@@ -14,6 +12,7 @@ builds:
   mod_timestamp: '{{ .CommitTimestamp }}'
   flags:
     - -trimpath
+    - -mod=readonly
   ldflags:
     - '-s -w -X main.version={{.Version}}'
   goos:
@@ -27,7 +26,11 @@ builds:
     - arm
     - arm64
     - s390x
+  goarm:
+    - '7'
   ignore:
+    - goos: darwin
+      goarch: arm
     - goos: darwin
       goarch: '386'
     - goos: darwin
@@ -65,7 +68,8 @@ release:
   extra_files:
     - glob: 'terraform-registry-manifest.json'
       name_template: '{{ .ProjectName }}_{{ .Version }}_manifest.json'
-  # If you want to manually examine the release before its live, uncomment this line:
-  # draft: true
+  # A maintainer publishes only after verifying the signed draft artifacts.
+  draft: true
+  prerelease: auto
 changelog:
   disable: true

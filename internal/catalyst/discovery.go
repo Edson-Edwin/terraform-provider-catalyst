@@ -61,7 +61,7 @@ func getList[T any](ctx context.Context, c *Client, path string) ([]T, error) {
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
-		return nil, statusError("Catalyst list request", res.StatusCode)
+		return nil, apiResponseError("Catalyst list request", res)
 	}
 	var envelope struct {
 		Status string `json:"status"`

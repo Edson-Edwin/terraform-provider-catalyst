@@ -45,3 +45,7 @@ website/vendor
 .env.*
 *.tfvars
 *.tfvars.json
+
+# Python release-tool bytecode
+__pycache__/
+*.pyc

@@ -1,16 +1,16 @@
-## Related Issue
+## Problem and resulting behavior
 
-Fixes # <!-- INSERT ISSUE NUMBER -->
+Describe the user-visible problem and what this change does. Link a related issue if available.
 
-## Description
+## Validation
 
-In plain English, describe your approach to addressing the issue linked above. For example, if you made a particular design decision, let us know why you chose this path instead of another solution.
+List the checks run and their results. Distinguish offline tests from live API tests. For live tests, state the region, environment and cleanup outcome without including account identifiers or credentials.
 
-<!-- heimdall_github_prtemplate:grc-pci_dss-2024-01-05 -->
-## Rollback Plan
+## Compatibility and recovery
 
-- [ ] If a change needs to be reverted, we will roll out an update to the code within 7 days.
+Explain any schema, state, import or replacement changes. Describe recovery for partial failures and any required migration. If none apply, say so.
 
-## Changes to Security Controls
+## Documentation
 
-Are there any changes to security controls (access controls, encryption, logging) in this pull request? If so, explain.
+- [ ] Updated generated references, examples and the changelog where applicable.
+- [ ] Recorded new API capabilities and live-validation limits where applicable.

@@ -1,0 +1,33 @@
+{
+  "updated": "2026-10-23",
+  "objective_complete": false,
+  "current_phase": "2: first managed compute lifecycle implemented",
+  "completed": [
+    "draft inventory of 43 capability areas",
+    "registered type/docs/examples consistency test",
+    "Function metadata client and offline contract tests",
+    "offline Go race tests passed",
+    "go vet passed",
+    "17 release-tool tests passed",
+    "live Function API create/read/code-update/delete probe; identity retained; baseline cleanup confirmed; no invocation",
+    "Function discovery data source implemented",
+    "populated Function discovery passed live Terraform tests",
+    "downloaded ZIP matched submitted artifact bytes",
+    "follow-up cleanup confirmed zero Functions remain",
+    "catalyst_function implemented for node22/basicio code, memory and environment maps",
+    "live Terraform Function create/import/update/clear/stable-plan/destroy passed; baseline cleanup confirmed",
+    "regressions for null absence, propagation gaps, cancellation and partial-create recovery"
+  ],
+  "pending": [
+    "complete per-field management API inventory",
+    "verify IaC create/update/delete ownership",
+    "implement remaining service lifecycle phases",
+    "establish meaning of is_deployed and function_output in Development",
+    "establish safe ownership for name-keyed upsert",
+    "extend Function runtime/type support after verifying fixtures",
+    "AppSail and remaining service lifecycle phases"
+  ],
+  "live_prerequisite": "Replacement isolated Development project verified in console and API.",
+  "hosted_ci": "deferred by maintainer; billing outside scope",
+  "commits_and_pushes": "Authorized by maintainer for main."
+}

@@ -3,6 +3,7 @@
 package catalyst
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 const cronID = "9007199254740993124"
@@ -135,6 +137,34 @@ func TestCronDoesNotRetryAmbiguousWrites(t *testing.T) {
 		t.Fatal("ambiguous create was retried")
 	}
 }
+
+func TestCronCreateRetainsOnlyTrustedIdentity(t *testing.T) {
+	for _, tc := range []struct {
+		name, body string
+		retain     bool
+	}{
+		{"invalid_end_time", strings.Replace(cronJSON, `"end_time":"1893456000"`, `"end_time":{}`, 1), true},
+		{"invalid_job", strings.Replace(cronJSON, `"jobpool_id":"123"`, `"jobpool_id":{}`, 1), true},
+		{"failed_envelope", strings.Replace(cronJSON, `"success"`, `"failure"`, 1), false},
+		{"invalid_id", strings.Replace(cronJSON, cronID, `"not-an-id"`, 1), false},
+		{"null_data", `{"status":"success","data":null}`, false},
+		{"invalid_json", `{"status":"success","data":{"id":"123",`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := testClient(t, Config{AccessToken: "secret"}, func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusCreated)
+				writeResponse(t, w, tc.body)
+			})
+			got, err := c.CreateCron(t.Context(), projectID, testCron())
+			if err == nil || (got != nil) != tc.retain {
+				t.Fatalf("unexpected recovery result: resource=%v error=%v", got, err)
+			}
+			if got != nil && string(got.ID) != cronID {
+				t.Fatal("created ID was not preserved exactly")
+			}
+		})
+	}
+}
 func TestCronMetadataValidation(t *testing.T) {
 	for _, tc := range []struct {
 		name, body string
@@ -190,5 +220,64 @@ func TestCronWriteRefreshReplaysJSON(t *testing.T) {
 	}
 	if refreshes != 2 || writes != 2 {
 		t.Fatalf("unexpected request counts: %d/%d", refreshes, writes)
+	}
+}
+
+func TestWaitCronDeleted(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		parentStatus int
+		cancel       bool
+	}{
+		{"eventual_deletion", 200, false}, {"lost_parent_access", 403, false}, {"cancellation", 200, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			reads, waits := 0, 0
+			c := testClient(t, Config{AccessToken: "secret"}, func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/baas/v1/project/"+projectID {
+					w.WriteHeader(tc.parentStatus)
+					writeResponse(t, w, projectJSON)
+					return
+				}
+				reads++
+				if reads < 3 {
+					writeResponse(t, w, cronJSON)
+					return
+				}
+				w.WriteHeader(404)
+				writeResponse(t, w, `{"status":"failure","data":{"error_code":"INVALID_ID"}}`)
+			})
+			c.wait = func(ctx context.Context, d time.Duration) error {
+				waits++
+				if tc.cancel {
+					cancel()
+					return ctx.Err()
+				}
+				return nil
+			}
+			err := c.WaitCronDeleted(ctx, projectID, cronID)
+			if tc.cancel {
+				if !errors.Is(err, context.Canceled) || reads != 1 {
+					t.Fatalf("cancellation ignored: %v", err)
+				}
+			} else if tc.parentStatus == 403 {
+				if err == nil || errors.Is(err, ErrCronNotFound) {
+					t.Fatal("lost access treated as deletion")
+				}
+			} else if err != nil || reads != 3 || waits != 2 {
+				t.Fatalf("deletion not awaited: reads=%d waits=%d err=%v", reads, waits, err)
+			}
+		})
+	}
+}
+
+func TestWaitCronDeletedDeadline(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
+	defer cancel()
+	c := testClient(t, Config{AccessToken: "secret"}, func(w http.ResponseWriter, r *http.Request) { writeResponse(t, w, cronJSON) })
+	if err := c.WaitCronDeleted(ctx, projectID, cronID); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("deadline ignored: %v", err)
 	}
 }

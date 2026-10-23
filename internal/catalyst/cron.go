@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 // ErrCronNotFound means the cron is absent and access to its parent was verified.
@@ -161,41 +162,61 @@ func (c *Client) DeleteCron(ctx context.Context, projectID, id string) error {
 	}
 	return nil
 }
-func (c *Client) cronError(ctx context.Context, res *http.Response, projectID string) error {
-	if res.StatusCode == http.StatusNotFound {
-		var failure struct {
-			Status string `json:"status"`
-			Data   struct {
-				Code string `json:"error_code"`
-			} `json:"data"`
+
+// WaitCronDeleted confirms absence while preserving errors such as lost project access.
+// The caller supplies an operation deadline; the wait also has a two-minute upper bound.
+func (c *Client) WaitCronDeleted(ctx context.Context, projectID, id string) error {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+	for {
+		_, err := c.GetCron(ctx, projectID, id)
+		if errors.Is(err, ErrCronNotFound) {
+			return nil
 		}
-		if decode(res.Body, &failure) == nil && failure.Status == "failure" && failure.Data.Code == "INVALID_ID" {
-			// Missing parent access must never silently remove a managed cron from state.
-			if _, err := c.GetProject(ctx, projectID); err != nil {
-				return err
-			}
-			return ErrCronNotFound
+		if err != nil {
+			return err
+		}
+		if err := c.wait(ctx, 2*time.Second); err != nil {
+			return err
 		}
 	}
-	return statusError("Catalyst cron request", res.StatusCode)
+}
+
+func (c *Client) cronError(ctx context.Context, res *http.Response, projectID string) error {
+	var failure apiFailure
+	if decode(res.Body, &failure) == nil && res.StatusCode == http.StatusNotFound && failure.Status == "failure" && failure.Data.Code == "INVALID_ID" {
+		// Missing parent access must never silently remove a managed cron from state.
+		if _, err := c.GetProject(ctx, projectID); err != nil {
+			return err
+		}
+		return ErrCronNotFound
+	}
+	return failureError("Catalyst cron request", res.StatusCode, failure)
 }
 func (c *Client) readCron(ctx context.Context, res *http.Response, projectID, id string) (*Cron, error) {
 	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusCreated {
 		return nil, c.cronError(ctx, res, projectID)
 	}
 	var envelope struct {
-		Status string `json:"status"`
-		Data   *Cron  `json:"data"`
+		Status string          `json:"status"`
+		Data   json.RawMessage `json:"data"`
 	}
 	if err := decode(res.Body, &envelope); err != nil {
 		return nil, errors.New("the Catalyst API returned an invalid cron response")
 	}
-	cron := envelope.Data
-	if envelope.Status != "success" || cron == nil {
+	if envelope.Status != "success" {
 		return nil, errors.New("the Catalyst API did not return a successful cron response")
 	}
-	if !ValidID(string(cron.ID)) || (id != "" && string(cron.ID) != id) {
+	// Decode identity independently: malformed metadata must not lose a created ID.
+	var identity struct {
+		ID ID `json:"id"`
+	}
+	if err := json.Unmarshal(envelope.Data, &identity); err != nil || !ValidID(string(identity.ID)) || (id != "" && string(identity.ID) != id) {
 		return nil, errors.New("the Catalyst API returned a missing or mismatched cron ID")
+	}
+	cron := &Cron{}
+	if err := json.Unmarshal(envelope.Data, cron); err != nil {
+		return &Cron{ID: identity.ID}, errors.New("the Catalyst API returned invalid cron metadata; the cron ID was retained for recovery")
 	}
 	// Return the valid ID alongside metadata errors so Create can retain it for recovery.
 	if cron.Type != "CronExpression" || cron.ExecutionType != "pre-defined" || cron.Job.TargetType != "Webhook" {

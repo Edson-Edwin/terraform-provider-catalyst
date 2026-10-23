@@ -168,6 +168,7 @@ func TestProjectFailuresDoNotExposeResponse(t *testing.T) {
 				w.WriteHeader(tc.status)
 				writeResponse(t, w, tc.body)
 			})
+			c.wait = func(context.Context, time.Duration) error { return nil }
 			_, err := c.GetProject(t.Context(), projectID)
 			if err == nil {
 				t.Fatal("expected error")
@@ -175,8 +176,12 @@ func TestProjectFailuresDoNotExposeResponse(t *testing.T) {
 			if strings.Contains(err.Error(), "sensitive") {
 				t.Fatal("response or secret leaked in error")
 			}
-			if calls != 1 {
-				t.Fatal("static credentials must not retry")
+			expected := 1
+			if retryableReadStatus(tc.status) {
+				expected += maxReadRetries
+			}
+			if calls != expected {
+				t.Fatalf("unexpected attempts: got %d, want %d", calls, expected)
 			}
 		})
 	}

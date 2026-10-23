@@ -58,7 +58,7 @@ func (r *WebhookCronResource) Metadata(_ context.Context, req resource.MetadataR
 func (r *WebhookCronResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	emptyMap := types.MapValueMust(types.StringType, map[string]attr.Value{})
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manage a pre-defined Job Scheduling cron with a five-field cron expression and a Webhook target. Requires an existing Webhook job pool and the `ZohoCatalyst.cron.CREATE`, `.READ`, `.UPDATE`, and `.DELETE` scopes, plus `ZOHOCATALYST.projects.Read` to distinguish an absent cron from lost project access. Crons default to disabled. Enabling a cron schedules real HTTP requests and may incur Catalyst usage charges. Import using `project_id/cron_id`. Secret values are marked sensitive but remain in Terraform state; secure your state storage.",
+		MarkdownDescription: "Manage a pre-defined Job Scheduling cron with a five-field cron expression and a Webhook target. Requires an existing Webhook job pool and the `ZohoCatalyst.cron.CREATE`, `.READ`, `.UPDATE`, and `.DELETE` scopes, plus `ZOHOCATALYST.projects.Read` to distinguish an absent cron from lost project access. Crons default to disabled. Enabling a cron schedules real HTTP requests and may incur Catalyst usage charges. Deletion waits up to two minutes for confirmed absence and respects cancellation; failures preserve state. Import using `project_id/cron_id`. Secret values are marked sensitive but remain in Terraform state; secure your state storage.",
 		Attributes: map[string]schema.Attribute{
 			"id":             schema.StringAttribute{Computed: true, MarkdownDescription: "Cron ID as an exact numeric string.", PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
 			"project_id":     schema.StringAttribute{Required: true, MarkdownDescription: "Existing project ID. Changing it replaces the cron.", PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()}},
@@ -262,6 +262,8 @@ func (r *WebhookCronResource) Delete(ctx context.Context, req resource.DeleteReq
 	if resp.Diagnostics.HasError() || !r.ready(&resp.Diagnostics) {
 		return
 	}
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
 	err := r.client.DeleteCron(ctx, data.ProjectID.ValueString(), data.ID.ValueString())
 	if errors.Is(err, catalyst.ErrCronNotFound) {
 		return
@@ -270,13 +272,8 @@ func (r *WebhookCronResource) Delete(ctx context.Context, req resource.DeleteReq
 		resp.Diagnostics.AddError("Unable to delete Catalyst webhook cron", err.Error())
 		return
 	}
-	_, err = r.client.GetCron(ctx, data.ProjectID.ValueString(), data.ID.ValueString())
-	if !errors.Is(err, catalyst.ErrCronNotFound) {
-		if err == nil {
-			resp.Diagnostics.AddError("Cron deletion not confirmed", "The cron is still visible. Refresh and retry the destroy operation.")
-		} else {
-			resp.Diagnostics.AddError("Unable to verify cron deletion", err.Error())
-		}
+	if err := r.client.WaitCronDeleted(ctx, data.ProjectID.ValueString(), data.ID.ValueString()); err != nil {
+		resp.Diagnostics.AddError("Unable to verify cron deletion", "Terraform retained the cron in state because deletion could not be confirmed: "+err.Error())
 	}
 }
 func (r *WebhookCronResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {

@@ -45,12 +45,15 @@ func ValidID(id string) bool { return numericID.MatchString(id) }
 
 // Client shares an in-memory OAuth token cache across a provider's data sources.
 type Client struct {
+	functionWrites      chan struct{}
 	config              Config
 	apiURL, accountsURL string
 	http                *http.Client
 	mu                  sync.Mutex
 	token               string
 	expiresAt           time.Time
+	refresh             *tokenRefresh
+	wait                func(context.Context, time.Duration) error
 }
 
 // New validates configuration without making network requests.
@@ -98,21 +101,83 @@ func New(config Config, httpClient *http.Client) (*Client, error) {
 	}
 	// Never forward OAuth form bodies or authorization headers through redirects.
 	hc.CheckRedirect = func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }
-	return &Client{config: config, apiURL: hosts.api, accountsURL: hosts.accounts, http: &hc}, nil
+	return &Client{functionWrites: make(chan struct{}, 1), config: config, apiURL: hosts.api, accountsURL: hosts.accounts, http: &hc, wait: waitContext}, nil
+}
+
+// tokenRefresh is shared by callers but has a cancellation lifetime independent of any one caller.
+// Mutable fields are protected by Client.mu; results are read only after done closes.
+type tokenRefresh struct {
+	done    chan struct{}
+	cancel  context.CancelFunc
+	waiters int
+	token   string
+	err     error
 }
 
 func (c *Client) accessToken(ctx context.Context) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
 	if c.config.AccessToken != "" {
 		return c.config.AccessToken, nil
 	}
 	c.mu.Lock()
-	defer c.mu.Unlock()
-	if err := ctx.Err(); err != nil {
-		return "", err
-	}
 	if c.token != "" && time.Now().Before(c.expiresAt) {
-		return c.token, nil
+		token := c.token
+		c.mu.Unlock()
+		return token, nil
 	}
+	flight := c.refresh
+	if flight == nil {
+		// A single caller leaving must not cancel refresh for other active callers.
+		// The HTTP deadline bounds refresh even if all callers remain active.
+		refreshCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), c.http.Timeout)
+		flight = &tokenRefresh{done: make(chan struct{}), cancel: cancel}
+		c.refresh = flight
+		go c.runRefresh(refreshCtx, flight)
+	}
+	flight.waiters++
+	c.mu.Unlock()
+	defer func() {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		flight.waiters--
+		if flight.waiters == 0 && c.refresh == flight {
+			c.refresh = nil
+			flight.cancel()
+		}
+	}()
+	select {
+	case <-ctx.Done():
+		return "", ctx.Err()
+	case <-flight.done:
+		if err := ctx.Err(); err != nil {
+			return "", err
+		}
+		return flight.token, flight.err
+	}
+}
+
+func (c *Client) runRefresh(ctx context.Context, flight *tokenRefresh) {
+	defer flight.cancel()
+	token, expiresAt, err := c.fetchToken(ctx)
+	if ctx.Err() != nil {
+		err = ctx.Err()
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	// An abandoned request must not overwrite a newer refresh or populate the cache.
+	if c.refresh == flight {
+		if err == nil {
+			c.token, c.expiresAt = token, expiresAt
+		}
+		c.refresh = nil
+	}
+	flight.token, flight.err = token, err
+	close(flight.done)
+}
+
+func (c *Client) fetchToken(ctx context.Context) (string, time.Time, error) {
 	form := url.Values{
 		"grant_type": {"refresh_token"}, "client_id": {c.config.ClientID},
 		"client_secret": {c.config.ClientSecret}, "refresh_token": {c.config.RefreshToken},
@@ -122,17 +187,17 @@ func (c *Client) accessToken(ctx context.Context) (string, error) {
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.accountsURL+"/oauth/v2/token", strings.NewReader(form.Encode()))
 	if err != nil {
-		return "", errors.New("could not construct OAuth request")
+		return "", time.Time{}, errors.New("could not construct OAuth request")
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 	res, err := c.http.Do(req)
 	if err != nil {
-		return "", requestError(ctx, "OAuth token request")
+		return "", time.Time{}, requestError(ctx, "OAuth token request")
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
-		return "", statusError("OAuth token request", res.StatusCode)
+		return "", time.Time{}, statusError("OAuth token request", res.StatusCode)
 	}
 	var token struct {
 		AccessToken string `json:"access_token"`
@@ -140,24 +205,22 @@ func (c *Client) accessToken(ctx context.Context) (string, error) {
 		Error       string `json:"error"`
 	}
 	if err := decode(res.Body, &token); err != nil {
-		return "", errors.New("OAuth server returned an invalid JSON response")
+		return "", time.Time{}, errors.New("OAuth server returned an invalid JSON response")
 	}
 	if token.Error != "" {
 		switch token.Error {
 		case "invalid_client", "invalid_client_secret", "invalid_code", "invalid_grant":
-			return "", fmt.Errorf("OAuth refresh failed (%s); check the credentials and data center", token.Error)
+			return "", time.Time{}, fmt.Errorf("OAuth refresh failed (%s); check the credentials and data center", token.Error)
 		default:
-			return "", errors.New("OAuth refresh was rejected; check credentials, data center and token limits")
+			return "", time.Time{}, errors.New("OAuth refresh was rejected; check credentials, data center and token limits")
 		}
 	}
 	if token.AccessToken == "" || strings.ContainsAny(token.AccessToken, "\r\n") || token.ExpiresIn <= 0 || token.ExpiresIn > 86400 {
-		return "", errors.New("OAuth response is missing a valid access_token or expires_in")
+		return "", time.Time{}, errors.New("OAuth response is missing a valid access_token or expires_in")
 	}
 	lifetime := time.Duration(token.ExpiresIn) * time.Second
 	margin := min(30*time.Second, lifetime/10)
-	c.token = token.AccessToken
-	c.expiresAt = time.Now().Add(lifetime - margin)
-	return c.token, nil
+	return token.AccessToken, time.Now().Add(lifetime - margin), nil
 }
 
 func (c *Client) invalidate(token string) {
@@ -200,7 +263,7 @@ type Project struct {
 	} `json:"project_domain_details"`
 }
 
-// GetProject reads project metadata. It retries one unauthorized request only in refresh-token mode.
+// GetProject reads project metadata with bounded retries for temporary read failures.
 func (c *Client) GetProject(ctx context.Context, id string) (*Project, error) {
 	if !ValidID(id) {
 		return nil, errors.New("project id must be a positive integer written as a string")
@@ -213,15 +276,24 @@ func (c *Client) GetProject(ctx context.Context, id string) (*Project, error) {
 	return readProject(res, id)
 }
 
-// get applies the same routing, credentials and bounded authorization retry to every read.
+// get applies the same routing, credentials and bounded retries to every read.
 // Callers own the response body. Only internally constructed paths are accepted here.
 func (c *Client) get(ctx context.Context, path string) (*http.Response, error) {
 	return c.request(ctx, http.MethodGet, path, nil)
 }
 
-// request retries only a rejected HTTP 401, never ambiguous transport or server failures.
+// request retries transient GET failures and one rejected HTTP 401 in refresh mode.
+// Writes are never retried after ambiguous transport or server failures.
 func (c *Client) request(ctx context.Context, method, path string, body []byte) (*http.Response, error) {
-	for attempt := 0; attempt < 2; attempt++ {
+	return c.requestContent(ctx, method, path, body, "application/json")
+}
+
+func (c *Client) requestContent(ctx context.Context, method, path string, body []byte, contentType string) (*http.Response, error) {
+	refreshed, retries := false, 0
+	for {
+		if err := ctx.Err(); err != nil {
+			return nil, requestError(ctx, "Catalyst API request")
+		}
 		token, err := c.accessToken(ctx)
 		if err != nil {
 			return nil, err
@@ -233,7 +305,7 @@ func (c *Client) request(ctx context.Context, method, path string, body []byte) 
 		req.Header.Set("Authorization", "Zoho-oauthtoken "+token)
 		req.Header.Set("Accept", "application/json")
 		if body != nil {
-			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Content-Type", contentType)
 		}
 		req.Header.Set("Environment", c.config.Environment)
 		if c.config.OrganizationID != "" {
@@ -241,21 +313,39 @@ func (c *Client) request(ctx context.Context, method, path string, body []byte) 
 		}
 		res, err := c.http.Do(req)
 		if err != nil {
+			if method == http.MethodGet && ctx.Err() == nil && retries < maxReadRetries {
+				delay, _ := readRetryDelay(retries, "", time.Now())
+				retries++
+				if c.wait(ctx, delay) == nil {
+					continue
+				}
+			}
 			return nil, requestError(ctx, "Catalyst API request")
 		}
-		if res.StatusCode == http.StatusUnauthorized && c.config.RefreshToken != "" && attempt == 0 {
+		if res.StatusCode == http.StatusUnauthorized && c.config.RefreshToken != "" && !refreshed {
+			refreshed = true
 			_ = res.Body.Close()
 			c.invalidate(token)
 			continue
 		}
+		if method == http.MethodGet && retryableReadStatus(res.StatusCode) && retries < maxReadRetries {
+			delay, retry := readRetryDelay(retries, res.Header.Get("Retry-After"), time.Now())
+			if retry {
+				_ = res.Body.Close()
+				retries++
+				if err := c.wait(ctx, delay); err != nil {
+					return nil, requestError(ctx, "Catalyst API request")
+				}
+				continue
+			}
+		}
 		return res, nil
 	}
-	return nil, errors.New("authorization failed after refreshing the Catalyst access token")
 }
 
 func readProject(res *http.Response, id string) (*Project, error) {
 	if res.StatusCode != http.StatusOK {
-		return nil, statusError("Catalyst project request", res.StatusCode)
+		return nil, apiResponseError("Catalyst project request", res)
 	}
 	var envelope struct {
 		Status string   `json:"status"`
@@ -296,6 +386,14 @@ func requestError(ctx context.Context, operation string) error {
 func statusError(operation string, status int) error {
 	hint := "unexpected response from server"
 	switch status {
+	case 400, 422:
+		hint = "request rejected; check required fields, field formats and Catalyst service limits"
+	case 408:
+		hint = "request timed out; retry the operation when the service is available"
+	case 409:
+		hint = "resource conflict; check for an existing resource with the same name or a concurrent change"
+	case 500, 502, 503, 504:
+		hint = "temporary Catalyst service failure; retry later (check for an existing resource before retrying creation)"
 	case 401:
 		hint = "authentication failed; check credentials and data center"
 	case 403:
@@ -306,4 +404,33 @@ func statusError(operation string, status int) error {
 		hint = "rate limit reached; wait before retrying"
 	}
 	return fmt.Errorf("%s returned HTTP %d: %s", operation, status, hint)
+}
+
+// apiFailure intentionally excludes messages, values and request URLs that may contain secrets.
+type apiFailure struct {
+	Status string `json:"status"`
+	Data   struct {
+		Code string `json:"error_code"`
+	} `json:"data"`
+}
+
+func apiResponseError(operation string, res *http.Response) error {
+	var failure apiFailure
+	if decode(res.Body, &failure) != nil {
+		return statusError(operation, res.StatusCode)
+	}
+	return failureError(operation, res.StatusCode, failure)
+}
+
+func failureError(operation string, status int, failure apiFailure) error {
+	base := statusError(operation, status)
+	if failure.Status == "failure" {
+		switch failure.Data.Code {
+		case "INVALID_ID":
+			return fmt.Errorf("%w (INVALID_ID); verify resource and parent IDs in the selected environment", base)
+		case "PROJECT_CREATION_NOT_ALLOWED":
+			return fmt.Errorf("%w (PROJECT_CREATION_NOT_ALLOWED); project creation is unavailable for this account or authentication context", base)
+		}
+	}
+	return base
 }

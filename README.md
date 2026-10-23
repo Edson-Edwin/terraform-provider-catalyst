@@ -2,7 +2,7 @@
 
 A community Terraform provider intended for public use, built with the Terraform Plugin Framework. Each user supplies their own Zoho credentials and selects their account's data center. No personal account credentials or organization settings are built into the provider.
 
-**Current status:** OAuth authentication and the read-only `catalyst_project`, `catalyst_projects`, and `catalyst_job_pools` data sources are implemented. The `catalyst_webhook_cron` managed resource supports create/read/update/delete and import. Registry releases are not available yet. This is not an official Zoho provider. The long-term goal is broad Catalyst service coverage wherever supported management APIs exist.
+**Current status:** Three managed resources (`catalyst_webhook_cron`, `catalyst_filestore_file`, `catalyst_function`) and eight read-only data sources are implemented. Discovery covers projects, job pools, Data Store tables, File Store folders, Cache segments, Stratus buckets and Functions. Registry releases are not available yet. This is a community provider, not an official Zoho provider. Discovery does not imply create/update/delete support for those services. See [API_COVERAGE.md](API_COVERAGE.md) for exact support and evidence.
 
 ## Requirements
 
@@ -49,7 +49,7 @@ unset CATALYST_ACCESS_TOKEN
 
 For an OAuth client that uses a registered redirect URI, also set `CATALYST_REDIRECT_URI` to that URI. Omit it for a Self Client. Zoho's generic [refresh-token API](https://www.zoho.com/developer/oauth/web-server-apps/refresh-access-token.html) does not require it; the provider sends it when configured.
 
-The provider exchanges refresh credentials only when an API request is needed, caches access tokens in memory for that provider instance, refreshes before expiry, and retries one HTTP 401 after refreshing. Independent Terraform processes have separate caches. It sends credentials in the token request body and does not follow redirects. HTTP 429 responses are reported so the user can wait before retrying.
+The provider exchanges refresh credentials only when an API request is needed, caches access tokens in memory for that provider instance, refreshes before expiry, and retries one HTTP 401 after refreshing. Independent Terraform processes have separate caches. It sends credentials in the token request body and does not follow redirects. Read requests retry temporary failures, including HTTP 429, with bounded backoff and Retry-After handling. Ambiguous writes are not retried. Separate Terraform processes have separate token caches; use an access token for repeated short-lived acceptance-test runs to avoid OAuth refresh-token rate limits.
 
 ### Existing access token
 
@@ -176,6 +176,10 @@ terraform import catalyst_webhook_cron.example 'PROJECT_ID/CRON_ID'
 
 Import requires the matching data center, organization, and environment and a resource configuration that describes the existing cron. Import does not change the cron. An API access error preserves state; a confirmed missing cron is removed from state so Terraform can recreate it. If a create request succeeds remotely but its response is lost, inspect the console and import the cron before retrying. The client does not retry ambiguous transport or server failures for writes.
 
+GET requests retry temporary transport failures and HTTP 408, 429, 500, 502, 503 and 504 up to three times with increasing randomized delays. Server `Retry-After` delays up to 30 seconds are respected; longer delays return an error instead of retrying early. Authentication may refresh once on HTTP 401. Writes are not retried after ambiguous failures. Cancellation stops retries. OAuth refresh is shared across concurrent callers; each caller can cancel independently, and a refresh is cancelled when no callers still need it.
+
+Deletion has a two-minute deadline and checks repeatedly until absence and parent access are confirmed. If confirmation fails, Terraform keeps the resource in state. If a successful create response contains a valid ID but malformed metadata, the provider retains that ID and reports an error so the object can be recovered. A completely lost response still requires manual reconciliation before another create attempt.
+
 A complete disabled example is in `examples/resources/catalyst_webhook_cron`. Its `project_id`, `job_pool_id`, and `end_time` variables must be set before planning. `make verify` validates its syntax without applying it.
 
 Create, import, rename/update, clearing optional fields, a stable plan, and destroy with confirmed cleanup have been tested against the India API. Live tests keep all crons disabled; actual webhook delivery and other regions have not been tested.
@@ -214,13 +218,59 @@ This test creates a uniquely named disabled cron, imports it, updates and clears
 - `internal/catalyst/`: regional API client, token handling and HTTP tests.
 - `internal/provider/`: Terraform schema, configuration, discovery data sources, webhook cron lifecycle and protocol tests.
 - `examples/`: provider-only smoke test, discovery examples, and a disabled webhook cron example.
-- `make generate`: regenerates provider and data source documentation.
-- `make test`, `make verify`, `go vet ./...`: local checks; GitHub Actions runs tests and verification.
+- `make generate`: regenerates provider, data source and resource documentation.
+- `make check`: dependency, formatting, static, offline test and example checks.
+- `make lint`: pinned golangci-lint checks (see CONTRIBUTING.md).
+- `make release-check`: unsigned cross-platform package verification, local-mirror installation and a native Terraform handshake; no publication.
 
 Next milestones are broader cron target support, additional service coverage, and a public release. The [API coverage plan](API_COVERAGE.md) records verified lifecycle behavior and API restrictions. Each service needs an API capability review before promising Terraform lifecycle support.
 
-Public distribution requires a public source repository, a versioned release, signed provider checksums, and registration with the Terraform Registry. The release workflow requires `GPG_PRIVATE_KEY` and `PASSPHRASE` repository secrets before tagging a release. Repository setup alone does not publish the provider.
+See [contributing](CONTRIBUTING.md), [release procedures](RELEASING.md), [security reporting](SECURITY.md) and [support](.github/SUPPORT.md).
+
+Public distribution requires a public source repository, a versioned release, signed provider checksums, and registration with the Terraform Registry. The release workflow requires `GPG_PRIVATE_KEY` and `PASSPHRASE` repository secrets before tagging a release. The release job depends on shared checks and creates a signed draft for verification. Repository setup alone does not publish the provider.
 
 ## License
 
 MPL-2.0. Based on HashiCorp's Terraform Provider Scaffolding Framework; original copyright notices are retained.
+
+## Storage and infrastructure discovery
+
+New data sources are `catalyst_datastore_tables`, `catalyst_filestore_folders`, `catalyst_cache_segments`, and `catalyst_stratus_buckets`. Each takes `project_id` and returns a sorted list of public metadata. They never read table rows, cached values or stored objects. See their generated documentation and `examples/data-sources/` for scopes and configuration.
+
+`catalyst_filestore_file` uploads a local file into an existing File Store folder:
+
+```hcl
+resource "catalyst_filestore_file" "settings" {
+  project_id    = var.project_id
+  folder_id     = var.folder_id
+  name          = "settings.json"
+  source        = "${path.module}/settings.json"
+  source_sha256 = filesha256("${path.module}/settings.json")
+}
+```
+
+Changing the source hash, name, folder or project replaces the file and changes its ID. Refresh downloads the contents to detect drift; consider the download cost for large files. File contents are not written to state, but file paths, names and hashes are. The API limit is 100 MB. The provider buffers uploads in memory; it is not a bulk data migration tool. Import with `project_id/folder_id/file_id`; configure the matching local source and hash afterward. A changed local source after planning fails before upload.
+
+Catalyst recommends Stratus for new storage and displays a File Store deprecation notice in its console. This resource supports existing File Store workloads; it does not create folders or migrate data to Stratus.
+
+The four new data sources and file upload/import/replacement/destroy passed live tests in India Development on 2026-10-23. File-test cleanup was verified against the baseline ID set. This does not establish other-region, production, large-file or comprehensive service coverage.
+
+## Local release preparation
+
+`make check`, `make lint`, `make generate`, and `make release-check` validate local code and packages without hosted CI. The new signed-download check validates the expected GPG fingerprint before executing a package. After publication, `python3 scripts/verify-registry.py VERSION` checks a fresh public installation with no development override or mirror. This command is for a published release, not an unpublished snapshot. See [RELEASING.md](RELEASING.md).
+
+## Implementation-plan progress
+
+`make coverage-status` reports the draft capability inventory. A schema contract test checks registered types against inventory entries, documentation and examples. The inventory is deliberately incomplete pending service/field/API verification; it does not assign a numerical coverage score.
+
+Function discovery is available as `data.catalyst_functions`. It lists IDs and names without invoking or deploying code. Direct API tests in a replacement India Development project verified unique fixture upload, metadata reads, code update with a stable ID, exact artifact download and deletion. Populated discovery passed live Terraform checks. Function deployment is now available through `catalyst_function` for Node.js 22 Basic I/O. It verifies artifact/configuration persistence and documents the name-based upsert ownership constraint. The maintainer deleted the previous test project; old live evidence is historical and its old prerequisites must not be assumed present.
+
+## Managed Functions
+
+`catalyst_function` deploys prebuilt Node.js 22 Basic I/O ZIPs, updates their code, memory and environment variables, detects remote changes, supports import, and confirms deletion. See [the Function example](examples/resources/catalyst_function/) and [resource reference](docs/resources/function.md). The ZIP's `catalyst-config.json` deployment name/runtime/type and `package.json` name/entry point must match the Terraform settings. The provider validates source hashes, archive paths and archive integrity before deployment.
+
+Function names use Catalyst's upsert API. Creation rejects an existing name; import existing Functions explicitly. Keep project/name ownership exclusive across Terraform states and other tools: these local checks are not a server-side conditional-create guarantee. Code and environment updates happen in place; changing project/name/runtime/type requires replacement. This initial implementation supports `node22`/`basicio`, memory 128/256/512 MB and complete environment-variable management. Other runtimes/types remain future work.
+
+Verification reads back configuration and downloads the artifact. It does not invoke the Function or promote it to Production, and does not interpret `is_deployed` as a runtime-readiness signal. Environment values remain in sensitive Terraform state; source bytes do not. Refresh downloads add traffic. The provider limits compressed/expanded ZIPs to 100 MB. India Development acceptance passed create/import/code update/memory and environment update/clear/stable plan/destroy. Live execution and other regions are untested.
+
+Run `make testacc-function` with `CATALYST_TEST_ALLOW_FUNCTION_CREATE=1`, an isolated `CATALYST_TEST_PROJECT_ID`, `CATALYST_ENVIRONMENT=Development`, data center, organization and an access token. The live test uses harmless generated fixtures and never invokes the Function. Default `make test` remains offline.

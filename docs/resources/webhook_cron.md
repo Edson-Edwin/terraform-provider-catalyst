@@ -3,12 +3,12 @@
 page_title: "catalyst_webhook_cron Resource - catalyst"
 subcategory: ""
 description: |-
-  Manage a pre-defined Job Scheduling cron with a five-field cron expression and a Webhook target. Requires an existing Webhook job pool and the ZohoCatalyst.cron.CREATE, .READ, .UPDATE, and .DELETE scopes, plus ZOHOCATALYST.projects.Read to distinguish an absent cron from lost project access. Crons default to disabled. Enabling a cron schedules real HTTP requests and may incur Catalyst usage charges. Import using project_id/cron_id. Secret values are marked sensitive but remain in Terraform state; secure your state storage.
+  Manage a pre-defined Job Scheduling cron with a five-field cron expression and a Webhook target. Requires an existing Webhook job pool and the ZohoCatalyst.cron.CREATE, .READ, .UPDATE, and .DELETE scopes, plus ZOHOCATALYST.projects.Read to distinguish an absent cron from lost project access. Crons default to disabled. Enabling a cron schedules real HTTP requests and may incur Catalyst usage charges. Deletion waits up to two minutes for confirmed absence and respects cancellation; failures preserve state. Import using project_id/cron_id. Secret values are marked sensitive but remain in Terraform state; secure your state storage.
 ---
 
 # catalyst_webhook_cron (Resource)
 
-Manage a pre-defined Job Scheduling cron with a five-field cron expression and a Webhook target. Requires an existing Webhook job pool and the `ZohoCatalyst.cron.CREATE`, `.READ`, `.UPDATE`, and `.DELETE` scopes, plus `ZOHOCATALYST.projects.Read` to distinguish an absent cron from lost project access. Crons default to disabled. Enabling a cron schedules real HTTP requests and may incur Catalyst usage charges. Import using `project_id/cron_id`. Secret values are marked sensitive but remain in Terraform state; secure your state storage.
+Manage a pre-defined Job Scheduling cron with a five-field cron expression and a Webhook target. Requires an existing Webhook job pool and the `ZohoCatalyst.cron.CREATE`, `.READ`, `.UPDATE`, and `.DELETE` scopes, plus `ZOHOCATALYST.projects.Read` to distinguish an absent cron from lost project access. Crons default to disabled. Enabling a cron schedules real HTTP requests and may incur Catalyst usage charges. Deletion waits up to two minutes for confirmed absence and respects cancellation; failures preserve state. Import using `project_id/cron_id`. Secret values are marked sensitive but remain in Terraform state; secure your state storage.
 
 ## Example Usage
 

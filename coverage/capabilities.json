@@ -1,0 +1,508 @@
+{
+  "schema_version": 1,
+  "updated": "2026-10-23",
+  "inventory_complete": false,
+  "scope": "Draft baseline of persistent infrastructure; service/field audit is not complete. No numeric 10-point rating is computed.",
+  "excluded_runtime_actions": [
+    "send email or notification",
+    "execute query or function",
+    "submit one-off job",
+    "perform AI inference"
+  ],
+  "capabilities": [
+    {
+      "id": "projects.project",
+      "service": "projects",
+      "object": "project",
+      "phase": 0,
+      "status": "discovery",
+      "api_evidence": "documented",
+      "resources": [],
+      "data_sources": [
+        "catalyst_project",
+        "catalyst_projects"
+      ],
+      "note": "Project creation was rejected in the former test context; access must be revalidated."
+    },
+    {
+      "id": "scheduling.webhook_cron_expression",
+      "service": "scheduling",
+      "object": "webhook_cron_expression",
+      "phase": 3,
+      "status": "managed",
+      "api_evidence": "live_india",
+      "resources": [
+        "catalyst_webhook_cron"
+      ],
+      "data_sources": [],
+      "note": "Existing lifecycle evidence covers disabled pre-defined Webhook CronExpression schedules only."
+    },
+    {
+      "id": "scheduling.pool",
+      "service": "scheduling",
+      "object": "pool",
+      "phase": 3,
+      "status": "discovery",
+      "api_evidence": "documented",
+      "resources": [],
+      "data_sources": [
+        "catalyst_job_pools"
+      ],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "scheduling.function_cron",
+      "service": "scheduling",
+      "object": "function_cron",
+      "phase": 3,
+      "status": "unimplemented",
+      "api_evidence": "documented",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "scheduling.appsail_cron",
+      "service": "scheduling",
+      "object": "appsail_cron",
+      "phase": 3,
+      "status": "unimplemented",
+      "api_evidence": "documented",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "scheduling.circuit_cron",
+      "service": "scheduling",
+      "object": "circuit_cron",
+      "phase": 3,
+      "status": "unimplemented",
+      "api_evidence": "documented",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "scheduling.recurring_calendar_schedule",
+      "service": "scheduling",
+      "object": "recurring_calendar_schedule",
+      "phase": 3,
+      "status": "unimplemented",
+      "api_evidence": "documented",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "scheduling.one_time_schedule",
+      "service": "scheduling",
+      "object": "one_time_schedule",
+      "phase": 3,
+      "status": "unimplemented",
+      "api_evidence": "documented",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "filestore.file",
+      "service": "filestore",
+      "object": "file",
+      "phase": 4,
+      "status": "managed",
+      "api_evidence": "live_india",
+      "resources": [
+        "catalyst_filestore_file"
+      ],
+      "data_sources": [],
+      "note": "Existing five-byte fixture lifecycle verified; large-file performance not live validated. Legacy service."
+    },
+    {
+      "id": "filestore.folder",
+      "service": "filestore",
+      "object": "folder",
+      "phase": 4,
+      "status": "discovery",
+      "api_evidence": "documented",
+      "resources": [],
+      "data_sources": [
+        "catalyst_filestore_folders"
+      ],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "datastore.table",
+      "service": "datastore",
+      "object": "table",
+      "phase": 5,
+      "status": "discovery",
+      "api_evidence": "iac_candidate",
+      "resources": [],
+      "data_sources": [
+        "catalyst_datastore_tables"
+      ],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "datastore.column",
+      "service": "datastore",
+      "object": "column",
+      "phase": 5,
+      "status": "unimplemented",
+      "api_evidence": "iac_candidate",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "datastore.table_permission",
+      "service": "datastore",
+      "object": "table_permission",
+      "phase": 5,
+      "status": "unimplemented",
+      "api_evidence": "iac_candidate",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "datastore.index",
+      "service": "datastore",
+      "object": "index",
+      "phase": 5,
+      "status": "unimplemented",
+      "api_evidence": "unknown",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "cache.segment",
+      "service": "cache",
+      "object": "segment",
+      "phase": 5,
+      "status": "discovery",
+      "api_evidence": "iac_candidate",
+      "resources": [],
+      "data_sources": [
+        "catalyst_cache_segments"
+      ],
+      "note": "Direct creation is documented as console-only; IaC ownership/update/delete remains unverified."
+    },
+    {
+      "id": "stratus.bucket",
+      "service": "stratus",
+      "object": "bucket",
+      "phase": 4,
+      "status": "discovery",
+      "api_evidence": "documented",
+      "resources": [],
+      "data_sources": [
+        "catalyst_stratus_buckets"
+      ],
+      "note": "Discovery documented; bucket provisioning and policy APIs need verification."
+    },
+    {
+      "id": "stratus.object",
+      "service": "stratus",
+      "object": "object",
+      "phase": 4,
+      "status": "unimplemented",
+      "api_evidence": "documented",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "stratus.versioning",
+      "service": "stratus",
+      "object": "versioning",
+      "phase": 4,
+      "status": "unimplemented",
+      "api_evidence": "unknown",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "stratus.bucket_policy",
+      "service": "stratus",
+      "object": "bucket_policy",
+      "phase": 4,
+      "status": "unimplemented",
+      "api_evidence": "unknown",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "nosql.table",
+      "service": "nosql",
+      "object": "table",
+      "phase": 5,
+      "status": "unimplemented",
+      "api_evidence": "unknown",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "nosql.index",
+      "service": "nosql",
+      "object": "index",
+      "phase": 5,
+      "status": "unimplemented",
+      "api_evidence": "unknown",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "functions.function",
+      "service": "functions",
+      "object": "function",
+      "phase": 2,
+      "status": "managed",
+      "api_evidence": "live_india",
+      "resources": [
+        "catalyst_function"
+      ],
+      "data_sources": [
+        "catalyst_functions"
+      ],
+      "note": "Node22 Basic I/O Function lifecycle implemented; local and live acceptance results recorded in API_COVERAGE.md. Other runtime/type combinations remain unimplemented. Name-keyed upserts require exclusive project/name ownership across writers."
+    },
+    {
+      "id": "appsail.service",
+      "service": "appsail",
+      "object": "service",
+      "phase": 2,
+      "status": "unimplemented",
+      "api_evidence": "official_cli_candidate",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "gateway.configuration_and_rules",
+      "service": "gateway",
+      "object": "configuration_and_rules",
+      "phase": 6,
+      "status": "unimplemented",
+      "api_evidence": "official_cli_candidate",
+      "resources": [],
+      "data_sources": [],
+      "note": "Determine whether updates replace the entire ruleset before deciding resource ownership."
+    },
+    {
+      "id": "authentication.configuration",
+      "service": "authentication",
+      "object": "configuration",
+      "phase": 6,
+      "status": "unimplemented",
+      "api_evidence": "unknown",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "authentication.role_and_permission",
+      "service": "authentication",
+      "object": "role_and_permission",
+      "phase": 6,
+      "status": "unimplemented",
+      "api_evidence": "iac_candidate",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "connections.connection",
+      "service": "connections",
+      "object": "connection",
+      "phase": 6,
+      "status": "unimplemented",
+      "api_evidence": "unknown",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "circuits.definition",
+      "service": "circuits",
+      "object": "definition",
+      "phase": 6,
+      "status": "unimplemented",
+      "api_evidence": "iac_candidate",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "signals.rule",
+      "service": "signals",
+      "object": "rule",
+      "phase": 6,
+      "status": "unimplemented",
+      "api_evidence": "iac_candidate",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "datastreams.subscription",
+      "service": "datastreams",
+      "object": "subscription",
+      "phase": 6,
+      "status": "unimplemented",
+      "api_evidence": "unknown",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "hosting.client_deployment",
+      "service": "hosting",
+      "object": "client_deployment",
+      "phase": 7,
+      "status": "unimplemented",
+      "api_evidence": "official_cli_candidate",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "hosting.domain_mapping",
+      "service": "hosting",
+      "object": "domain_mapping",
+      "phase": 7,
+      "status": "unimplemented",
+      "api_evidence": "unknown",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "slate.application_configuration",
+      "service": "slate",
+      "object": "application_configuration",
+      "phase": 7,
+      "status": "unimplemented",
+      "api_evidence": "unknown",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "pipelines.pipeline_configuration",
+      "service": "pipelines",
+      "object": "pipeline_configuration",
+      "phase": 7,
+      "status": "unimplemented",
+      "api_evidence": "unknown",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "mail.domain_and_sender",
+      "service": "mail",
+      "object": "domain_and_sender",
+      "phase": 7,
+      "status": "unimplemented",
+      "api_evidence": "iac_candidate",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "mail.template",
+      "service": "mail",
+      "object": "template",
+      "phase": 7,
+      "status": "unimplemented",
+      "api_evidence": "iac_candidate",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "notifications.configuration",
+      "service": "notifications",
+      "object": "configuration",
+      "phase": 7,
+      "status": "unimplemented",
+      "api_evidence": "unknown",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "search.configuration",
+      "service": "search",
+      "object": "configuration",
+      "phase": 7,
+      "status": "unimplemented",
+      "api_evidence": "unknown",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "zia.persistent_configuration_audit",
+      "service": "zia",
+      "object": "persistent_configuration_audit",
+      "phase": 7,
+      "status": "unimplemented",
+      "api_evidence": "unknown",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "smartbrowz.persistent_configuration_audit",
+      "service": "smartbrowz",
+      "object": "persistent_configuration_audit",
+      "phase": 7,
+      "status": "unimplemented",
+      "api_evidence": "unknown",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "convokraft.bot_configuration",
+      "service": "convokraft",
+      "object": "bot_configuration",
+      "phase": 7,
+      "status": "unimplemented",
+      "api_evidence": "unknown",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "quickml.deployment_configuration",
+      "service": "quickml",
+      "object": "deployment_configuration",
+      "phase": 7,
+      "status": "unimplemented",
+      "api_evidence": "unknown",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "devops.alert_and_event_configuration",
+      "service": "devops",
+      "object": "alert_and_event_configuration",
+      "phase": 7,
+      "status": "unimplemented",
+      "api_evidence": "unknown",
+      "resources": [],
+      "data_sources": [],
+      "note": "Management API and lifecycle verification required."
+    }
+  ]
+}

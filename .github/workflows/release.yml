@@ -11,11 +11,24 @@ on:
 # Releases need permissions to read and write the repository contents.
 # GitHub considers creating releases and uploading assets as writing contents.
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
+  checks:
+    uses: ./.github/workflows/test.yml
+    permissions:
+      contents: read
+
   goreleaser:
+    needs: checks
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -25,6 +38,17 @@ jobs:
         with:
           go-version-file: 'go.mod'
           cache: true
+      - name: Verify release inputs
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          SIGNING_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          SIGNING_PASSPHRASE: ${{ secrets.PASSPHRASE }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9a-z.-]+)?$ ]]
+          test -n "$SIGNING_KEY"
+          test -n "$SIGNING_PASSPHRASE"
+          make deps-check
+          test -z "$(git status --porcelain)"
       - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
         id: import_gpg
@@ -34,8 +58,23 @@ jobs:
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
-          args: release --clean
+          version: v2.18.3
+          args: release --clean --parallelism 2
         env:
           # GitHub sets the GITHUB_TOKEN secret automatically.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: '1.16.5'
+          terraform_wrapper: false
+      - name: Verify signed draft downloads
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          SIGNER_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+        run: |
+          artifacts="$(mktemp -d)"
+          trap 'rm -rf "$artifacts"' EXIT
+          gh release download "$RELEASE_TAG" --dir "$artifacts"
+          python3 scripts/verify-release.py "$artifacts" --version "${RELEASE_TAG#v}" --signer-fingerprint "$SIGNER_FINGERPRINT"
