@@ -349,3 +349,41 @@ The [full-stack example](examples/full_stack/) connects an existing project, Dat
 A generated Node24 full-stack smoke test passed in isolated India Development: frontend HTML, backend endpoint, NoSQL configuration read, private Stratus download and Data Store create/read/update/delete, followed by managed-resource and generated-row cleanup. The test uses existing schema/bucket prerequisites and does not establish full service provisioning. See the [example testing instructions](examples/full_stack/README.md).
 
 `make testacc-appsail-languages` exercises all 15 managed runtimes with the AppSail creation opt-in; generating its Java fixtures additionally requires a JDK with `javac --release 8`. `make testacc-appsail-health` additionally requires `CATALYST_TEST_ALLOW_APPSAIL_INVOKE=1` and invokes only generated constant-response applications. These optional fixture tools are not provider runtime dependencies.
+
+## Authentication, user roles and Connections
+
+`data.catalyst_auth_user` reads a specific user's role, account type and status,
+without storing their email or profile. Experimental `catalyst_auth_user_role`
+assigns an **existing application end-user** to an **existing role**. It supports
+in-place changes, import, drift detection and explicit fallback-role assignment
+on destroy. It never invites/deletes users or changes their names/status. Only
+one state/resource should own each project/user assignment. Requires
+`ZohoCatalyst.projects.users.READ` and `.UPDATE` (the data source needs `.READ`).
+
+Offline API and real Terraform lifecycle tests pass. No disposable application
+user was available, so live role-update compatibility is **not verified**. This
+does not establish complete Authentication service coverage. Login setup, custom
+role creation/defaults, table permissions and Connections provisioning remain
+unimplemented. The current vendor Connections SDK documents credential retrieval
+inside Catalyst Functions/AppSail; it does not establish a headless provisioning
+contract. See the [integration and API-boundary guide](docs/guides/authentication_connections.md),
+[role resource](docs/resources/auth_user_role.md) and
+[user access data source](docs/data-sources/auth_user.md).
+
+To run live assignment checks later, supply ordinary provider credentials with
+the scopes above, `TF_ACC=1`, `CATALYST_ENVIRONMENT=Development`, and:
+
+```sh
+export CATALYST_TEST_ALLOW_AUTH_USER_ROLE_UPDATE=1
+export CATALYST_TEST_PROJECT_ID="isolated-development-project-id"
+export CATALYST_TEST_AUTH_USER_ID="existing-disposable-app-user-id"
+export CATALYST_TEST_AUTH_ROLE_ID="existing-test-role-id"
+export CATALYST_TEST_AUTH_FALLBACK_ROLE_ID="initial-and-destroy-fallback-role-id"
+make testacc-auth-user-role
+```
+
+The test and fallback roles must differ. The user must initially belong to the
+fallback role. The test changes that user's role, imports, updates, checks a stable
+plan and verifies the fallback after destroy. It does not invite a user or send
+password-reset emails. If the process is terminated, inspect the supplied fixture
+user and restore its fallback role manually before reusing it.

@@ -2,10 +2,25 @@
 
 This community provider is under development. Public availability and broad service coverage remain goals; implemented capabilities are listed below. API availability must be verified separately from the Terraform schema and mock tests.
 
-## Implemented and verified
+Latest Authentication/Connections milestone (2026-10-23): **12 resources and 12
+data sources**, with a draft inventory of **46 capability areas**: 14 partly
+managed, 8 discovery-only and 24 unimplemented. The new existing-user assignment
+resource is experimental and has no live write verification. Authentication
+setup, custom role/default management, table permission editing and Connections
+provisioning remain unimplemented. The [API-boundary and integration guide](docs/guides/authentication_connections.md)
+records the official sources and requirements for completing those areas.
+Local `make check` passed, including the full offline race suite, vet, example
+validation, provider schema and no-change plan. Configured static analysis
+reported zero issues. No disposable user was available; no live writes or hosted
+CI checks were performed for this milestone. Earlier live evidence below applies
+only to the capabilities explicitly tested in those milestones.
+
+## Implemented coverage and verification
 
 | Terraform type | Capability | Verification |
 | --- | --- | --- |
+| `catalyst_auth_user_role` (experimental) | Assign an existing end-user to an existing role; explicit fallback on destroy; no user provisioning | Offline Terraform lifecycle/import/update/drift/stable-plan/recovery/destroy tests; live writes pending because no disposable user is available |
+| `data.catalyst_auth_user` | Read a specific user's role/account metadata, excluding email and profiles from state | Offline API and Terraform tests; live user fixture pending |
 | `data.catalyst_project` | Read a project by ID | Offline protocol/client tests; live India access-token and refresh-token reads |
 | `data.catalyst_projects` | List projects visible in the selected organization | Offline protocol/client tests; live India listing and stable Terraform plan |
 | `data.catalyst_job_pools` | List a project's existing scheduling pools | Offline populated/empty/error cases; live India empty and populated listings with stable plans |

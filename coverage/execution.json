@@ -1,7 +1,7 @@
 {
   "updated": "2026-10-23",
   "objective_complete": false,
-  "current_phase": "Website application integration verified with existing table/schema/bucket prerequisites; automatic infrastructure provisioning remains incomplete",
+  "current_phase": "Authentication/Connections API audit and experimental existing-user role assignment; no disposable user available for live writes; configuration/role/permission/Connection provisioning remain incomplete",
   "completed": [
     "draft inventory of 43 capability areas",
     "registered type/docs/examples consistency test",
@@ -69,9 +69,17 @@
     "Data Store API fixture create/read/PATCH-null/delete contract verified; deleted rows return HTTP200 data:null; no Terraform schema/row provisioning claim",
     "Full generated Node24 website smoke test passed: frontend HTML, backend NoSQL configuration read, private Stratus download, Data Store row CRUD, stable plan and confirmed managed-resource/application-row cleanup",
     "Final make check passed, including full offline race suite, vet, dependency/format checks and all examples/schema/no-op plan; configured static analysis reported zero issues",
-    "All 14 unsigned platform archives, checksums, manifest, isolated Terraform filesystem-mirror installation and native provider handshake verified for the website milestone; no publication or signing"
+    "All 14 unsigned platform archives, checksums, manifest, isolated Terraform filesystem-mirror installation and native provider handshake verified for the website milestone; no publication or signing",
+    "Re-audited current official Authentication/Connections documentation, REST API sitemap and installed official CLI/SDK contracts; no supported setup/role-definition/permission/Connection provisioning lifecycle established",
+    "Added experimental catalyst_auth_user_role for existing end-users/roles with explicit destroy fallback, import, drift handling, readback verification and recovery state; no invitations/deletions or profile fields in state",
+    "Added data.catalyst_auth_user for precision-preserving role/account metadata; privacy, malformed responses, permission errors, administrator protection and ambiguous-write handling tested offline",
+    "Authentication/Connections guide and resource/data-source references generated from retained templates; executable examples validate",
+    "Authentication milestone make check passed: dependency/format checks, vet, full offline race suite, all example validations, schema loading and no-change plan; configured golangci-lint v2.15.0 reported zero issues",
+    "Opt-in disposable-user live assignment test added but not executed: maintainer confirmed no disposable application user is available. No live writes or hosted CI checks in this milestone."
   ],
   "pending": [
+    "Live user-role assignment read/write/import/drift/fallback verification requires an existing disposable application end-user and two test roles; maintainer confirmed no disposable user is available",
+    "Authentication setup, role-definition/permission CRUD and Connection-definition provisioning require supported public management contracts; runtime Connection credential retrieval alone is not provisioning",
     "complete per-field management API inventory",
     "verify IaC create/update/delete ownership",
     "implement remaining service lifecycle phases",
@@ -94,17 +102,21 @@
   "commits_and_pushes": "Authorized by maintainer for main.",
   "latest_milestone": {
     "date": "2026-10-23",
-    "resources": 11,
-    "data_sources": 11,
-    "draft_capabilities": 45,
-    "partially_managed_areas": 13,
+    "resources": 12,
+    "data_sources": 12,
+    "draft_capabilities": 46,
+    "partially_managed_areas": 14,
     "discovery_only_areas": 8,
     "unimplemented_areas": 24,
     "objective_complete": false,
-    "live_region": "India Development",
-    "full_stack_smoke": "passed with generated code/data and existing prerequisites",
+    "live_region": "No live writes in the Authentication milestone; prior website evidence is India Development",
+    "full_stack_smoke": "Passed in the earlier website milestone; not rerun for experimental user-role assignment",
     "hosted_ci": "not queried as requested",
     "registry_publication": "not established",
-    "packaging": "14 unsigned platform archives verified; native Terraform mirror installation and schema handshake passed"
+    "authentication_role_assignment": "Experimental; complete offline lifecycle passed; live write/readback unverified because no disposable end-user is available",
+    "authentication_setup_and_permissions": "Unimplemented; supported public management lifecycle not established",
+    "connections_provisioning": "Unimplemented; verified SDK capability is credential retrieval inside Catalyst runtime",
+    "local_verification": "make generate, make check and configured golangci-lint passed; zero static-analysis issues",
+    "packaging": "Historical website milestone: 14 unsigned platform archives and native mirror/schema checks passed. New Authentication milestone has not been packaged or published."
   }
 }

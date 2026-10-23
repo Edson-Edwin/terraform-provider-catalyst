@@ -4,7 +4,7 @@ This is a community provider for Zoho Catalyst, built with the Terraform Plugin 
 
 ## Local checks
 
-Install Go 1.25.8 or newer, Terraform, Make, Python 3, golangci-lint v2.15.0, and GoReleaser v2.18.3. Default tests need no Catalyst account or credentials.
+Install Go 1.25.8 or newer, Terraform, Make, golangci-lint v2.15.0, and GoReleaser v2.18.3. Default tests need no Catalyst account or credentials.
 
 ```sh
 make check

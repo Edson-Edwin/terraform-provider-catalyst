@@ -340,6 +340,17 @@
       "note": "Gateway enable/disable and complete Basic I/O ruleset management with OAuth or explicit no-auth, import and asynchronous failure handling. API lifecycle verified live in isolated India Development; live Terraform evidence is recorded in API_COVERAGE.md. Other targets, auth modes and configured throttling remain unsupported."
     },
     {
+      "id": "authentication.user_role_assignment",
+      "service": "authentication",
+      "object": "user_role_assignment",
+      "phase": 4,
+      "status": "managed",
+      "api_evidence": "official_sdk_contract_offline",
+      "resources": ["catalyst_auth_user_role"],
+      "data_sources": ["catalyst_auth_user"],
+      "note": "Experimental existing end-user assignment to existing role using the documented SDK PUT contract. Specific-user role/account metadata discovery excludes profiles from state. Explicit destroy fallback; no invitations/deletions; import, drift, stable plans, recovery and fallback destruction tested offline. No disposable application user was available, so live write/readback compatibility remains unverified. Role definition and permission provisioning remain unimplemented."
+    },
+    {
       "id": "authentication.configuration",
       "service": "authentication",
       "object": "configuration",
@@ -348,7 +359,7 @@
       "api_evidence": "unknown",
       "resources": [],
       "data_sources": [],
-      "note": "Management API and lifecycle verification required."
+      "note": "Re-audited current official Authentication help and public API catalog. Hosted/embedded/third-party login, signup, social providers and domains have console workflows; a supported public configuration lifecycle contract was not established. This does not mean Catalyst lacks the features. See docs/guides/authentication_connections.md."
     },
     {
       "id": "authentication.role_and_permission",
@@ -359,7 +370,7 @@
       "api_evidence": "iac_candidate",
       "resources": [],
       "data_sources": [],
-      "note": "Management API and lifecycle verification required."
+      "note": "Role definition/default/clone/delete and table scopes/permissions remain unimplemented. Console documentation exists but no supported public management lifecycle was established by this audit; role deletion text contains historical contradictions. Existing-user assignment is tracked separately as an experimental SDK-based subset. See docs/guides/authentication_connections.md."
     },
     {
       "id": "connections.connection",
@@ -370,7 +381,7 @@
       "api_evidence": "unknown",
       "resources": [],
       "data_sources": [],
-      "note": "Management API and lifecycle verification required."
+      "note": "Re-audited official REST catalog, current SDK documentation and installed official CLI/SDK. No supported definition CRUD contract was established. Current JavaScript Connections SDK exposes runtime credential retrieval only and explicitly restricts it to Catalyst Functions/AppSail; console creation/consent/edit/revoke/delete workflows are documented. Provisioning remains unimplemented; no credential data source or fabricated resource is registered. See docs/guides/authentication_connections.md."
     },
     {
       "id": "circuits.definition",

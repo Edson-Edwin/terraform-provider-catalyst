@@ -10,6 +10,8 @@ dev: build
 	sh scripts/setup-dev.sh
 
 verify: dev
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_auth_user_role validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_auth_user validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/full_stack validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_nosql_item validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_nosql_table validate
@@ -177,3 +179,9 @@ testacc-appsail-health:
 	TF_ACC=1 go test -race -count=1 -timeout=20m -run '^TestAccAppSailWebsiteHealth$$' ./internal/provider
 
 .PHONY: testacc-appsail-languages testacc-appsail-health
+
+# Uses an existing disposable end-user and roles; never sends invitations.
+testacc-auth-user-role:
+	TF_ACC=1 go test -race -count=1 -timeout=5m -run '^TestAccAuthUserRole$$' ./internal/provider
+
+.PHONY: testacc-auth-user-role
