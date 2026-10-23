@@ -35,7 +35,16 @@ func (i *Integer) UnmarshalJSON(raw []byte) error {
 }
 
 type CronSchedule struct {
-	Timezone string `json:"timezone"`
+	Timezone        string    `json:"timezone"`
+	RepetitionType  string    `json:"repetition_type,omitempty"`
+	Hour            *Integer  `json:"hour,omitempty"`
+	Minute          *Integer  `json:"minute,omitempty"`
+	Second          *Integer  `json:"second,omitempty"`
+	Days            []Integer `json:"days,omitempty"`
+	Months          []Integer `json:"months,omitempty"`
+	WeeksOfMonth    []Integer `json:"weeks_of_month,omitempty"`
+	WeekDays        []Integer `json:"week_day,omitempty"`
+	TimeOfExecution *Integer  `json:"time_of_execution,omitempty"`
 }
 type CronRetry struct {
 	Count    Integer `json:"number_of_retries"`
@@ -112,6 +121,7 @@ func (c *Client) writeCron(ctx context.Context, method, projectID, id string, cr
 	default:
 		return nil, errors.New("unsupported cron target type")
 	}
+
 	// Marshal only supported request fields, excluding the response-only cron_detail.
 	payload := struct {
 		ID            ID             `json:"id,omitempty"`
@@ -119,9 +129,9 @@ func (c *Client) writeCron(ctx context.Context, method, projectID, id string, cr
 		Description   string         `json:"description"`
 		Type          string         `json:"cron_type"`
 		ExecutionType string         `json:"cron_execution_type"`
-		Expression    string         `json:"cron_expression"`
+		Expression    string         `json:"cron_expression,omitempty"`
 		Enabled       *bool          `json:"cron_status"`
-		EndTime       Integer        `json:"end_time"`
+		EndTime       Integer        `json:"end_time,omitempty"`
 		Schedule      CronSchedule   `json:"job_detail"`
 		Job           map[string]any `json:"job_meta"`
 	}{cron.ID, cron.Name, cron.Description, cron.Type, cron.ExecutionType, cron.Expression, cron.Enabled, cron.EndTime, cron.Schedule, job}
@@ -246,17 +256,30 @@ func (c *Client) readCron(ctx context.Context, res *http.Response, projectID, id
 	if err := json.Unmarshal(envelope.Data, cron); err != nil {
 		return &Cron{ID: identity.ID}, errors.New("the Catalyst API returned invalid cron metadata; the cron ID was retained for recovery")
 	}
+	// One-time responses use job_detail in the documented REST contract.
+	if cron.Type == "OneTime" && cron.Detail.Timezone == "" {
+		cron.Detail = cron.Schedule
+	}
 	// Return the valid ID alongside metadata errors so Create can retain it for recovery.
-	if cron.Type != "CronExpression" || cron.ExecutionType != "pre-defined" || cron.Job.TargetType != target {
+	supported := cron.Type == "CronExpression" || (target == "Function" && (cron.Type == "Calendar" || cron.Type == "OneTime"))
+	if !supported || cron.ExecutionType != "pre-defined" || cron.Job.TargetType != target {
 		return cron, errors.New("cron type or target does not match the managed resource")
 	}
-	if cron.Name == "" || cron.Expression == "" || cron.Enabled == nil || cron.Detail.Timezone == "" || cron.Job.Name == "" || !ValidID(string(cron.Job.PoolID)) {
+	if cron.Name == "" || (cron.Type == "CronExpression" && cron.Expression == "") || cron.Enabled == nil || cron.Detail.Timezone == "" || cron.Job.Name == "" || !ValidID(string(cron.Job.PoolID)) {
 		return cron, errors.New("the Catalyst API returned incomplete cron metadata")
 	}
 	if target == "Webhook" && (cron.Job.URL == "" || cron.Job.Method == "") {
 		return cron, errors.New("the Catalyst API returned incomplete webhook metadata")
 	}
 	if target == "Function" {
+		if cron.Type == "Calendar" {
+			if err := ValidCalendarSchedule(cron.Detail); err != nil {
+				return cron, err
+			}
+		}
+		if cron.Type == "OneTime" && (cron.Detail.TimeOfExecution == nil || *cron.Detail.TimeOfExecution <= 0) {
+			return cron, errors.New("incomplete one-time execution timestamp")
+		}
 		if cron.Job.TargetDetails != nil {
 			if cron.Job.TargetID != "" && cron.Job.TargetID != cron.Job.TargetDetails.ID {
 				return cron, errors.New("mismatched Function target identities")

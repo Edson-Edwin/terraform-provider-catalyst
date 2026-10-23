@@ -1,7 +1,7 @@
 {
   "updated": "2026-10-23",
   "objective_complete": false,
-  "current_phase": "Function-target CronExpression lifecycle complete; remaining schedule variants and service management",
+  "current_phase": "Calendar and one-time Function scheduling complete; periodic schedules and remaining service management",
   "completed": [
     "draft inventory of 43 capability areas",
     "registered type/docs/examples consistency test",
@@ -40,7 +40,12 @@
     "Empty 128 MB Function Job Pool prepared in isolated India Development as a reusable test prerequisite",
     "catalyst_function_cron implemented with pool/Job Function identity checks and separate Webhook/Function read ownership",
     "Live disabled Function cron create/import/update/parameter clear/drift repair/external deletion and recreation/stable plan/destroy passed; Job Function fixture baseline restored",
-    "Function cron job names restricted to verified ASCII letters, digits and underscores after a hyphenated name was rejected by the service"
+    "Function cron job names restricted to verified ASCII letters, digits and underscores after a hyphenated name was rejected by the service",
+    "Typed daily/monthly/yearly date/week and one-time Function schedules implemented with mutually exclusive modes and validated date fields",
+    "Live 26-step schedule matrix passed: same-ID form/time updates, imports, stable plans and confirmed destroy; no jobs submitted and Function baseline restored",
+    "API rejected multiple weekdays; supported week calendars require exactly one weekday",
+    "One-time timestamps verified as Unix seconds; job_detail response normalization and computed end sentinel tested",
+    "Shared resource types are deduplicated in coverage/package checks; capability counts do not inflate Terraform resource counts"
   ],
   "pending": [
     "complete per-field management API inventory",
@@ -51,7 +56,8 @@
     "Remaining Function languages/runtime versions/types beyond Node22/24 Basic I/O, Advanced I/O, Event, Cron and Job Functions",
     "Other Gateway targets, authentication modes, system routes and configured throttling",
     "Remaining service lifecycle phases; draft service/field inventory is still incomplete",
-    "Stratus bucket provisioning, policies, version history, multipart objects, TTL and custom metadata management"
+    "Stratus bucket provisioning, policies, version history, multipart objects, TTL and custom metadata management",
+    "Periodic/every schedules and remaining scheduling target types; draft inventory expanded to 44 areas"
   ],
   "live_prerequisite": "Replacement isolated Development project verified in console and API.",
   "hosted_ci": "deferred by maintainer; billing outside scope",

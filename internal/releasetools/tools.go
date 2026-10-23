@@ -75,6 +75,20 @@ type Inventory struct {
 	Capabilities []Capability `json:"capabilities"`
 }
 
+// One Terraform type may manage several distinct capability areas.
+func (i Inventory) terraformTypes() (map[string]bool, map[string]bool) {
+	resources, sources := map[string]bool{}, map[string]bool{}
+	for _, entry := range i.Capabilities {
+		for _, name := range entry.Resources {
+			resources[name] = true
+		}
+		for _, name := range entry.DataSources {
+			sources[name] = true
+		}
+	}
+	return resources, sources
+}
+
 func (t *Tools) inventory() (Inventory, error) {
 	var inventory Inventory
 	raw, err := os.ReadFile(filepath.Join(t.Root, "coverage", "capabilities.json"))
@@ -95,17 +109,15 @@ func (t *Tools) Coverage(w io.Writer) error {
 		return err
 	}
 	counts := map[string]int{}
-	resources, sources := 0, 0
+	resources, sources := inventory.terraformTypes()
 	for _, entry := range inventory.Capabilities {
 		counts[entry.Status]++
-		resources += len(entry.Resources)
-		sources += len(entry.DataSources)
 	}
 	label := "draft; service/field audit incomplete"
 	if inventory.Complete {
 		label = "complete"
 	}
-	_, err = fmt.Fprintf(w, "Inventory: %s\nCapabilities: %d\nmanaged: %d\ndiscovery: %d\nunimplemented: %d\nTerraform resources: %d\nTerraform data sources: %d\n10/10 coverage: not established.\n", label, len(inventory.Capabilities), counts["managed"], counts["discovery"], counts["unimplemented"], resources, sources)
+	_, err = fmt.Fprintf(w, "Inventory: %s\nCapabilities: %d\nmanaged: %d\ndiscovery: %d\nunimplemented: %d\nTerraform resources: %d\nTerraform data sources: %d\n10/10 coverage: not established.\n", label, len(inventory.Capabilities), counts["managed"], counts["discovery"], counts["unimplemented"], len(resources), len(sources))
 	return err
 }
 func (t *Tools) verifySchema(raw []byte, exact bool) error {
@@ -126,22 +138,18 @@ func (t *Tools) verifySchema(raw []byte, exact bool) error {
 	if err != nil {
 		return err
 	}
-	resourceCount, sourceCount := 0, 0
-	for _, entry := range inventory.Capabilities {
-		for _, name := range entry.Resources {
-			resourceCount++
-			if _, ok := schema.Resources[name]; !ok {
-				return errors.New("packaged provider is missing a required resource")
-			}
-		}
-		for _, name := range entry.DataSources {
-			sourceCount++
-			if _, ok := schema.Sources[name]; !ok {
-				return errors.New("packaged provider is missing a required data source")
-			}
+	resources, sources := inventory.terraformTypes()
+	for name := range resources {
+		if _, ok := schema.Resources[name]; !ok {
+			return errors.New("packaged provider is missing a required resource")
 		}
 	}
-	if exact && (len(schema.Resources) != resourceCount || len(schema.Sources) != sourceCount) {
+	for name := range sources {
+		if _, ok := schema.Sources[name]; !ok {
+			return errors.New("packaged provider is missing a required data source")
+		}
+	}
+	if exact && (len(schema.Resources) != len(resources) || len(schema.Sources) != len(sources)) {
 		return errors.New("packaged provider has unexpected Terraform types")
 	}
 	return nil

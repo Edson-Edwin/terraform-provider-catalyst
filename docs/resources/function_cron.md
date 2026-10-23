@@ -3,12 +3,12 @@
 page_title: "catalyst_function_cron Resource - catalyst"
 subcategory: ""
 description: |-
-  Manage a pre-defined CronExpression schedule targeting an existing Job Function and Function Job Pool. Validates target identities and project membership before writes. Defaults to disabled. Enabling submits real jobs and may incur Catalyst usage. The Function code and pool are separate resources/prerequisites. Supports updates, import as project_id/cron_id, drift and confirmed deletion. Requires cron create/read/update/delete, jobpool read, Function read and project read scopes. Parameter values are sensitive but remain in Terraform state; secure your state storage. Calendar/one-time schedules and legacy Cron Function triggers are not managed here. Live validation is limited to India Development.
+  Manage a pre-defined CronExpression, daily/monthly/yearly calendar or one-time schedule targeting an existing Job Function and Function Job Pool. Validates target identities and project membership before writes. Defaults to disabled. Enabling submits real jobs and may incur Catalyst usage. The Function code and pool are separate resources/prerequisites. Supports updates, import as project_id/cron_id, drift and confirmed deletion. Requires cron create/read/update/delete, jobpool read, Function read and project read scopes. Parameter values are sensitive but remain in Terraform state; secure your state storage. Set exactly one schedule mode. Time and form changes update the same cron ID; date/week forms clear omitted fields. Week-based calendars require one weekday. One-time timestamps use Unix seconds and omit end_time. Periodic schedules and legacy Cron Function triggers are not managed here. Live validation is limited to India Development.
 ---
 
 # catalyst_function_cron (Resource)
 
-Manage a pre-defined CronExpression schedule targeting an existing Job Function and Function Job Pool. Validates target identities and project membership before writes. Defaults to disabled. Enabling submits real jobs and may incur Catalyst usage. The Function code and pool are separate resources/prerequisites. Supports updates, import as project_id/cron_id, drift and confirmed deletion. Requires cron create/read/update/delete, jobpool read, Function read and project read scopes. Parameter values are sensitive but remain in Terraform state; secure your state storage. Calendar/one-time schedules and legacy Cron Function triggers are not managed here. Live validation is limited to India Development.
+Manage a pre-defined CronExpression, daily/monthly/yearly calendar or one-time schedule targeting an existing Job Function and Function Job Pool. Validates target identities and project membership before writes. Defaults to disabled. Enabling submits real jobs and may incur Catalyst usage. The Function code and pool are separate resources/prerequisites. Supports updates, import as project_id/cron_id, drift and confirmed deletion. Requires cron create/read/update/delete, jobpool read, Function read and project read scopes. Parameter values are sensitive but remain in Terraform state; secure your state storage. Set exactly one schedule mode. Time and form changes update the same cron ID; date/week forms clear omitted fields. Week-based calendars require one weekday. One-time timestamps use Unix seconds and omit end_time. Periodic schedules and legacy Cron Function triggers are not managed here. Live validation is limited to India Development.
 
 ## Example Usage
 
@@ -32,8 +32,6 @@ resource "catalyst_function_cron" "example" {
 
 ### Required
 
-- `end_time` (Number) Positive Unix timestamp in seconds at which scheduling ends. Choose a future time when enabling the cron.
-- `expression` (String) Five-field Catalyst cron expression: minute, hour, day of month, month, day of week. Catalyst validates schedule syntax.
 - `function_id` (String) Existing Job Function ID in the same project. This is a Job Function (type job), not a legacy Cron Function.
 - `job_name` (String) Job name: 1–20 ASCII letters, digits or underscores. Hyphens were rejected by the live Function scheduling API.
 - `job_pool_id` (String) Existing Function Job Pool ID in the same project.
@@ -43,8 +41,12 @@ resource "catalyst_function_cron" "example" {
 
 ### Optional
 
+- `calendar_schedule` (Attributes) Daily, monthly or yearly calendar schedule, using the resource timezone. Choose dates or weeks/weekdays for monthly/yearly schedules. Mutually exclusive with expression and one_time_at. (see [below for nested schema](#nestedatt--calendar_schedule))
 - `description` (String) Cron description. Defaults to an empty string.
 - `enabled` (Boolean) Whether the cron submits jobs. Defaults to false; set true deliberately to activate the schedule.
+- `end_time` (Number) Required positive end timestamp in Unix seconds for recurring schedules. Omit for one-time schedules; the API's end sentinel is then computed.
+- `expression` (String) Five-field cron expression. Set exactly one of expression, calendar_schedule or one_time_at.
+- `one_time_at` (Number) One-time execution Unix timestamp in seconds. Omit end_time for this mode. Disabled by default; use a future timestamp when enabling. Set exactly one schedule mode.
 - `params` (Map of String, Sensitive) Complete string parameter map passed to the Job Function. Defaults to an empty map.
 - `retry_count` (Number) Number of retries for failed jobs. Defaults to zero; Catalyst validates its service limits.
 - `retry_interval` (Number) Retry interval in seconds. Use 60 to 86400 seconds with retry_count greater than zero; otherwise leave zero.
@@ -52,6 +54,23 @@ resource "catalyst_function_cron" "example" {
 ### Read-Only
 
 - `id` (String) Cron ID as an exact numeric string.
+
+<a id="nestedatt--calendar_schedule"></a>
+### Nested Schema for `calendar_schedule`
+
+Required:
+
+- `hour` (Number) Hour of day, 0–23 in timezone.
+- `minute` (Number) Minute, 0–59.
+- `repetition` (String) daily, monthly or yearly.
+- `second` (Number) Second, 0–59.
+
+Optional:
+
+- `days` (Set of Number) Dates in the month, 1–31. Use dates or the weeks/weekdays pair. Defaults to an empty set.
+- `months` (Set of Number) Months: 1 is January and 12 is December. Required for yearly schedules; omit for daily/monthly. Defaults to an empty set.
+- `week_days` (Set of Number) Exactly one weekday: 1 Sunday, 2 Monday, 3 Tuesday, 4 Wednesday, 5 Thursday, 6 Friday, 7 Saturday. Multiple weekdays are rejected by the service. Supply with weeks_of_month, instead of days. Defaults to an empty set.
+- `weeks_of_month` (Set of Number) Weeks, 1–5. Supply with week_days, instead of days. Defaults to an empty set.
 
 ## Import
 

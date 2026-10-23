@@ -58,14 +58,16 @@ func TestCapabilityInventoryMatchesProvider(t *testing.T) {
 			t.Fatalf("false unimplemented claim: %s", entry.ID)
 		}
 		for kind, names := range map[string][]string{"resources": entry.Resources, "data-sources": entry.Sources} {
+			entryTypes := map[string]bool{}
 			for _, name := range names {
 				seen := sources
 				if kind == "resources" {
 					seen = resources
 				}
-				if seen[name] || !strings.HasPrefix(name, "catalyst_") {
+				if entryTypes[name] || !strings.HasPrefix(name, "catalyst_") {
 					t.Fatalf("duplicate/invalid type %q", name)
 				}
+				entryTypes[name] = true
 				seen[name] = true
 				if _, err = os.Stat(filepath.Join(root, "docs", kind, strings.TrimPrefix(name, "catalyst_")+".md")); err != nil {
 					t.Fatalf("missing documentation for %s", name)

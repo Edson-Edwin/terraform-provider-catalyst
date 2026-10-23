@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -43,7 +44,12 @@ resource "catalyst_function_cron" "test" {
 }
 `, project, pool, function, name, params, count, interval)
 }
-func TestFunctionCronLifecycle(t *testing.T) {
+func TestFunctionCronLifecycle(t *testing.T) { testFunctionCronLifecycle(t, false) }
+
+func TestFunctionCronSchedulesLifecycle(t *testing.T) { testFunctionCronLifecycle(t, true) }
+
+func testFunctionCronLifecycle(t *testing.T, schedules bool) {
+	t.Helper()
 	clearEnvironment(t)
 	t.Setenv("CATALYST_ACCESS_TOKEN", "offline-test")
 	var mu sync.Mutex
@@ -69,6 +75,15 @@ func TestFunctionCronLifecycle(t *testing.T) {
 			}
 			if desired.Job.TargetType != "Function" || desired.Job.URL != "" {
 				t.Error("wrong target")
+			}
+			if desired.Type == "Calendar" && desired.Schedule.RepetitionType == "yearly" {
+				expected := []catalyst.Integer{0, 11} // Terraform January/December -> Catalyst's zero-based months.
+				if len(desired.Schedule.Days) == 0 {
+					expected = []catalyst.Integer{2, 8}
+				}
+				if !slices.Equal(desired.Schedule.Months, expected) {
+					t.Error("calendar months do not match the verified console numbering")
+				}
 			}
 			if req.Method == "POST" {
 				creates++
@@ -102,7 +117,7 @@ func TestFunctionCronLifecycle(t *testing.T) {
 	})}}
 	initial := functionCronConfig("123", "456", "789", "test", false)
 	updated := functionCronConfig("123", "456", "790", "test-updated", true)
-	resource.UnitTest(t, resource.TestCase{ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){"catalyst": providerserver.NewProtocol6WithError(p)}, CheckDestroy: func(_ *terraform.State) error {
+	testCase := resource.TestCase{ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){"catalyst": providerserver.NewProtocol6WithError(p)}, CheckDestroy: func(_ *terraform.State) error {
 		mu.Lock()
 		defer mu.Unlock()
 		if stored != nil {
@@ -117,7 +132,17 @@ func TestFunctionCronLifecycle(t *testing.T) {
 		{PreConfig: func() { mu.Lock(); stored.Job.Params = map[string]string{"external": "drift"}; mu.Unlock() }, Config: initial},
 		{PreConfig: func() { mu.Lock(); stored = nil; mu.Unlock() }, Config: initial, Check: resource.TestCheckResourceAttr("catalyst_function_cron.test", "id", "902")},
 		{Config: initial, PlanOnly: true},
-	}})
+	}}
+	if schedules {
+		testCase.Steps = functionCronScheduleSteps(initial, func(_ *terraform.State) error { return nil }, "123")
+	}
+	resource.UnitTest(t, testCase)
+	if schedules {
+		if creates != 1 || updates != 12 || deletes != 1 {
+			t.Fatalf("unexpected schedule transitions: %d/%d/%d", creates, updates, deletes)
+		}
+		return
+	}
 	if creates != 2 || updates != 3 || deletes != 1 {
 		t.Fatalf("unexpected mutations: %d/%d/%d", creates, updates, deletes)
 	}

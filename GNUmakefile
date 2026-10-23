@@ -10,6 +10,8 @@ dev: build
 	sh scripts/setup-dev.sh
 
 verify: dev
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/function_calendar validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/function_onetime validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_function_cron validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/background_function validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_stratus_object validate
@@ -128,3 +130,8 @@ testacc-function-cron:
 	TF_ACC=1 go test -race -count=1 -timeout=15m -run '^TestAccFunctionCron$$' ./internal/provider
 
 .PHONY: testacc-function-cron
+
+testacc-function-cron-schedules:
+	TF_ACC=1 go test -race -count=1 -timeout=15m -run '^TestAccFunctionCronSchedules$$' ./internal/provider
+
+.PHONY: testacc-function-cron-schedules

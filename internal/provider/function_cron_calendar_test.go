@@ -1,0 +1,61 @@
+// SPDX-License-Identifier: MPL-2.0
+package provider
+
+import (
+	"testing"
+
+	"github.com/hashicorp/terraform-plugin-framework/providerserver"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+)
+
+func TestFunctionCronScheduleConfigValidation(t *testing.T) {
+	for _, mode := range []string{"expression", "daily", "one_time", "missing_mode", "mixed_modes", "one_time_end", "one_time_zero", "missing_recurring_end", "invalid_hour", "incomplete_month", "mixed_month_dates", "invalid_job_name"} {
+		t.Run(mode, func(t *testing.T) {
+			values := map[string]any{"project_id": "123", "job_pool_id": "456", "function_id": "789", "name": "test", "expression": "0 0 * * *", "timezone": "UTC", "end_time": 1893456000, "job_name": "job"}
+			switch mode {
+			case "daily", "invalid_hour", "incomplete_month", "mixed_month_dates":
+				delete(values, "expression")
+				calendar := map[string]any{"repetition": "daily", "hour": 0, "minute": 0, "second": 0}
+				values["calendar_schedule"] = calendar
+				if mode == "invalid_hour" {
+					calendar["hour"] = 24
+				}
+				if mode == "incomplete_month" {
+					calendar["repetition"] = "monthly"
+				}
+				if mode == "mixed_month_dates" {
+					calendar["repetition"] = "monthly"
+					calendar["days"] = []int{1}
+					calendar["weeks_of_month"] = []int{1}
+					calendar["week_days"] = []int{1}
+				}
+			case "one_time", "one_time_end", "one_time_zero":
+				delete(values, "expression")
+				if mode != "one_time_end" {
+					delete(values, "end_time")
+				}
+				values["one_time_at"] = 1893456000
+				if mode == "one_time_zero" {
+					values["one_time_at"] = 0
+				}
+			case "missing_mode":
+				delete(values, "expression")
+			case "mixed_modes":
+				values["one_time_at"] = 1893456000
+			case "missing_recurring_end":
+				delete(values, "end_time")
+			case "invalid_job_name":
+				values["job_name"] = "invalid-name"
+			}
+			server := providerserver.NewProtocol6(New("test")())()
+			response, err := server.ValidateResourceConfig(t.Context(), &tfprotov6.ValidateResourceConfigRequest{TypeName: "catalyst_function_cron", Config: jsonConfig(t, values)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			valid := mode == "expression" || mode == "daily" || mode == "one_time"
+			if hasError(response.Diagnostics) == valid {
+				t.Fatalf("wrong schedule validation: %v", response.Diagnostics)
+			}
+		})
+	}
+}

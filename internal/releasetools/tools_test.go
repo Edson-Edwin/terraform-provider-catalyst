@@ -307,3 +307,23 @@ func TestReleaseZipRejectsUnsafeAndAmbiguousEntries(t *testing.T) {
 		})
 	}
 }
+
+func TestSharedResourceCapabilitiesDoNotInflateTerraformTypes(t *testing.T) {
+	tool, _ := fixtureTools(t)
+	writeFixture(t, filepath.Join(tool.Root, "coverage", "capabilities.json"), []byte(`{"inventory_complete":false,"capabilities":[{"id":"expression","status":"managed","resources":["catalyst_fixture"],"data_sources":["catalyst_fixtures"]},{"id":"calendar","status":"managed","resources":["catalyst_fixture"],"data_sources":[]}]}`))
+	var output bytes.Buffer
+	if err := tool.Coverage(&output); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(output.String(), "managed: 2") || !strings.Contains(output.String(), "Terraform resources: 1\n") {
+		t.Fatal("shared type inflated coverage output")
+	}
+	schema := fmt.Sprintf(`{"provider_schemas":{%q:{"resource_schemas":{"catalyst_fixture":{}},"data_source_schemas":{"catalyst_fixtures":{}}}}}`, providerAddress)
+	if err := tool.verifySchema([]byte(schema), true); err != nil {
+		t.Fatal(err)
+	}
+	schema = strings.Replace(schema, `"catalyst_fixture":{}`, `"catalyst_fixture":{},"catalyst_extra":{}`, 1)
+	if err := tool.verifySchema([]byte(schema), true); err == nil {
+		t.Fatal("shared catalog entries hid an unlisted type")
+	}
+}

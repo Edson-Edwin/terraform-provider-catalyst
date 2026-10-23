@@ -61,7 +61,7 @@
         "catalyst_function_cron"
       ],
       "data_sources": [],
-      "note": "Pre-defined CronExpression schedules targeting an existing Job Function and Function pool. Live India Development Terraform create/import/update/parameter clear/drift repair/external deletion and recreation/stable plan/destroy passed while disabled; temporary Job Function cleanup confirmed. Calendar/periodic/one-time schedules and legacy Cron Function triggers remain outside this resource."
+      "note": "Pre-defined CronExpression schedules targeting an existing Job Function and Function pool. Live India Development Terraform create/import/update/parameter clear/drift repair/external deletion and recreation/stable plan/destroy passed while disabled; temporary Job Function cleanup confirmed. Calendar and one-time schedules are supported and tracked separately. Periodic schedules and legacy Cron Function triggers remain pending."
     },
     {
       "id": "scheduling.appsail_cron",
@@ -90,22 +90,37 @@
       "service": "scheduling",
       "object": "recurring_calendar_schedule",
       "phase": 3,
-      "status": "unimplemented",
-      "api_evidence": "documented",
-      "resources": [],
+      "status": "managed",
+      "api_evidence": "live_india",
+      "resources": [
+        "catalyst_function_cron"
+      ],
       "data_sources": [],
-      "note": "Management API and lifecycle verification required."
+      "note": "Daily, monthly date/week and yearly date/week schedules targeting Job Functions. Live India Development Terraform create/in-place time and form changes/import/stable-plan/destroy passed while disabled. Week-based schedules accept exactly one weekday; other target types remain pending."
     },
     {
       "id": "scheduling.one_time_schedule",
       "service": "scheduling",
       "object": "one_time_schedule",
       "phase": 3,
+      "status": "managed",
+      "api_evidence": "live_india",
+      "resources": [
+        "catalyst_function_cron"
+      ],
+      "data_sources": [],
+      "note": "One-time Job Function schedules with Unix-second timestamps and computed end sentinel. Live India Development Terraform create/time updates/import/transition/stable-plan/destroy passed while disabled. Other target types remain pending; no execution was tested."
+    },
+    {
+      "id": "scheduling.periodic_schedule",
+      "service": "scheduling",
+      "object": "periodic_schedule",
+      "phase": 3,
       "status": "unimplemented",
       "api_evidence": "documented",
       "resources": [],
       "data_sources": [],
-      "note": "Management API and lifecycle verification required."
+      "note": "Periodic/every schedules appear in the official SDK contract; pre-defined ownership and live lifecycle still need validation."
     },
     {
       "id": "filestore.file",

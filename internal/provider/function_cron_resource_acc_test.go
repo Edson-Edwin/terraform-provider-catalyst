@@ -2,9 +2,14 @@
 package provider
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
+	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -17,7 +22,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
-func TestAccFunctionCron(t *testing.T) {
+func TestAccFunctionCron(t *testing.T) { testAccFunctionCron(t, false) }
+
+func TestAccFunctionCronSchedules(t *testing.T) { testAccFunctionCron(t, true) }
+
+func testAccFunctionCron(t *testing.T, schedules bool) {
+	t.Helper()
 	if os.Getenv("TF_ACC") != "1" || os.Getenv("CATALYST_TEST_ALLOW_FUNCTION_CRON_CREATE") != "1" || os.Getenv("CATALYST_TEST_ALLOW_FUNCTION_CREATE") != "1" {
 		t.Skip("requires explicit Function and disabled Function cron fixture opt-ins")
 	}
@@ -55,7 +65,7 @@ func TestAccFunctionCron(t *testing.T) {
 		latestCronID = r.Primary.ID
 		return nil
 	}
-	resource.Test(t, resource.TestCase{ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){"catalyst": providerserver.NewProtocol6WithError(New("test")())}, CheckDestroy: func(state *terraform.State) error {
+	testCase := resource.TestCase{ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){"catalyst": providerserver.NewProtocol6WithError(&CatalystProvider{version: "test", httpClient: liveCronDiagnosticClient(t)})}, CheckDestroy: func(state *terraform.State) error {
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), time.Minute)
 		defer cancel()
 		for _, r := range state.RootModule().Resources {
@@ -104,5 +114,76 @@ func TestAccFunctionCron(t *testing.T) {
 			}
 		}, Config: initial, Check: rememberCron},
 		{Config: initial, PlanOnly: true},
-	}})
+	}}
+	if schedules {
+		testCase.Steps = functionCronScheduleSteps(initial, rememberCron, project)
+	}
+	resource.Test(t, testCase)
+}
+
+func functionCronScheduleSteps(initial string, remember resource.TestCheckFunc, project string) []resource.TestStep {
+	variants := []struct{ name, calendar string }{
+		{"daily", `{ repetition = "daily", hour = 1, minute = 5, second = 0 }`},
+		{"monthly_dates", `{ repetition = "monthly", hour = 2, minute = 10, second = 5, days = [1, 15] }`},
+		{"monthly_weeks", `{ repetition = "monthly", hour = 3, minute = 15, second = 10, weeks_of_month = [1, 3], week_days = [2] }`},
+		{"yearly_dates", `{ repetition = "yearly", hour = 4, minute = 20, second = 15, months = [1, 12], days = [10, 20] }`},
+		{"yearly_weeks", `{ repetition = "yearly", hour = 5, minute = 25, second = 20, months = [3, 9], weeks_of_month = [2, 4], week_days = [1] }`},
+		{"one_time", ""},
+	}
+	steps := []resource.TestStep{}
+	for _, variant := range variants {
+		config := strings.Replace(initial, `expression = "0 0 * * *"`, "calendar_schedule = "+variant.calendar, 1)
+		var check resource.TestCheckFunc
+		if variant.name == "one_time" {
+			config = strings.Replace(initial, `expression = "0 0 * * *"`, "one_time_at = 1893456000", 1)
+			config = strings.Replace(config, "end_time = 1893456000", "", 1)
+			check = resource.TestCheckResourceAttr("catalyst_function_cron.test", "one_time_at", "1893456000")
+		} else {
+			repetition := strings.Split(variant.name, "_")[0]
+			check = resource.TestCheckResourceAttr("catalyst_function_cron.test", "calendar_schedule.repetition", repetition)
+		}
+		updated := regexp.MustCompile(`second = [0-9]+`).ReplaceAllString(config, "second = 30")
+		if variant.name == "one_time" {
+			updated = strings.Replace(config, "one_time_at = 1893456000", "one_time_at = 1893542400", 1)
+		}
+		steps = append(steps, resource.TestStep{Config: config, Check: resource.ComposeTestCheckFunc(check, remember)}, resource.TestStep{Config: updated, Check: remember}, resource.TestStep{ResourceName: "catalyst_function_cron.test", ImportState: true, ImportStateVerify: true, ImportStateIdFunc: func(state *terraform.State) (string, error) {
+			r := state.RootModule().Resources["catalyst_function_cron.test"]
+			if r == nil {
+				return "", errors.New("cron missing from state")
+			}
+			return project + "/" + r.Primary.ID, nil
+		}}, resource.TestStep{Config: updated, PlanOnly: true})
+	}
+	return append(steps, resource.TestStep{Config: initial, Check: resource.TestCheckResourceAttr("catalyst_function_cron.test", "expression", "0 0 * * *")}, resource.TestStep{Config: initial, PlanOnly: true})
+}
+
+// Test diagnostics expose only fixed-format error codes, never response bodies,
+// URLs, credentials, parameter values or environment variables.
+func liveCronDiagnosticClient(t *testing.T) *http.Client {
+	t.Helper()
+	return &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		resp, err := http.DefaultTransport.RoundTrip(req)
+		if err != nil || resp.StatusCode != 400 || !strings.Contains(req.URL.Path, "/job_scheduling/cron") {
+			return resp, err
+		}
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
+		_ = resp.Body.Close()
+		resp.Body = io.NopCloser(bytes.NewReader(body))
+		if readErr == nil {
+			var result struct {
+				Data struct {
+					Code string `json:"error_code"`
+				} `json:"data"`
+			}
+			if json.Unmarshal(body, &result) == nil && regexp.MustCompile(`^[A-Z_]{1,64}$`).MatchString(result.Data.Code) {
+				t.Logf("Cron API rejected test fixture with code %s", result.Data.Code)
+			}
+			for _, field := range []string{"days", "weeks_of_month", "week_day", "months", "repetition_type", "cron_type", "time_of_execution"} {
+				if bytes.Contains(body, []byte(field)) {
+					t.Logf("Cron error response references schedule field %s", field)
+				}
+			}
+		}
+		return resp, nil
+	})}
 }
