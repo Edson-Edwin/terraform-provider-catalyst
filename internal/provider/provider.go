@@ -43,7 +43,7 @@ func (p *CatalystProvider) Metadata(_ context.Context, _ provider.MetadataReques
 
 func (p *CatalystProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Discover Zoho Catalyst projects, job pools, Data Store tables, File Store folders, Cache segments, Stratus buckets and Functions, and manage Webhook and Function crons, File Store files, Stratus objects, Node.js Functions, AppSail services and API Gateway routing. Authenticate using either an access token or OAuth refresh credentials. Environment variables are recommended for secrets.",
+		MarkdownDescription: "Discover Zoho Catalyst projects, job pools, Data Store tables, File Store folders, Cache segments, Stratus buckets and Functions, and manage Webhook, Function and AppSail crons, File Store files, Stratus objects, Node.js Functions, AppSail services and API Gateway routing. Authenticate using either an access token or OAuth refresh credentials. Environment variables are recommended for secrets.",
 		Attributes: map[string]schema.Attribute{
 			"data_center":     schema.StringAttribute{Optional: true, MarkdownDescription: "Data center: `us`, `eu`, `in`, `au`, `ca`, `jp`, or `sa`. Falls back to `CATALYST_DATA_CENTER`, then `us`."},
 			"environment":     schema.StringAttribute{Optional: true, MarkdownDescription: "`Development` or `Production`. Falls back to `CATALYST_ENVIRONMENT`, then `Development`."},
@@ -106,7 +106,7 @@ func (p *CatalystProvider) DataSources(_ context.Context) []func() datasource.Da
 }
 
 func (p *CatalystProvider) Resources(_ context.Context) []func() resource.Resource {
-	return []func() resource.Resource{NewWebhookCronResource, NewFilestoreFileResource, NewFunctionResource, NewAppSailResource, NewGatewayResource, NewGatewayRulesetResource, NewStratusObjectResource, NewFunctionCronResource}
+	return []func() resource.Resource{NewWebhookCronResource, NewFilestoreFileResource, NewFunctionResource, NewAppSailResource, NewGatewayResource, NewGatewayRulesetResource, NewStratusObjectResource, NewFunctionCronResource, NewAppSailCronResource}
 }
 
 // New constructs a provider factory for the plugin server and tests.

@@ -58,3 +58,9 @@ SCHEDULING UTC DEFAULT:
 
 - Encode the public UTC default as the console-supported GMT wall-clock timezone. The Catalyst API rejects the literal UTC identifier. Preserve UTC in state and preserve an explicitly configured GMT alias.
 - Pass 60 live Terraform create/update/import/stable-plan steps across all Function and Webhook schedule forms using the default timezone, followed by confirmed fixture deletion. No scheduled jobs were executed.
+
+APPSAIL SCHEDULING:
+
+- Add `catalyst_appsail_cron` for expression, calendar, one-time and periodic schedules. Verify AppSail/pool membership and the authenticated HTTPS target origin. Manage HTTP fields and retries, with disabled-by-default scheduling and sensitive request values.
+- Pass live Terraform create/import/update/clear/drift repair/external deletion and recreation/stable plan/destroy and all seven schedule forms using the UTC default. Confirm temporary AppSail cleanup without executing jobs or endpoints.
+- Record vendor-documented Data Store schema automation limits, Circuit regional restrictions and the legacy CloudScale Cron sunset separately from provider implementation gaps. Coverage remains incomplete.

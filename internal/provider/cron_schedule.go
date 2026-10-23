@@ -229,6 +229,6 @@ func cronScheduleAttributes() map[string]schema.Attribute {
 		"one_time_at":       schema.Int64Attribute{Optional: true, MarkdownDescription: "One-time execution Unix timestamp in seconds. Omit end_time for this mode; use a future timestamp when enabling. Select exactly one schedule mode."},
 		"end_time":          schema.Int64Attribute{Optional: true, Computed: true, MarkdownDescription: "Required positive end timestamp in Unix seconds for recurring schedules. Omit for one-time schedules; the API end sentinel is computed."},
 		"interval_seconds":  schema.Int64Attribute{Optional: true, MarkdownDescription: "Positive relative repetition interval in seconds. Recurring end_time is required. Relative intervals use the default UTC and omit the wall-clock timezone from API requests. Select exactly one schedule mode."},
-		"timezone":          schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("UTC"), MarkdownDescription: "IANA wall-clock timezone for expression/calendar/one-time schedules; defaults to UTC. Periodic intervals use UTC because they measure elapsed time."},
+		"timezone":          schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("UTC"), MarkdownDescription: "IANA wall-clock timezone for expression/calendar/one-time schedules; defaults to UTC (encoded as the API GMT timezone). Periodic intervals use UTC because they measure elapsed time."},
 	}
 }

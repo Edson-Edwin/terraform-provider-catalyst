@@ -10,6 +10,7 @@ dev: build
 	sh scripts/setup-dev.sh
 
 verify: dev
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_appsail_cron validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/webhook_calendar validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/function_periodic validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/function_calendar validate
@@ -142,3 +143,9 @@ testacc-webhook-cron-schedules:
 	TF_ACC=1 go test -race -count=1 -timeout=15m -run '^TestAccWebhookCronSchedules$$' ./internal/provider
 
 .PHONY: testacc-webhook-cron-schedules
+
+# Disabled schedules and temporary AppSail are limited to an isolated test project.
+testacc-appsail-cron:
+	TF_ACC=1 go test -race -count=1 -timeout=15m -run '^TestAccAppSailCron(DefaultTimezone)?$$' ./internal/provider
+
+.PHONY: testacc-appsail-cron

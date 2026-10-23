@@ -160,6 +160,9 @@ func (c *Client) GetCron(ctx context.Context, projectID, id string) (*Cron, erro
 func (c *Client) GetFunctionCron(ctx context.Context, projectID, id string) (*Cron, error) {
 	return c.getCronTarget(ctx, projectID, id, "Function")
 }
+func (c *Client) GetAppSailCron(ctx context.Context, projectID, id string) (*Cron, error) {
+	return c.getCronTarget(ctx, projectID, id, "AppSail")
+}
 func (c *Client) getCronTarget(ctx context.Context, projectID, id, target string) (*Cron, error) {
 	if !ValidID(id) {
 		return nil, errors.New("invalid cron ID")
@@ -210,6 +213,9 @@ func (c *Client) WaitCronDeleted(ctx context.Context, projectID, id string) erro
 }
 func (c *Client) WaitFunctionCronDeleted(ctx context.Context, projectID, id string) error {
 	return c.waitCronTargetDeleted(ctx, projectID, id, "Function")
+}
+func (c *Client) WaitAppSailCronDeleted(ctx context.Context, projectID, id string) error {
+	return c.waitCronTargetDeleted(ctx, projectID, id, "AppSail")
 }
 func (c *Client) waitCronTargetDeleted(ctx context.Context, projectID, id, target string) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
@@ -284,7 +290,7 @@ func (c *Client) readCron(ctx context.Context, res *http.Response, projectID, id
 	if cron.Name == "" || (cron.Type == "CronExpression" && cron.Expression == "") || cron.Enabled == nil || cron.Detail.Timezone == "" || cron.Job.Name == "" || !ValidID(string(cron.Job.PoolID)) {
 		return cron, errors.New("the Catalyst API returned incomplete cron metadata")
 	}
-	if target == "Webhook" && (cron.Job.URL == "" || cron.Job.Method == "") {
+	if (target == "Webhook" || target == "AppSail") && (cron.Job.URL == "" || cron.Job.Method == "") {
 		return cron, errors.New("the Catalyst API returned incomplete webhook metadata")
 	}
 	if cron.Type == "Periodic" {
@@ -300,15 +306,15 @@ func (c *Client) readCron(ctx context.Context, res *http.Response, projectID, id
 	if cron.Type == "OneTime" && (cron.Detail.TimeOfExecution == nil || *cron.Detail.TimeOfExecution <= 0) {
 		return cron, errors.New("incomplete one-time execution timestamp")
 	}
-	if target == "Function" {
+	if target == "Function" || target == "AppSail" {
 		if cron.Job.TargetDetails != nil {
 			if cron.Job.TargetID != "" && cron.Job.TargetID != cron.Job.TargetDetails.ID {
-				return cron, errors.New("mismatched Function target identities")
+				return cron, errors.New("mismatched scheduled target identities")
 			}
 			cron.Job.TargetID = cron.Job.TargetDetails.ID
 		}
 		if !ValidID(string(cron.Job.TargetID)) {
-			return cron, errors.New("the Catalyst API returned incomplete Function target metadata")
+			return cron, errors.New("the Catalyst API returned incomplete scheduled target metadata")
 		}
 	}
 	return cron, nil

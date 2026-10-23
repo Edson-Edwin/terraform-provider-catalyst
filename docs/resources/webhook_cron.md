@@ -56,7 +56,7 @@ resource "catalyst_webhook_cron" "example" {
 - `params` (Map of String, Sensitive) Webhook parameters as string values. Defaults to an empty map.
 - `retry_count` (Number) Number of retries for failed jobs. Defaults to zero; Catalyst validates its service limits.
 - `retry_interval` (Number) Retry interval in seconds. Use 60 to 86400 seconds with retry_count greater than zero; otherwise leave zero.
-- `timezone` (String) IANA wall-clock timezone for expression/calendar/one-time schedules; defaults to UTC. Periodic intervals use UTC because they measure elapsed time.
+- `timezone` (String) IANA wall-clock timezone for expression/calendar/one-time schedules; defaults to UTC (encoded as the API GMT timezone). Periodic intervals use UTC because they measure elapsed time.
 
 ### Read-Only
 

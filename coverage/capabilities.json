@@ -68,11 +68,13 @@
       "service": "scheduling",
       "object": "appsail_cron",
       "phase": 3,
-      "status": "unimplemented",
-      "api_evidence": "documented",
-      "resources": [],
+      "status": "managed",
+      "api_evidence": "live_india",
+      "resources": [
+        "catalyst_appsail_cron"
+      ],
       "data_sources": [],
-      "note": "Management API and lifecycle verification required."
+      "note": "AppSail pool/target membership and authenticated HTTPS origin checks; expression, daily/monthly/yearly date/week, one-time and periodic forms. Live disabled Terraform lifecycle including HTTP field updates/clearing, drift repair, external deletion/recreation and 30-step default-UTC schedule matrix passed; temporary AppSail baseline restored; no endpoint invocation."
     },
     {
       "id": "scheduling.circuit_cron",
@@ -83,7 +85,7 @@
       "api_evidence": "documented",
       "resources": [],
       "data_sources": [],
-      "note": "Management API and lifecycle verification required."
+      "note": "Public target contract exists, but vendor documentation states Circuits are unavailable in India, EU, AU and CA. No eligible Circuit test project or verified full lifecycle is available; resource remains unimplemented."
     },
     {
       "id": "scheduling.recurring_calendar_schedule",
@@ -94,10 +96,11 @@
       "api_evidence": "live_india",
       "resources": [
         "catalyst_function_cron",
-        "catalyst_webhook_cron"
+        "catalyst_webhook_cron",
+        "catalyst_appsail_cron"
       ],
       "data_sources": [],
-      "note": "Daily, monthly date/week and yearly date/week schedules targeting Job Functions. Live India Development Terraform create/in-place time and form changes/import/stable-plan/destroy passed while disabled. Week-based schedules accept exactly one weekday; other target types remain pending."
+      "note": "Daily, monthly date/week and yearly date/week schedules targeting Job Functions. Live India Development Terraform create/in-place time and form changes/import/stable-plan/destroy passed while disabled. Week-based schedules accept exactly one weekday; Circuit targets remain pending. AppSail targets also passed the full live matrix using the shared schedule engine."
     },
     {
       "id": "scheduling.one_time_schedule",
@@ -108,10 +111,11 @@
       "api_evidence": "live_india",
       "resources": [
         "catalyst_function_cron",
-        "catalyst_webhook_cron"
+        "catalyst_webhook_cron",
+        "catalyst_appsail_cron"
       ],
       "data_sources": [],
-      "note": "One-time Job Function schedules with Unix-second timestamps and computed end sentinel. Live India Development Terraform create/time updates/import/transition/stable-plan/destroy passed while disabled. Webhook targets also passed the combined live lifecycle; AppSail/Circuit targets remain pending; no execution was tested."
+      "note": "One-time Job Function schedules with Unix-second timestamps and computed end sentinel. Live India Development Terraform create/time updates/import/transition/stable-plan/destroy passed while disabled. Webhook targets also passed the combined live lifecycle; Circuit targets remain pending; no execution was tested. AppSail targets also passed the full live matrix using the shared schedule engine."
     },
     {
       "id": "scheduling.periodic_schedule",
@@ -122,10 +126,11 @@
       "api_evidence": "live_india",
       "resources": [
         "catalyst_function_cron",
-        "catalyst_webhook_cron"
+        "catalyst_webhook_cron",
+        "catalyst_appsail_cron"
       ],
       "data_sources": [],
-      "note": "Positive relative interval_seconds for Job Function schedules, with UTC normalization and recurring end_time. Live India Development direct create/six-hour to 2h1m3s update/import/stable plan/transition/destroy and the combined seven-form matrix passed while disabled. Webhook targets also passed the combined live lifecycle; AppSail/Circuit targets remain pending."
+      "note": "Positive relative interval_seconds for Job Function schedules, with UTC normalization and recurring end_time. Live India Development direct create/six-hour to 2h1m3s update/import/stable plan/transition/destroy and the combined seven-form matrix passed while disabled. Webhook targets also passed the combined live lifecycle; Circuit targets remain pending. AppSail targets also passed the full live matrix using the shared schedule engine."
     },
     {
       "id": "filestore.file",
@@ -164,7 +169,7 @@
       "data_sources": [
         "catalyst_datastore_tables"
       ],
-      "note": "Management API and lifecycle verification required."
+      "note": "Vendor API reference and knowledge base state table/schema creation is console-only. IaC candidate behavior requires a supported ownership and lifecycle contract before resource implementation."
     },
     {
       "id": "datastore.column",
@@ -175,7 +180,7 @@
       "api_evidence": "iac_candidate",
       "resources": [],
       "data_sources": [],
-      "note": "Management API and lifecycle verification required."
+      "note": "Vendor API reference and knowledge base state table/schema creation is console-only. IaC candidate behavior requires a supported ownership and lifecycle contract before resource implementation."
     },
     {
       "id": "datastore.table_permission",

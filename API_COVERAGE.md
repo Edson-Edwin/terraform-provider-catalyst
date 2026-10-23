@@ -9,6 +9,7 @@ This community provider is under development. Public availability and broad serv
 | `data.catalyst_project` | Read a project by ID | Offline protocol/client tests; live India access-token and refresh-token reads |
 | `data.catalyst_projects` | List projects visible in the selected organization | Offline protocol/client tests; live India listing and stable Terraform plan |
 | `data.catalyst_job_pools` | List a project's existing scheduling pools | Offline populated/empty/error cases; live India empty and populated listings with stable plans |
+| `catalyst_appsail_cron` | Manage expression, calendar, one-time and periodic schedules targeting an existing AppSail and AppSail pool | Offline lifecycle/origin/ownership/recovery tests; live disabled India Development lifecycle and full schedule matrix |
 | `catalyst_function_cron` | Manage CronExpression, calendar, one-time and periodic schedules targeting existing Job Functions/Function pools | Offline lifecycle/ownership/recovery tests; live disabled India Development create/import/update/clear/stable plan/destroy |
 | `catalyst_webhook_cron` | Manage expression, calendar, one-time and periodic schedules with Webhook targets | Offline lifecycle/import/drift/error tests; live India create, import, update, clear, stable plan and verified destroy |
 | `catalyst_api_gateway` | Enable/disable project Gateway routing | Offline Terraform lifecycle and recovery tests; live India Development enable/import/destroy |
@@ -70,7 +71,7 @@ This is a capability inventory, not a claim of 100% coverage. A read-only data s
 | Area | Implemented | Remaining or blocked |
 | --- | --- | --- |
 | Projects | Single and list discovery | Create/delete API exists, but create was rejected in this account; no managed project resource |
-| Job Scheduling | Pool discovery; Webhook and Job Function expression/calendar/one-time/periodic lifecycles | Circuit/AppSail targets and legacy Cron Function triggers; pool creation API not established |
+| Job Scheduling | Pool discovery; Webhook, Job Function and AppSail expression/calendar/one-time/periodic lifecycles | Circuit targets require an eligible region; pool creation API not established; legacy CloudScale Cron is retired |
 | Data Store | Table discovery | Table/column provisioning API not established; rows are data operations, not table provisioning |
 | File Store | Folder discovery; file upload/read/import/delete and replacement | Folder provisioning API not established; metadata updates have no documented endpoint; legacy service |
 | Cache | Segment discovery | Segment creation is explicitly console-only; cache entries expire within 48 hours and are not durable infrastructure |
@@ -133,7 +134,7 @@ A follow-up live run also verified startup-command and application-port updates 
 
 ## API Gateway milestone (2026-10-23)
 
-The provider now registers six resources and eight data sources. `catalyst_api_gateway` controls enabled status. `catalyst_api_gateway_ruleset` owns the complete user ruleset for an enabled Gateway, currently limited to Basic I/O Function targets with OAuth or explicitly unauthenticated routes and unconfigured throttling. Other target/authentication modes and configured throttling are still gaps. This is partial service coverage, not a 10/10 claim.
+At the API Gateway milestone, the provider registered six resources and eight data sources. `catalyst_api_gateway` controls enabled status. `catalyst_api_gateway_ruleset` owns the complete user ruleset for an enabled Gateway, currently limited to Basic I/O Function targets with OAuth or explicitly unauthenticated routes and unconfigured throttling. Other target/authentication modes and configured throttling are still gaps. This is partial service coverage, not a 10/10 claim.
 
 Live API probes verified that disabled Gateways reject rule reads with 403 INVALID_OPERATION, deployments are asynchronous and can block further changes with MIGRATION_SCHEDULED, and a terminal state of completed can still include per-rule failures. A first fixture targeting a nonexistent client was rejected asynchronously. The subsequent Go probes used an existing generated Basic I/O Function and passed create/read/replace/delete for OAuth and no-auth. Complete ruleset replacement deleted omitted rules. No route or Function was invoked. The disabled/empty Gateway baseline and generated Function cleanup were confirmed.
 
@@ -204,3 +205,21 @@ Live India Development tests passed direct six-hour creation, update to 2h1m3s, 
 A minimal empty Webhook pool was created in the isolated India Development project. The 30-step Webhook lifecycle passed, then both Function and Webhook matrices passed together after the refactor (60 steps). All schedules were disabled; no HTTP requests or jobs executed. All test crons and the temporary Job Function were destroyed; empty pools remain as prerequisites. Webhook update/delete now pre-read the target kind, and failed post-delete authorization retains state. Regressions verify a foreign Function cron cannot be mutated using stale Webhook state.
 
 This broadens the fields and targets of existing capability areas. It adds no Terraform resource types and does not imply complete Catalyst service coverage. AppSail/Circuit scheduling and other services remain pending.
+
+## AppSail schedules and UTC default (2026-10-23)
+
+`catalyst_appsail_cron` shares all schedule forms with Webhook and Function resources. It validates the existing AppSail pool and target in the same project, composes `path` with the authenticated AppSail HTTPS origin, and checks response origins on refresh/import. HTTP method, headers, parameters, body and retry settings are managed completely. Headers/parameters/body remain sensitive state. Deletion verifies cron target kind and does not require the AppSail target still to exist.
+
+Live disabled India Development tests passed create/import/update/clear/external parameter drift repair/external deletion and recreation/stable plan/destroy, followed by the 30-step seven-form scheduling matrix using the default timezone. The temporary AppSail baseline was restored; no jobs or HTTP endpoints were executed.
+
+The live API rejected literal UTC with a timezone validation error. The console offers GMT. Writes now encode the public UTC default as GMT, while reads preserve UTC in state (or an explicitly configured GMT alias). All 60 Function/Webhook schedule steps passed again using the default timezone.
+
+The provider registers **nine resources and eight data sources**. **11 of 44 draft capability areas are partially managed, six are discovery-only and 27 remain unimplemented.** These counts describe an incomplete inventory; they do not establish a 10/10 score or full service coverage.
+
+### Verified platform boundaries
+
+- [Zoho’s Data Store API reference](https://docs.catalyst.zoho.com/en/api/code-reference/cloud-scale/nosql/insert-item/) and [vendor knowledge base](https://forums.catalyst.zoho.com/portal/en/kb/articles/create-the-schema-for-a-table-in-catalyst-datastore-using-code) explicitly say table/schema creation is console-only. This is a documented automation boundary, not proof that every console API is usable as a public management API.
+- [Zoho’s current scheduling announcement](https://docs.catalyst.zoho.com/en/announcements/2026/cron-sunset/) states Circuits are unavailable in India, EU, AU and CA. Circuit cron lifecycle validation therefore requires an eligible region; the current India test project cannot provide that evidence.
+- The same announcement sets legacy CloudScale Cron sunset to October 1, 2026. Retired triggers are not a valid new coverage milestone; use current Job Scheduling.
+
+Remaining provider gaps still include project/pool/bucket/schema/authentication/hosting management and wider fields, languages, runtime combinations and regions. Public Registry publication and release signing have not been verified. Hosted CI is deliberately outside this review at the maintainer’s request.
