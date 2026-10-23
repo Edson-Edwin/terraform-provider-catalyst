@@ -15,14 +15,16 @@
       "service": "projects",
       "object": "project",
       "phase": 0,
-      "status": "discovery",
+      "status": "managed",
       "api_evidence": "documented",
-      "resources": [],
+      "resources": [
+        "catalyst_project"
+      ],
       "data_sources": [
         "catalyst_project",
         "catalyst_projects"
       ],
-      "note": "Project creation was rejected in the former test context; access must be revalidated."
+      "note": "Experimental documented project create/read/delete lifecycle with default-on local deletion protection, immutable-name replacement, import and recovery state. Offline Terraform lifecycle and permission/recovery tests pass. Live creation still returns PROJECT_CREATION_NOT_ALLOWED in the current account; no live create/delete success is claimed."
     },
     {
       "id": "scheduling.webhook_cron_expression",
@@ -164,22 +166,25 @@
       "object": "table",
       "phase": 5,
       "status": "discovery",
-      "api_evidence": "iac_candidate",
+      "api_evidence": "live_india",
       "resources": [],
       "data_sources": [
-        "catalyst_datastore_tables"
+        "catalyst_datastore_tables",
+        "catalyst_datastore_table"
       ],
-      "note": "Vendor API reference and knowledge base state table/schema creation is console-only. IaC candidate behavior requires a supported ownership and lifecycle contract before resource implementation."
+      "note": "Vendor API reference and knowledge base state table/schema creation is console-only. IaC candidate behavior requires a supported ownership and lifecycle contract before resource implementation. Read-only table/column metadata is implemented and live-verified; excludes rows, defaults and creator profiles."
     },
     {
       "id": "datastore.column",
       "service": "datastore",
       "object": "column",
       "phase": 5,
-      "status": "unimplemented",
-      "api_evidence": "iac_candidate",
+      "status": "discovery",
+      "api_evidence": "live_india",
       "resources": [],
-      "data_sources": [],
+      "data_sources": [
+        "catalyst_datastore_table"
+      ],
       "note": "Vendor API reference and knowledge base state table/schema creation is console-only. IaC candidate behavior requires a supported ownership and lifecycle contract before resource implementation."
     },
     {
@@ -241,7 +246,7 @@
         "catalyst_stratus_object"
       ],
       "data_sources": [],
-      "note": "Unversioned existing bucket object management with binary upload, in-place content/type updates, SHA-256 drift detection, import and confirmed exact-key deletion. 100 MB provider limit; bucket provisioning, version history, TTL, custom metadata and multipart uploads remain unsupported. Live India Development Terraform create/import/update/same-size drift repair/external deletion and recreation/stable plan/destroy passed; exact test-key cleanup confirmed."
+      "note": "Unversioned existing bucket object management with binary upload, in-place content/type updates, SHA-256 drift detection, import and confirmed exact-key deletion. 100 MB provider limit; bucket provisioning, version history, TTL, custom metadata and multipart uploads remain unsupported. Live India Development Terraform create/import/update/same-size drift repair/external deletion and recreation/stable plan/destroy passed; exact test-key cleanup confirmed. Complete custom metadata-map replacement, clearing, import and drift repair pass live Terraform lifecycle tests through the dedicated putMeta API. Bucket provisioning, versioning, TTL, policies and multipart remain unsupported."
     },
     {
       "id": "stratus.versioning",
@@ -270,22 +275,27 @@
       "service": "nosql",
       "object": "table",
       "phase": 5,
-      "status": "unimplemented",
-      "api_evidence": "unknown",
+      "status": "discovery",
+      "api_evidence": "live_india",
       "resources": [],
-      "data_sources": [],
-      "note": "Management API and lifecycle verification required."
+      "data_sources": [
+        "catalyst_nosql_tables",
+        "catalyst_nosql_table"
+      ],
+      "note": "Read/list table metadata, primary/additional keys, status, TTL settings and index identities/statuses. Terraform data sources pass live India Development reads/stable plans. Table/index provisioning and TTL configuration are not implemented."
     },
     {
       "id": "nosql.index",
       "service": "nosql",
       "object": "index",
       "phase": 5,
-      "status": "unimplemented",
-      "api_evidence": "unknown",
+      "status": "discovery",
+      "api_evidence": "live_india",
       "resources": [],
-      "data_sources": [],
-      "note": "Management API and lifecycle verification required."
+      "data_sources": [
+        "catalyst_nosql_table"
+      ],
+      "note": "Read existing local/global index identities and statuses from the public table metadata contract. Index creation/update/deletion is not implemented."
     },
     {
       "id": "functions.function",
@@ -313,7 +323,7 @@
         "catalyst_appsail"
       ],
       "data_sources": [],
-      "note": "Node22/24 ZIP deployment, memory, startup command, port, authentication and complete environment map management. Import/artifact drift and confirmed deletion. Exclusive name ownership required for upserts. See API_COVERAGE.md for live evidence and limitations. Node24 create/import/code and configuration updates/clear/stable-plan/destroy passed live in isolated India Development, with baseline cleanup and no invocation."
+      "note": "Managed Node 16/18/20/22/24, Java SE 8/11/17/21/25 and Python 3.9–3.13 ZIPs; code, memory, startup command, port, authentication, login redirect/root reset and complete environment maps. Java requires platform=javase. Runtime/platform changes replace the service. Metadata/artifact refreshes require three matching observations. See API_COVERAGE.md for runtime-specific evidence and current gaps. WAR/custom runtimes, scaling, domains and production promotion remain unsupported."
     },
     {
       "id": "gateway.configuration_and_rules",
@@ -537,6 +547,19 @@
       "resources": [],
       "data_sources": [],
       "note": "Management API and lifecycle verification required."
+    },
+    {
+      "id": "nosql.configuration_item",
+      "service": "nosql",
+      "object": "configuration_item",
+      "phase": 5,
+      "status": "managed",
+      "api_evidence": "live_india",
+      "resources": [
+        "catalyst_nosql_item"
+      ],
+      "data_sources": [],
+      "note": "Persistent configuration/seed item in an existing ONLINE table. Exact primary-key ownership, conditional no-overwrite creation, consistent reads, per-item status checks, import, complete item updates/attribute removal, typed JSON and confirmed deletion. Live Terraform lifecycle/drift repair/external deletion passed. This is data management, not table/index provisioning or transactional application data."
     }
   ]
 }

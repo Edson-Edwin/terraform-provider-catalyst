@@ -1,7 +1,7 @@
 {
   "updated": "2026-10-23",
   "objective_complete": false,
-  "current_phase": "AppSail scheduling lifecycle verified; remaining persistent service management and field inventory",
+  "current_phase": "Website application integration verified with existing table/schema/bucket prerequisites; automatic infrastructure provisioning remains incomplete",
   "completed": [
     "draft inventory of 43 capability areas",
     "registered type/docs/examples consistency test",
@@ -57,7 +57,19 @@
     "catalyst_appsail_cron implemented with pool/target ownership and authenticated origin checks; root and /health scheduling API probes passed",
     "Live AppSail cron create/import/HTTP and retry updates/clear/drift repair/external deletion/recreation/stable plan/destroy and 30-step default-UTC schedule matrix passed; schedules stayed disabled and AppSail fixture baseline restored",
     "Node24 AppSail deployment/import/code-memory-command-port-environment updates/clear/stable-plan/destroy passed live; temporary fixture baseline restored, no invocation",
-    "File Store vendor retirement notice verified: 31 October 2026 sunset; existing resource/data source now emit Terraform deprecation warnings, preserving state compatibility and directing new storage to Stratus"
+    "File Store vendor retirement notice verified: 31 October 2026 sunset; existing resource/data source now emit Terraform deprecation warnings, preserving state compatibility and directing new storage to Stratus",
+    "Experimental catalyst_project implements documented creation/deletion, name replacement, import and default-on local deletion protection; offline Terraform and recovery tests passed",
+    "AppSail 15 managed runtimes: Node16/18/20/22/24, Java SE8/11/17/21/25 and Python3.9–3.13 passed live Terraform deployment lifecycles and cleanup",
+    "AppSail URL, Java deployment_type mapping, login redirect/root reset and stable refresh/recovery URL handling implemented; root reset verified across all Node runtimes",
+    "Generated Node24/Python3.13/Java25 apps served expected HTTP 200 responses before/after updates, with no account data or credentials in their responses; baseline cleanup confirmed",
+    "NoSQL table/list and Data Store table/column schema data sources passed live Terraform metadata reads and stable plans; row/default/profile data excluded",
+    "catalyst_nosql_item passed typed attributes, large-number/binary/set normalization, import, update/removal, drift repair, external deletion/recreation, stable plan and destroy; per-item HTTP 200 failures and BOOL/NULL string responses handled",
+    "Three early NoSQL parser-failure fixture items recovered through a dedicated test index and exact-key deletion confirmed; index retained as a test prerequisite",
+    "Stratus custom metadata full-map replacement/clearing, import, drift repair and confirmed destruction passed live Terraform lifecycle through the dedicated SDK metadata endpoint",
+    "Data Store API fixture create/read/PATCH-null/delete contract verified; deleted rows return HTTP200 data:null; no Terraform schema/row provisioning claim",
+    "Full generated Node24 website smoke test passed: frontend HTML, backend NoSQL configuration read, private Stratus download, Data Store row CRUD, stable plan and confirmed managed-resource/application-row cleanup",
+    "Final make check passed, including full offline race suite, vet, dependency/format checks and all examples/schema/no-op plan; configured static analysis reported zero issues",
+    "All 14 unsigned platform archives, checksums, manifest, isolated Terraform filesystem-mirror installation and native provider handshake verified for the website milestone; no publication or signing"
   ],
   "pending": [
     "complete per-field management API inventory",
@@ -68,12 +80,31 @@
     "Remaining Function languages/runtime versions/types beyond Node22/24 Basic I/O, Advanced I/O, Event, Cron and Job Functions",
     "Other Gateway targets, authentication modes, system routes and configured throttling",
     "Remaining service lifecycle phases; draft service/field inventory is still incomplete",
-    "Stratus bucket provisioning, policies, version history, multipart objects, TTL and custom metadata management",
+    "Stratus bucket provisioning, policies, version history, multipart objects and TTL management",
     "Circuit cron unavailable in the current India account region; needs an eligible region and verified Circuit management lifecycle; maintainer confirmed no eligible test project is available on 2026-10-23",
     "CloudScale legacy Cron sunset announced for October 1 2026; do not implement retired triggers as new coverage",
-    "Vendor says Data Store table/schema creation is console-only; supported automation contract or vendor change is required"
+    "Vendor says Data Store table/schema creation is console-only; supported automation contract or vendor change is required",
+    "Project creation rechecked: public API still returns PROJECT_CREATION_NOT_ALLOWED for the current login; live project lifecycle remains blocked",
+    "NoSQL table/index provisioning and TTL/permission configuration are not implemented; official documentation restricts table management to the console",
+    "AppSail Java WAR/custom runtime, scaling, domains and Production promotion are not implemented",
+    "The combined example assumes existing infrastructure; it does not configure a public CDN, database permissions or application authentication"
   ],
   "live_prerequisite": "Replacement isolated Development project verified in console and API.",
   "hosted_ci": "deferred by maintainer; billing outside scope",
-  "commits_and_pushes": "Authorized by maintainer for main."
+  "commits_and_pushes": "Authorized by maintainer for main.",
+  "latest_milestone": {
+    "date": "2026-10-23",
+    "resources": 11,
+    "data_sources": 11,
+    "draft_capabilities": 45,
+    "partially_managed_areas": 13,
+    "discovery_only_areas": 8,
+    "unimplemented_areas": 24,
+    "objective_complete": false,
+    "live_region": "India Development",
+    "full_stack_smoke": "passed with generated code/data and existing prerequisites",
+    "hosted_ci": "not queried as requested",
+    "registry_publication": "not established",
+    "packaging": "14 unsigned platform archives verified; native Terraform mirror installation and schema handshake passed"
+  }
 }

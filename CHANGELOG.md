@@ -35,7 +35,7 @@ LIMITATIONS:
 
 - No Terraform Registry release is available yet.
 - Recorded live validation covers India. Actual webhook delivery and other regions have not been tested.
-- Project creation, job-pool creation, other cron types/targets and many other Catalyst services remain unimplemented. See `API_COVERAGE.md`.
+- Project creation is experimental and the current live account is ineligible; job-pool creation, other cron types/targets and many Catalyst service lifecycles remain unsupported. See `API_COVERAGE.md`.
 
 PLAN EXECUTION:
 
@@ -74,3 +74,25 @@ FILE STORE RETIREMENT:
 
 - Mark `catalyst_filestore_file` and `data.catalyst_filestore_folders` deprecated with Terraform configuration warnings. Zoho announces File Store sunset on 31 October 2026 and excludes new projects/accounts.
 - Keep existing schemas/state compatible; no automatic file or permission migration occurs. Direct new storage to Stratus and link the vendor notice in public documentation.
+
+EXPERIMENTAL PROJECT MANAGEMENT:
+
+- Add documented project create/read/delete, immutable-name replacement, import and default-on local deletion protection, with offline Terraform lifecycle and recovery tests.
+- Recheck live creation: the current account returns PROJECT_CREATION_NOT_ALLOWED. Keep this limitation explicit; no successful live project lifecycle is claimed.
+
+APPSAIL MANAGED LANGUAGES:
+
+- Add managed Node16/18/20, Java SE8/11/17/21/25 and Python3.9–3.13 ZIP deployments alongside Node22/24. Expose deployment URL and login redirect/root reset. Keep runtime/platform replacement and explicit Java/Python startup requirements.
+- Reconcile stale refreshes and retain known URL state after failed updates. Verify all 15 deployment lifecycles and HTTP responses for generated Node24/Python3.13/Java25 apps before and after updates.
+
+DATABASE CONFIGURATION AND DISCOVERY:
+
+- Add `catalyst_nosql_item` for persistent typed configuration items, with exact numeric/binary normalization, atomic duplicate protection, consistent reads, per-item status checks, import, attribute removal, drift repair and confirmed deletion. Keep transactional application data outside Terraform.
+- Add `catalyst_nosql_tables`, `catalyst_nosql_table` and `catalyst_datastore_table` data sources with allowlisted metadata. Table/index/schema provisioning remains unimplemented; read support does not imply management support.
+
+STRATUS METADATA AND WEBSITE EXAMPLE:
+
+- Add complete custom metadata-map management through the documented replacement API, including clearing, import, live drift repair and state recovery. Bucket provisioning, policies, versioning, TTL and multipart remain unsupported.
+- Add a combined website configuration with explicit project/table/schema/bucket prerequisites and application responsibilities.
+
+- Pass a live generated full-stack application smoke test across frontend HTML, AppSail backend, NoSQL configuration reads, private Stratus download and Data Store row CRUD, with stable plan and independent fixture cleanup. Table/schema/bucket provisioning remains manual.

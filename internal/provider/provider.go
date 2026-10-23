@@ -43,7 +43,7 @@ func (p *CatalystProvider) Metadata(_ context.Context, _ provider.MetadataReques
 
 func (p *CatalystProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Discover Zoho Catalyst projects, job pools, Data Store tables, File Store folders, Cache segments, Stratus buckets and Functions, and manage Webhook, Function and AppSail crons, File Store files, Stratus objects, Node.js Functions, AppSail services and API Gateway routing. Authenticate using either an access token or OAuth refresh credentials. Environment variables are recommended for secrets.",
+		MarkdownDescription: "Discover Zoho Catalyst projects, job pools, database schemas, File Store folders, Cache segments, Stratus buckets and Functions. Manage NoSQL configuration items, Stratus objects/metadata, managed Node/Java SE/Python AppSail services, Node.js Functions, Gateway and Webhook/Function/AppSail schedules. Project management is experimental and depends on account API eligibility; table/schema and bucket provisioning remain manual prerequisites. Authenticate using either an access token or OAuth refresh credentials. Environment variables are recommended for secrets.",
 		Attributes: map[string]schema.Attribute{
 			"data_center":     schema.StringAttribute{Optional: true, MarkdownDescription: "Data center: `us`, `eu`, `in`, `au`, `ca`, `jp`, or `sa`. Falls back to `CATALYST_DATA_CENTER`, then `us`."},
 			"environment":     schema.StringAttribute{Optional: true, MarkdownDescription: "`Development` or `Production`. Falls back to `CATALYST_ENVIRONMENT`, then `Development`."},
@@ -102,11 +102,11 @@ func (p *CatalystProvider) Configure(ctx context.Context, req provider.Configure
 }
 
 func (p *CatalystProvider) DataSources(_ context.Context) []func() datasource.DataSource {
-	return []func() datasource.DataSource{NewProjectDataSource, NewProjectsDataSource, NewJobPoolsDataSource, NewTablesDataSource, NewFoldersDataSource, NewCacheSegmentsDataSource, NewBucketsDataSource, NewFunctionsDataSource}
+	return []func() datasource.DataSource{NewProjectDataSource, NewProjectsDataSource, NewJobPoolsDataSource, NewTablesDataSource, NewFoldersDataSource, NewCacheSegmentsDataSource, NewBucketsDataSource, NewFunctionsDataSource, NewNoSQLTablesDataSource, NewNoSQLTableDataSource, NewDataStoreTableDataSource}
 }
 
 func (p *CatalystProvider) Resources(_ context.Context) []func() resource.Resource {
-	return []func() resource.Resource{NewWebhookCronResource, NewFilestoreFileResource, NewFunctionResource, NewAppSailResource, NewGatewayResource, NewGatewayRulesetResource, NewStratusObjectResource, NewFunctionCronResource, NewAppSailCronResource}
+	return []func() resource.Resource{NewWebhookCronResource, NewFilestoreFileResource, NewFunctionResource, NewAppSailResource, NewGatewayResource, NewGatewayRulesetResource, NewStratusObjectResource, NewFunctionCronResource, NewAppSailCronResource, NewProjectResource, NewNoSQLItemResource}
 }
 
 // New constructs a provider factory for the plugin server and tests.

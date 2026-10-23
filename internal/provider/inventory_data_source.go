@@ -34,6 +34,9 @@ type bucketItemModel struct {
 func NewTablesDataSource() datasource.DataSource {
 	return &InventoryDataSource{suffix: "datastore_tables", collection: "tables", description: "List existing Data Store tables. Requires `ZohoCatalyst.tables.READ`. Returns table identities only; it does not read rows or manage table schemas.", list: (*catalyst.Client).ListTables}
 }
+func NewNoSQLTablesDataSource() datasource.DataSource {
+	return &InventoryDataSource{suffix: "nosql_tables", collection: "tables", description: "List existing NoSQL table identities. Requires ZohoCatalyst.nosql.READ. It does not read items or provision tables/indexes.", list: (*catalyst.Client).ListNoSQLTables}
+}
 func NewFoldersDataSource() datasource.DataSource {
 	return &InventoryDataSource{suffix: "filestore_folders", deprecation: filestoreDeprecation, collection: "folders", description: "Deprecated: Zoho has announced File Store sunset on 31 October 2026; use Stratus for new storage. See the [vendor announcement](https://docs.catalyst.zoho.com/en/announcements/2026/filestore-sunset/). List existing File Store folders. Requires `ZohoCatalyst.folders.READ`. It does not download files or create folders.", list: (*catalyst.Client).ListFolders}
 }

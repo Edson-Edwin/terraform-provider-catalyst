@@ -10,6 +10,12 @@ dev: build
 	sh scripts/setup-dev.sh
 
 verify: dev
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/full_stack validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_nosql_item validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_nosql_table validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_nosql_tables validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_datastore_table validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_project validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_appsail_cron validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/webhook_calendar validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/function_periodic validate
@@ -149,3 +155,25 @@ testacc-appsail-cron:
 	TF_ACC=1 go test -race -count=1 -timeout=15m -run '^TestAccAppSailCron(DefaultTimezone)?$$' ./internal/provider
 
 .PHONY: testacc-appsail-cron
+
+# Explicit live opt-ins and existing isolated prerequisites are required.
+testacc-nosql-item:
+	TF_ACC=1 go test -race -count=1 -timeout=5m -run '^TestAccNoSQLItem$$' ./internal/provider
+
+testacc-database-schema:
+	TF_ACC=1 go test -race -count=1 -timeout=5m -run '^TestAccDatabaseTableDataSources$$' ./internal/provider
+
+.PHONY: testacc-nosql-item testacc-database-schema
+
+testacc-full-stack:
+	TF_ACC=1 go test -race -count=1 -timeout=10m -run '^TestAccFullStackWebsite$$' ./internal/provider
+
+.PHONY: testacc-full-stack
+
+testacc-appsail-languages:
+	TF_ACC=1 go test -race -count=1 -timeout=30m -run '^TestAccAppSailManagedLanguages$$' ./internal/provider
+
+testacc-appsail-health:
+	TF_ACC=1 go test -race -count=1 -timeout=20m -run '^TestAccAppSailWebsiteHealth$$' ./internal/provider
+
+.PHONY: testacc-appsail-languages testacc-appsail-health

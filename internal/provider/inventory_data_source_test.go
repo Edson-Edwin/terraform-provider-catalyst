@@ -15,6 +15,7 @@ import (
 )
 
 var inventoryFixtures = map[string]struct{ collection, endpoint, body string }{
+	"nosql_tables":      {"tables", "nosqltable", `{"id":9007199254740993123,"name":"Example"}`},
 	"functions":         {"functions", "function", `{"id":9007199254740993123,"name":"Example","stack":"node22","type":"basicio"}`},
 	"datastore_tables":  {"tables", "table", `{"table_id":9007199254740993123,"table_name":"Example"}`},
 	"filestore_folders": {"folders", "folder", `{"id":9007199254740993123,"folder_name":"Example"}`},
