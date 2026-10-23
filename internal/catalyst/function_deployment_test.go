@@ -3,6 +3,8 @@ package catalyst
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -165,5 +167,141 @@ func TestFunctionReadSurvivesTransientNullAndMissingListing(t *testing.T) {
 	result, err := c.GetFunctionDeployment(t.Context(), "456", "123")
 	if err != nil || result == nil || result.ID != "123" || reads != 2 {
 		t.Fatalf("temporarily hidden Function was lost: %+v %v", result, err)
+	}
+}
+
+func TestFunctionDeploymentRequiresConsecutiveMatches(t *testing.T) {
+	reads, waits := 0, 0
+	artifact := "PK\x03\x04fixture"
+	digest := sha256.Sum256([]byte(artifact))
+	c := testClient(t, Config{AccessToken: "test"}, func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/download") {
+			writeResponse(t, w, artifact)
+			return
+		}
+		reads++
+		memory := 256
+		if reads == 1 || reads == 3 {
+			memory = 128
+		}
+		writeResponse(t, w, fmt.Sprintf(`{"status":"success","data":{"id":"123","name":"example","stack":"node24","type":"advancedio","configuration":{"memory":%d,"environment":{"variables":{}}}}}`, memory))
+	})
+	c.wait = func(ctx context.Context, _ time.Duration) error { waits++; return ctx.Err() }
+	desired := FunctionDeployment{FunctionMetadata: FunctionMetadata{Name: "example", Stack: "node24", Type: "advancedio"}}
+	desired.Configuration.Memory = 256
+	current, err := c.WaitFunctionDeployment(t.Context(), "456", "123", desired, hex.EncodeToString(digest[:]))
+	if err != nil || current == nil || reads != 6 || waits != 5 {
+		t.Fatalf("stale Function deployment accepted: reads=%d waits=%d err=%v", reads, waits, err)
+	}
+}
+func TestFunctionDeleteReconcilesDefinitive404Only(t *testing.T) {
+	for _, status := range []int{404, 503} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			writes := 0
+			deleted := false
+			c := testClient(t, Config{AccessToken: "test"}, func(w http.ResponseWriter, r *http.Request) {
+				switch {
+				case r.Method == "DELETE":
+					writes++
+					if writes == 1 {
+						w.WriteHeader(status)
+						writeResponse(t, w, "server-secret")
+						return
+					}
+					deleted = true
+					writeResponse(t, w, `{"status":"success","data":{"id":"123"}}`)
+				case r.URL.Path == "/baas/v1/project/456":
+					writeResponse(t, w, `{"status":"success","data":{"id":"456","project_name":"test"}}`)
+				case strings.HasSuffix(r.URL.Path, "/function"):
+					if deleted {
+						writeResponse(t, w, `{"status":"success","data":[]}`)
+					} else {
+						writeResponse(t, w, `{"status":"success","data":[{"id":"123","name":"fixture","stack":"node22","type":"basicio"}]}`)
+					}
+				default:
+					if deleted {
+						writeResponse(t, w, `{"status":"success","data":null}`)
+					} else {
+						writeResponse(t, w, `{"status":"success","data":{"id":"123","name":"fixture","stack":"node22","type":"basicio"}}`)
+					}
+				}
+			})
+			c.wait = func(ctx context.Context, _ time.Duration) error { return ctx.Err() }
+			err := c.DeleteFunction(t.Context(), "456", "123")
+			if status == 404 {
+				if err != nil || writes != 2 {
+					t.Fatalf("temporary deletion 404 not reconciled: %v", err)
+				}
+				if err = c.WaitFunctionDeleted(t.Context(), "456", "123"); err != nil {
+					t.Fatal(err)
+				}
+			} else if err == nil || writes != 1 || strings.Contains(err.Error(), "server-secret") {
+				t.Fatal("ambiguous deletion replayed or response body leaked")
+			}
+		})
+	}
+}
+
+func TestAdvancedFunctionManagementRoutesAndLegacyType(t *testing.T) {
+	stored := false
+	writes, deletes := 0, 0
+	metadata := `{"id":"123","name":"example","stack":"node24","type":"applogic","configuration":{"memory":128,"environment":{"variables":{}}}}`
+	c := testClient(t, Config{AccessToken: "test"}, func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == "PUT":
+			if r.URL.Path != "/baas/v1/project/456/server/upsert" {
+				t.Error("Advanced I/O used generic Function upsert")
+			}
+			if err := r.ParseMultipartForm(1 << 20); err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = r.MultipartForm.RemoveAll() }()
+			if r.FormValue("type") != "" {
+				t.Error("server upsert must not send generic type")
+			}
+			stored = true
+			writes++
+			writeResponse(t, w, `{"status":"success","data":`+metadata+`}`)
+		case r.Method == "DELETE":
+			if r.URL.Path != "/baas/v1/project/456/server/123" {
+				t.Error("Advanced I/O used generic Function deletion")
+			}
+			stored = false
+			deletes++
+			writeResponse(t, w, `{"status":"success","data":{"id":"123"}}`)
+		case r.URL.Path == "/baas/v1/project/456/function":
+			if stored {
+				writeResponse(t, w, `{"status":"success","data":[`+metadata+`]}`)
+			} else {
+				writeResponse(t, w, `{"status":"success","data":[]}`)
+			}
+		case r.URL.Path == "/baas/v1/project/456":
+			writeResponse(t, w, `{"status":"success","data":{"id":"456","project_name":"Test"}}`)
+		default:
+			if stored {
+				writeResponse(t, w, `{"status":"success","data":`+metadata+`}`)
+			} else {
+				writeResponse(t, w, `{"status":"success","data":null}`)
+			}
+		}
+	})
+	c.wait = func(ctx context.Context, _ time.Duration) error { return ctx.Err() }
+	desired := FunctionDeployment{FunctionMetadata: FunctionMetadata{Name: "example", Stack: "node24", Type: "advancedio"}}
+	desired.Configuration.Memory = 128
+	desired.Configuration.Environment.Variables = map[string]string{}
+	for _, id := range []string{"", "123"} {
+		value, err := c.DeployFunction(t.Context(), "456", id, desired, []byte("fixture"))
+		if err != nil || value == nil || value.Type != "advancedio" {
+			t.Fatalf("legacy type/routing failure: %v", err)
+		}
+	}
+	if err := c.DeleteFunction(t.Context(), "456", "123"); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.WaitFunctionDeleted(t.Context(), "456", "123"); err != nil {
+		t.Fatal(err)
+	}
+	if writes != 2 || deletes != 1 {
+		t.Fatal("unexpected mutation count")
 	}
 }

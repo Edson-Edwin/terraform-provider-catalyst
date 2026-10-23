@@ -1,0 +1,1 @@
+terraform import catalyst_function.example 1234567890123456789/9876543210987654321

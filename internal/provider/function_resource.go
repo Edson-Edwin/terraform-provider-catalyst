@@ -2,7 +2,6 @@
 package provider
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -47,12 +46,12 @@ func (r *FunctionResource) Metadata(_ context.Context, req resource.MetadataRequ
 }
 func (r *FunctionResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	replace := []planmodifier.String{stringplanmodifier.RequiresReplace()}
-	resp.Schema = schema.Schema{MarkdownDescription: "Deploy a Node.js 22 Basic I/O Function from a prebuilt ZIP using `ZohoCatalyst.functions.ALL` and project read access. Supports code/configuration updates, import and drift detection by downloading the archive. Names must be unique: creation checks existing Functions and requires explicit import instead of adoption. Catalyst uses name-keyed upserts; keep project/name ownership exclusive across Terraform states and external deployment tools because the API has no established atomic conditional-create operation. Updates own memory and environment variables. Secrets marked sensitive remain in state; source code is not stored in state. The provider limits compressed and expanded archives to 100 MB. Artifact/configuration read-back verifies persistence, not runtime execution or Production promotion. The provider never invokes the Function. Import with `project_id/function_id` and supply a matching source ZIP/hash afterward. Deletion is confirmed for up to two minutes. Live validation covers India Development only.", Attributes: map[string]schema.Attribute{
+	resp.Schema = schema.Schema{MarkdownDescription: "Deploy a Node.js 22 or 24 Basic I/O or Advanced I/O Function from a prebuilt ZIP using `ZohoCatalyst.functions.ALL` and project read access. Supports code/configuration updates, import and drift detection by downloading the archive. Names must be unique: creation checks existing Functions and requires explicit import instead of adoption. Catalyst uses name-keyed upserts; keep project/name ownership exclusive across Terraform states and external deployment tools because the API has no established atomic conditional-create operation. Updates own memory and environment variables. Secrets marked sensitive remain in state; source code is not stored in state. The provider limits compressed and expanded archives to 100 MB. Artifact/configuration read-back verifies persistence, not runtime execution or Production promotion. The provider never invokes the Function. Import with `project_id/function_id` and supply a matching source ZIP/hash afterward. Deletion is confirmed for up to two minutes. Live validation covers India Development only.", Attributes: map[string]schema.Attribute{
 		"id":                    schema.StringAttribute{Computed: true, MarkdownDescription: "Function ID as a precision-preserving string.", PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
 		"project_id":            schema.StringAttribute{Required: true, MarkdownDescription: "Existing project ID.", PlanModifiers: replace},
 		"name":                  schema.StringAttribute{Required: true, MarkdownDescription: "Unique Function name; must match the ZIP configuration and package name. Changing it replaces the Function.", PlanModifiers: replace},
-		"stack":                 schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("node22"), MarkdownDescription: "Supported runtime: node22.", PlanModifiers: replace},
-		"type":                  schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("basicio"), MarkdownDescription: "Supported Function type: basicio.", PlanModifiers: replace},
+		"stack":                 schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("node22"), MarkdownDescription: "Supported runtimes: node22 and node24; defaults to node22.", PlanModifiers: replace},
+		"type":                  schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("basicio"), MarkdownDescription: "Supported types: basicio and advancedio; defaults to basicio.", PlanModifiers: replace},
 		"source":                schema.StringAttribute{Required: true, MarkdownDescription: "Local prebuilt ZIP containing catalyst-config.json, package.json and the entry point at its root. Build dependencies before applying."},
 		"source_sha256":         schema.StringAttribute{Required: true, MarkdownDescription: "Lowercase hex SHA-256, usually filesha256(source). Changed contents update code in place. Refresh records the remote archive hash."},
 		"memory":                schema.Int64Attribute{Optional: true, Computed: true, Default: int64default.StaticInt64(256), MarkdownDescription: "Memory allocation in MB: 128, 256 or 512; defaults to 256."},
@@ -95,9 +94,9 @@ func (r *FunctionResource) ValidateConfig(ctx context.Context, req resource.Vali
 		case "name":
 			valid = catalyst.ValidFunctionName(v)
 		case "stack":
-			valid = v == "node22"
+			valid = catalyst.ValidFunctionStack(v)
 		case "type":
-			valid = v == "basicio"
+			valid = catalyst.ValidFunctionType(v)
 		case "source":
 			valid = strings.TrimSpace(v) != ""
 		case "source_sha256":
@@ -194,28 +193,13 @@ func (r *FunctionResource) persist(ctx context.Context, data *functionModel, cre
 		diags.AddError("Unable to deploy Catalyst Function", err.Error())
 		return
 	}
-	// A successful request must be followed by matching artifact/config reads.
-	current, err := r.client.GetFunctionDeployment(ctx, data.ProjectID.ValueString(), data.ID.ValueString())
+	current, err := r.client.WaitFunctionDeployment(ctx, data.ProjectID.ValueString(), data.ID.ValueString(), desired, data.SHA256.ValueString())
 	if err != nil {
-		diags.AddError("Unable to verify Function deployment", err.Error())
+		diags.AddError("Unable to verify Function deployment", "The Function ID is retained for recovery. Refresh before retrying. "+err.Error())
 		return
 	}
-	hash, err := r.client.FunctionSHA256(ctx, data.ProjectID.ValueString(), data.ID.ValueString())
-	if err != nil {
-		diags.AddError("Unable to verify Function artifact", err.Error())
-		return
-	}
-	if current.Name != desired.Name || current.Stack != desired.Stack || current.Type != desired.Type || current.Configuration.Memory != desired.Configuration.Memory || hash != data.SHA256.ValueString() {
-		diags.AddError("Function deployment does not match plan", "The Function ID is retained for recovery. Refresh before retrying.")
-		return
-	}
-	actual, _ := json.Marshal(current.Configuration.Environment.Variables)
-	expected, _ := json.Marshal(desired.Configuration.Environment.Variables)
-	if !bytes.Equal(actual, expected) {
-		diags.AddError("Function environment does not match plan", "The Function ID is retained for recovery. Environment values are hidden.")
-		return
-	}
-	diags.Append(data.populate(ctx, current, hash)...)
+	diags.Append(data.populate(ctx, current, data.SHA256.ValueString())...)
+
 	setState()
 }
 func (r *FunctionResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {

@@ -271,7 +271,7 @@
       "data_sources": [
         "catalyst_functions"
       ],
-      "note": "Node22 Basic I/O Function lifecycle implemented; local and live acceptance results recorded in API_COVERAGE.md. Other runtime/type combinations remain unimplemented. Name-keyed upserts require exclusive project/name ownership across writers."
+      "note": "Node22/24 Basic I/O and Advanced I/O lifecycles passed live Terraform tests in India Development. Other languages/runtime versions/types remain unimplemented. Advanced I/O uses server management endpoints and normalized applogic metadata. Exact artifact/configuration verification is bounded; exclusive name ownership is required."
     },
     {
       "id": "appsail.service",

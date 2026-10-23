@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"maps"
 	"mime/multipart"
 	"net/http"
 	"regexp"
@@ -35,9 +36,10 @@ type FunctionDeployment struct {
 
 func (c *Client) functionError(ctx context.Context, res *http.Response, project, id string) error {
 	var failure apiFailure
-	if decode(res.Body, &failure) == nil && res.StatusCode == 404 && failure.Status == "failure" && failure.Data.Code == "INVALID_ID" {
+	if res.StatusCode == http.StatusNotFound && ValidID(id) {
 		return c.confirmFunctionAbsent(ctx, project, id)
 	}
+	_ = decode(res.Body, &failure)
 	return failureError("Catalyst Function request", res.StatusCode, failure)
 }
 
@@ -108,6 +110,7 @@ func (c *Client) readDeployment(ctx context.Context, res *http.Response, project
 	if result.Configuration.Environment.Variables == nil {
 		result.Configuration.Environment.Variables = map[string]string{}
 	}
+	result.Type = normalizeFunctionType(result.Type)
 	return result, nil
 }
 func (c *Client) GetFunctionDeployment(ctx context.Context, project, id string) (*FunctionDeployment, error) {
@@ -138,7 +141,7 @@ func (c *Client) DeployFunction(ctx context.Context, project, id string, desired
 	if err != nil {
 		return nil, err
 	}
-	if (id != "" && !ValidID(id)) || !ValidFunctionName(desired.Name) || desired.Stack != "node22" || desired.Type != "basicio" || int64(len(archive)) > MaxFileBytes || (desired.Configuration.Memory != 128 && desired.Configuration.Memory != 256 && desired.Configuration.Memory != 512) {
+	if (id != "" && !ValidID(id)) || !ValidFunctionName(desired.Name) || !ValidFunctionStack(desired.Stack) || !ValidFunctionType(desired.Type) || int64(len(archive)) > MaxFileBytes || (desired.Configuration.Memory != 128 && desired.Configuration.Memory != 256 && desired.Configuration.Memory != 512) {
 		return nil, errors.New("invalid or unsupported Function configuration")
 	}
 	select {
@@ -165,13 +168,20 @@ func (c *Client) DeployFunction(ctx context.Context, project, id string, desired
 			return nil, errors.New("function name already exists; import it explicitly instead of overwriting it")
 		}
 	}
+	if desired.Type == "advancedio" {
+		path = "/baas/v1/project/" + project + "/server"
+	}
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
 	config, err := json.Marshal(desired.Configuration)
 	if err != nil {
 		return nil, errors.New("could not encode Function configuration")
 	}
-	for key, value := range map[string]string{"name": desired.Name, "stack": desired.Stack, "type": desired.Type, "configuration": string(config)} {
+	fields := map[string]string{"name": desired.Name, "stack": desired.Stack, "configuration": string(config)}
+	if desired.Type != "advancedio" {
+		fields["type"] = desired.Type
+	}
+	for key, value := range fields {
 		if err = writer.WriteField(key, value); err != nil {
 			return nil, errors.New("could not encode Function deployment")
 		}
@@ -242,12 +252,34 @@ func (c *Client) FunctionSHA256(ctx context.Context, project, id string) (string
 }
 
 func (c *Client) DeleteFunction(ctx context.Context, project, id string) error {
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+	for {
+		err := c.deleteFunctionOnce(ctx, project, id)
+		if !errors.Is(err, errFunctionPending) {
+			return err
+		}
+		// A definitive 404 can be transient while this exact immutable ID remains listed.
+		// Repeating deletion of that ID is idempotent; ambiguous failures are not retried.
+		if err = c.wait(ctx, 2*time.Second); err != nil {
+			return err
+		}
+	}
+}
+func (c *Client) deleteFunctionOnce(ctx context.Context, project, id string) error {
 	if !ValidID(id) {
 		return errors.New("invalid Function ID")
 	}
 	path, err := functionPath(project, id)
 	if err != nil {
 		return err
+	}
+	metadata, err := c.GetFunction(ctx, project, id)
+	if err != nil {
+		return err
+	}
+	if metadata.Type == "advancedio" {
+		path = "/baas/v1/project/" + project + "/server/" + id
 	}
 	res, err := c.request(ctx, http.MethodDelete, path, nil)
 	if err != nil {
@@ -267,6 +299,39 @@ func (c *Client) DeleteFunction(ctx context.Context, project, id string) error {
 		return errors.New("the Catalyst did not confirm deletion of the requested Function")
 	}
 	return nil
+}
+
+// WaitFunctionDeployment requires stable configuration and artifact observations after upsert.
+func (c *Client) WaitFunctionDeployment(ctx context.Context, project, id string, desired FunctionDeployment, hash string) (*FunctionDeployment, error) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+	stable := 0
+	for {
+		matched := false
+		current, err := c.GetFunctionDeployment(ctx, project, id)
+		if err != nil && !errors.Is(err, ErrFunctionNotFound) {
+			return nil, err
+		}
+		if err == nil {
+			actualHash, hashErr := c.FunctionSHA256(ctx, project, id)
+			if hashErr != nil && !errors.Is(hashErr, ErrFunctionNotFound) {
+				return nil, hashErr
+			}
+			if hashErr == nil && current.Name == desired.Name && current.Stack == desired.Stack && current.Type == desired.Type && current.Configuration.Memory == desired.Configuration.Memory && maps.Equal(current.Configuration.Environment.Variables, desired.Configuration.Environment.Variables) && actualHash == hash {
+				matched = true
+				stable++
+				if stable == 3 {
+					return current, nil
+				}
+			}
+		}
+		if !matched {
+			stable = 0
+		}
+		if err := c.wait(ctx, 2*time.Second); err != nil {
+			return nil, err
+		}
+	}
 }
 func (c *Client) WaitFunctionDeleted(ctx context.Context, project, id string) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)

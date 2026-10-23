@@ -27,11 +27,20 @@ import (
 
 func writeFunctionArchive(t *testing.T, directory, name, message string) string {
 	t.Helper()
+	return writeFunctionArchiveVariant(t, directory, name, message, "node22", "basicio")
+}
+
+func writeFunctionArchiveVariant(t *testing.T, directory, name, message, stack, kind string) string {
+	t.Helper()
 	var content bytes.Buffer
 	w := zip.NewWriter(&content)
-	config := fmt.Sprintf(`{"deployment":{"name":%q,"stack":"node22","type":"basicio"},"execution":{"main":"index.js"}}`, name)
+	config := fmt.Sprintf(`{"deployment":{"name":%q,"stack":%q,"type":%q},"execution":{"main":"index.js"}}`, name, stack, kind)
 	pkg := fmt.Sprintf(`{"name":%q,"version":"1.0.0","main":"index.js"}`, name)
-	for _, entry := range []struct{ name, content string }{{"index.js", "module.exports = async (context, basicIO) => { basicIO.write('" + message + "'); context.close(); };"}, {"catalyst-config.json", config}, {"package.json", pkg}} {
+	code := "module.exports = async (context, basicIO) => { basicIO.write('" + message + "'); context.close(); };"
+	if kind == "advancedio" {
+		code = "module.exports = (req, res) => { res.setHeader('Content-Type', 'text/plain'); res.end('" + message + "'); };"
+	}
+	for _, entry := range []struct{ name, content string }{{"index.js", code}, {"catalyst-config.json", config}, {"package.json", pkg}} {
 		f, err := w.Create(entry.name)
 		if err != nil {
 			t.Fatal(err)

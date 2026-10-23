@@ -3,12 +3,12 @@
 page_title: "catalyst_function Resource - catalyst"
 subcategory: ""
 description: |-
-  Deploy a Node.js 22 Basic I/O Function from a prebuilt ZIP using ZohoCatalyst.functions.ALL and project read access. Supports code/configuration updates, import and drift detection by downloading the archive. Names must be unique: creation checks existing Functions and requires explicit import instead of adoption. Catalyst uses name-keyed upserts; keep project/name ownership exclusive across Terraform states and external deployment tools because the API has no established atomic conditional-create operation. Updates own memory and environment variables. Secrets marked sensitive remain in state; source code is not stored in state. The provider limits compressed and expanded archives to 100 MB. Artifact/configuration read-back verifies persistence, not runtime execution or Production promotion. The provider never invokes the Function. Import with project_id/function_id and supply a matching source ZIP/hash afterward. Deletion is confirmed for up to two minutes. Live validation covers India Development only.
+  Deploy a Node.js 22 or 24 Basic I/O or Advanced I/O Function from a prebuilt ZIP using ZohoCatalyst.functions.ALL and project read access. Supports code/configuration updates, import and drift detection by downloading the archive. Names must be unique: creation checks existing Functions and requires explicit import instead of adoption. Catalyst uses name-keyed upserts; keep project/name ownership exclusive across Terraform states and external deployment tools because the API has no established atomic conditional-create operation. Updates own memory and environment variables. Secrets marked sensitive remain in state; source code is not stored in state. The provider limits compressed and expanded archives to 100 MB. Artifact/configuration read-back verifies persistence, not runtime execution or Production promotion. The provider never invokes the Function. Import with project_id/function_id and supply a matching source ZIP/hash afterward. Deletion is confirmed for up to two minutes. Live validation covers India Development only.
 ---
 
 # catalyst_function (Resource)
 
-Deploy a Node.js 22 Basic I/O Function from a prebuilt ZIP using `ZohoCatalyst.functions.ALL` and project read access. Supports code/configuration updates, import and drift detection by downloading the archive. Names must be unique: creation checks existing Functions and requires explicit import instead of adoption. Catalyst uses name-keyed upserts; keep project/name ownership exclusive across Terraform states and external deployment tools because the API has no established atomic conditional-create operation. Updates own memory and environment variables. Secrets marked sensitive remain in state; source code is not stored in state. The provider limits compressed and expanded archives to 100 MB. Artifact/configuration read-back verifies persistence, not runtime execution or Production promotion. The provider never invokes the Function. Import with `project_id/function_id` and supply a matching source ZIP/hash afterward. Deletion is confirmed for up to two minutes. Live validation covers India Development only.
+Deploy a Node.js 22 or 24 Basic I/O or Advanced I/O Function from a prebuilt ZIP using `ZohoCatalyst.functions.ALL` and project read access. Supports code/configuration updates, import and drift detection by downloading the archive. Names must be unique: creation checks existing Functions and requires explicit import instead of adoption. Catalyst uses name-keyed upserts; keep project/name ownership exclusive across Terraform states and external deployment tools because the API has no established atomic conditional-create operation. Updates own memory and environment variables. Secrets marked sensitive remain in state; source code is not stored in state. The provider limits compressed and expanded archives to 100 MB. Artifact/configuration read-back verifies persistence, not runtime execution or Production promotion. The provider never invokes the Function. Import with `project_id/function_id` and supply a matching source ZIP/hash afterward. Deletion is confirmed for up to two minutes. Live validation covers India Development only.
 
 ## Example Usage
 
@@ -41,8 +41,8 @@ resource "catalyst_function" "example" {
 
 - `environment_variables` (Map of String, Sensitive) Complete desired environment-variable map. Removing keys clears them remotely. Values remain in Terraform state.
 - `memory` (Number) Memory allocation in MB: 128, 256 or 512; defaults to 256.
-- `stack` (String) Supported runtime: node22.
-- `type` (String) Supported Function type: basicio.
+- `stack` (String) Supported runtimes: node22 and node24; defaults to node22.
+- `type` (String) Supported types: basicio and advancedio; defaults to basicio.
 
 ### Read-Only
 

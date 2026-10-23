@@ -10,6 +10,7 @@ dev: build
 	sh scripts/setup-dev.sh
 
 verify: dev
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/advancedio validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_api_gateway validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_api_gateway_ruleset validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_appsail validate
@@ -104,3 +105,8 @@ testacc-gateway:
 	TF_ACC=1 go test -race -count=1 -timeout=15m -run '^TestAccGatewayResources$$' ./internal/provider
 
 .PHONY: testacc-gateway
+
+testacc-function-variants:
+	TF_ACC=1 go test -race -count=1 -timeout=15m -run '^TestAccFunctionVariants$$' ./internal/provider
+
+.PHONY: testacc-function-variants

@@ -20,6 +20,16 @@ type FunctionMetadata struct {
 	Type  string `json:"type"`
 }
 
+func ValidFunctionStack(stack string) bool { return stack == "node22" || stack == "node24" }
+func ValidFunctionType(kind string) bool   { return kind == "basicio" || kind == "advancedio" }
+
+func normalizeFunctionType(kind string) string {
+	if kind == "applogic" {
+		return "advancedio"
+	}
+	return kind
+}
+
 func functionPath(projectID, id string) (string, error) {
 	if !ValidID(projectID) || (id != "" && !ValidID(id)) {
 		return "", errors.New("project and function IDs must be positive integer strings")
@@ -46,7 +56,9 @@ func (c *Client) ListFunctions(ctx context.Context, projectID string) ([]Functio
 		return nil, err
 	}
 	ids := make(map[ID]bool)
-	for _, f := range functions {
+	for i := range functions {
+		functions[i].Type = normalizeFunctionType(functions[i].Type)
+		f := functions[i]
 		if !validFunction(f) || ids[f.ID] {
 			return nil, errors.New("the Catalyst returned incomplete or duplicate function metadata")
 		}
@@ -92,6 +104,7 @@ func (c *Client) getFunctionOnce(ctx context.Context, projectID, id string) (*Fu
 	if json.Unmarshal(envelope.Data, &value) != nil || !validFunction(value) || string(value.ID) != id {
 		return nil, errors.New("the Catalyst returned invalid function metadata")
 	}
+	value.Type = normalizeFunctionType(value.Type)
 	return &value, nil
 }
 
