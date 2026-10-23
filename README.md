@@ -2,7 +2,7 @@
 
 A community Terraform provider intended for public use, built with the Terraform Plugin Framework. Each user supplies their own Zoho credentials and selects their account's data center. No personal account credentials or organization settings are built into the provider.
 
-**Current status:** Three managed resources (`catalyst_webhook_cron`, `catalyst_filestore_file`, `catalyst_function`) and eight read-only data sources are implemented. Discovery covers projects, job pools, Data Store tables, File Store folders, Cache segments, Stratus buckets and Functions. Registry releases are not available yet. This is a community provider, not an official Zoho provider. Discovery does not imply create/update/delete support for those services. See [API_COVERAGE.md](API_COVERAGE.md) for exact support and evidence.
+**Current status:** Four managed resources (`catalyst_webhook_cron`, `catalyst_filestore_file`, `catalyst_function`, `catalyst_appsail`) and eight read-only data sources are implemented. Discovery covers projects, job pools, Data Store tables, File Store folders, Cache segments, Stratus buckets and Functions. Registry releases are not available yet. This is a community provider, not an official Zoho provider. Discovery does not imply create/update/delete support for those services. See [API_COVERAGE.md](API_COVERAGE.md) for exact support and evidence.
 
 ## Requirements
 
@@ -274,3 +274,11 @@ Function names use Catalyst's upsert API. Creation rejects an existing name; imp
 Verification reads back configuration and downloads the artifact. It does not invoke the Function or promote it to Production, and does not interpret `is_deployed` as a runtime-readiness signal. Environment values remain in sensitive Terraform state; source bytes do not. Refresh downloads add traffic. The provider limits compressed/expanded ZIPs to 100 MB. India Development acceptance passed create/import/code update/memory and environment update/clear/stable plan/destroy. Live execution and other regions are untested.
 
 Run `make testacc-function` with `CATALYST_TEST_ALLOW_FUNCTION_CREATE=1`, an isolated `CATALYST_TEST_PROJECT_ID`, `CATALYST_ENVIRONMENT=Development`, data center, organization and an access token. The live test uses harmless generated fixtures and never invokes the Function. Default `make test` remains offline.
+
+## Managed AppSail services
+
+`catalyst_appsail` deploys a prebuilt Node.js 22 application ZIP and manages code, memory, startup command, port, Catalyst authentication and complete environment-variable maps. It supports import and remote artifact drift detection. Authentication defaults to enabled. See the [AppSail example](examples/resources/catalyst_appsail/) and [resource reference](docs/resources/appsail.md).
+
+Build application dependencies into the ZIP before applying. Include `package.json` at its root and bind the application to its configured port or `X_ZOHO_CATALYST_LISTEN_PORT`. No build or application invocation happens in the provider. Configuration/artifact persistence does not prove runtime health. Existing names require explicit import, and project/name ownership must remain exclusive across states and external deployment tools because Catalyst's upsert is name-based.
+
+Run `make testacc-appsail` with `TF_ACC=1`, `CATALYST_TEST_ALLOW_APPSAIL_CREATE=1`, an isolated `CATALYST_TEST_PROJECT_ID`, `CATALYST_ENVIRONMENT=Development`, data center, organization and access token. Fixtures are generated locally; default tests remain offline.

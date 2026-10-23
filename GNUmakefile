@@ -10,6 +10,7 @@ dev: build
 	sh scripts/setup-dev.sh
 
 verify: dev
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_appsail validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_function validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_functions validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/provider providers schema -json > bin/provider-schema.json
@@ -91,3 +92,8 @@ testacc-function:
 	TF_ACC=1 go test -race -count=1 -timeout=5m -run '^TestAccFunction$$' ./internal/provider
 
 .PHONY: testacc-function
+
+testacc-appsail:
+	TF_ACC=1 go test -race -count=1 -timeout=5m -run '^TestAccAppSail$$' ./internal/provider
+
+.PHONY: testacc-appsail

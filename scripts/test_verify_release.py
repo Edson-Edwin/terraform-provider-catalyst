@@ -82,7 +82,7 @@ class ReleaseChecks(unittest.TestCase):
             self.assertIn('version = "1.0.0"', (root / 'main.tf').read_text())
             self.assertNotIn('TF_CLI_ARGS', kwargs['env'])
             schemas = {'provider_schemas': {'registry.terraform.io/edson-edwin/catalyst': {
-                'resource_schemas': {'catalyst_webhook_cron': {}, 'catalyst_filestore_file': {}, 'catalyst_function': {}},
+                'resource_schemas': {'catalyst_webhook_cron': {}, 'catalyst_filestore_file': {}, 'catalyst_function': {}, 'catalyst_appsail': {}},
                 'data_source_schemas': {name: {} for name in ['catalyst_project', 'catalyst_projects', 'catalyst_job_pools', 'catalyst_datastore_tables', 'catalyst_filestore_folders', 'catalyst_cache_segments', 'catalyst_stratus_buckets', 'catalyst_functions']}}}}
             return subprocess.CompletedProcess(args, 0, stdout=json.dumps(schemas), stderr='')
         with mock.patch.object(release.platform, 'system', return_value='Linux'), \

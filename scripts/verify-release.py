@@ -135,7 +135,7 @@ def verify(directory, expected_version=None, signer_fingerprint=None):
         subprocess.run(['terraform', 'init', '-backend=false', '-input=false', '-no-color'], cwd=root, env=env, capture_output=True, text=True, check=True, timeout=60)
         result = subprocess.run(['terraform', 'providers', 'schema', '-json'], cwd=root, env=env, capture_output=True, text=True, check=True, timeout=60)
         schemas = json.loads(result.stdout)['provider_schemas']['registry.terraform.io/edson-edwin/catalyst']
-        if set(schemas['resource_schemas']) != {'catalyst_webhook_cron', 'catalyst_filestore_file', 'catalyst_function'}:
+        if set(schemas['resource_schemas']) != {'catalyst_webhook_cron', 'catalyst_filestore_file', 'catalyst_function', 'catalyst_appsail'}:
             raise ValueError('Packaged provider has unexpected resources')
         if set(schemas['data_source_schemas']) != {'catalyst_project', 'catalyst_projects', 'catalyst_job_pools', 'catalyst_datastore_tables', 'catalyst_filestore_folders', 'catalyst_cache_segments', 'catalyst_stratus_buckets', 'catalyst_functions'}:
             raise ValueError('Packaged provider has unexpected data sources')

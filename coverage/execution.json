@@ -1,7 +1,7 @@
 {
   "updated": "2026-10-23",
   "objective_complete": false,
-  "current_phase": "2: first managed compute lifecycle implemented",
+  "current_phase": "2: Function and AppSail managed compute lifecycles",
   "completed": [
     "draft inventory of 43 capability areas",
     "registered type/docs/examples consistency test",
@@ -16,7 +16,13 @@
     "follow-up cleanup confirmed zero Functions remain",
     "catalyst_function implemented for node22/basicio code, memory and environment maps",
     "live Terraform Function create/import/update/clear/stable-plan/destroy passed; baseline cleanup confirmed",
-    "regressions for null absence, propagation gaps, cancellation and partial-create recovery"
+    "regressions for null absence, propagation gaps, cancellation and partial-create recovery",
+    "AppSail API upload/read/download/delete verified in isolated India Development project with baseline cleanup",
+    "catalyst_appsail implemented for Node22 code, memory, command, port, authentication and environment maps",
+    "AppSail offline Terraform lifecycle and state-recovery tests passed",
+    "live Terraform AppSail create/import/code-memory-command-port-env updates/clear/stable-plan/destroy passed; baseline cleanup confirmed",
+    "AppSail stale-read regression requires three consecutive artifact/configuration matches",
+    "make check and configured static analysis passed for AppSail milestone"
   ],
   "pending": [
     "complete per-field management API inventory",
@@ -25,7 +31,7 @@
     "establish meaning of is_deployed and function_output in Development",
     "establish safe ownership for name-keyed upsert",
     "extend Function runtime/type support after verifying fixtures",
-    "AppSail and remaining service lifecycle phases"
+    "API Gateway and remaining service lifecycle phases"
   ],
   "live_prerequisite": "Replacement isolated Development project verified in console and API.",
   "hosted_ci": "deferred by maintainer; billing outside scope",

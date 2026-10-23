@@ -142,8 +142,8 @@ func (c *Client) DeployFunction(ctx context.Context, project, id string, desired
 		return nil, errors.New("invalid or unsupported Function configuration")
 	}
 	select {
-	case c.functionWrites <- struct{}{}:
-		defer func() { <-c.functionWrites }()
+	case c.deploymentWrites <- struct{}{}:
+		defer func() { <-c.deploymentWrites }()
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}

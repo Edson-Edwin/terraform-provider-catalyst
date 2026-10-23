@@ -10,6 +10,7 @@ This community provider is under development. Public availability and broad serv
 | `data.catalyst_projects` | List projects visible in the selected organization | Offline protocol/client tests; live India listing and stable Terraform plan |
 | `data.catalyst_job_pools` | List a project's existing scheduling pools | Offline populated/empty/error cases; live India empty and populated listings with stable plans |
 | `catalyst_webhook_cron` | Manage pre-defined CronExpression schedules with Webhook targets | Offline lifecycle/import/drift/error tests; live India create, import, update, clear, stable plan and verified destroy |
+| `catalyst_appsail` | Manage Node.js 22 ZIP deployment, memory, command, port, authentication and environment maps; import and artifact drift | Offline lifecycle, safety and recovery tests; live results recorded below |
 | `catalyst_function` | Manage Node.js 22 Basic I/O code, memory and environment variables; import and drift | Offline lifecycle/safety regressions; live India Development create/import/update/clear/stable plan/destroy with baseline cleanup; never invoked |
 | `data.catalyst_functions` | List serverless Function IDs and names | Offline contracts and populated live Terraform discovery in replacement India Development project; never invokes Functions |
 | `data.catalyst_datastore_tables` | List existing Data Store table IDs and names | Offline API/protocol/real Terraform tests; live India empty listing and stable plan |
@@ -18,7 +19,7 @@ This community provider is under development. Public availability and broad serv
 | `data.catalyst_stratus_buckets` | List existing Stratus bucket names and endpoints | Offline tests, live India empty listing and stable plan; populated live buckets untested |
 | `catalyst_filestore_file` | Upload, read, import and delete files; replace on changes | Offline binary upload, content drift, external deletion and recovery tests; live India tiny binary upload/import/rename replacement/stable plan/destroy with baseline cleanup |
 
-All data sources are read-only. Webhook crons and File Store files are the managed resources. Live tests are opt-in; credentials and account IDs are never included in repository fixtures.
+All data sources are read-only. Webhook crons, File Store files, Functions and AppSail services are the managed resources. Live tests are opt-in; credentials and account IDs are never included in repository fixtures.
 
 ## API findings
 
@@ -71,7 +72,7 @@ This is a capability inventory, not a claim of 100% coverage. A read-only data s
 | Cache | Segment discovery | Segment creation is explicitly console-only; cache entries expire within 48 hours and are not durable infrastructure |
 | Stratus | Bucket discovery | Bucket provisioning API not established; object lifecycle and bucket-policy/versioning management remain unimplemented |
 | NoSQL | None | Public reference documents item operations; table/index provisioning must be verified separately |
-| Functions / AppSail / Circuits | Node.js 22 Basic I/O Function management; Function discovery | Other Function runtimes/types, AppSail and Circuit deployment/configuration remain unimplemented |
+| Functions / AppSail / Circuits | Node.js 22 Basic I/O Function management; Node.js 22 AppSail management; Function discovery | Other Function runtimes/types and Circuit deployment/configuration remain unimplemented; AppSail currently supports Node.js 22 only |
 | API Gateway / Authentication / Connections | None | Management lifecycle and identity/security boundaries need service-specific review |
 | Web Client / Domain Mappings / Slate / Pipelines | None | Deployment and domain/configuration lifecycles remain unimplemented |
 | Mail / Notifications / Search / ZCQL / Zia / SmartBrowz / ConvoKraft / QuickML / Signals / Data Streams | None | Separate persistent configuration from send/execute/query operations; verify supported management APIs before defining Terraform resources |
@@ -113,3 +114,15 @@ A real Terraform lifecycle passed in the replacement India Development project: 
 Live testing exposed success/data:null for absent Functions and temporary null metadata/missing listings and 404 artifact replicas around upsert. Reads now use bounded reconciliation, and absence requires parent access and three consecutive absent listing observations. Artifact 404s are retried only while metadata remains accessible. Failed verification retains state. These fixes have focused regression tests.
 
 The name-keyed upsert API still has no established atomic conditional-create primitive. Existing names are rejected before creation; writes are serialized within one provider client. Concurrent external deployment tools/independent Terraform states must not own the same project/name. This is an explicit API/ownership limitation, not a claim of distributed locking. Other Function types/runtimes remain unimplemented.
+
+## Managed AppSail milestone (2026-10-23)
+
+`catalyst_appsail` manages Node.js 22 ZIP deployment with memory (128/256/512/1024/2048 MB), startup command, port, Catalyst authentication and complete environment-variable maps. Project/name/runtime changes require replacement. Creation refuses an existing name; independent states and external tools must keep name ownership exclusive. The same per-client gate serializes Function and AppSail upserts. No distributed locking is claimed.
+
+The installed official CLI establishes PUT `/appsail/upsert`, multipart code and top-level memory with configuration fields for command/port/authentication/environment. Live probes in the isolated India Development project verified deployment, typed configuration reads, exact downloaded ZIP bytes and deletion, with baseline cleanup. The app endpoint was never invoked. [AppSail configuration documentation](https://docs.catalyst.zoho.com/en/serverless/help/appsail/appsail-configurations/) describes command, port and allocation behavior.
+
+Offline real-Terraform tests cover create/import/code and configuration updates/environment clearing, artifact drift repair, external deletion/recreation, stable plan and destroy. Client tests cover refusing name collisions, failed listing access, partial-create identity recovery, non-retried ambiguous writes, verified absence, propagation gaps and cancellation. Shared ZIP validation rejects unsafe paths, symlinks, duplicate entries, corrupt files and expanded archives over 100 MB. Other runtimes, container images, Java platforms, login redirects, disk configuration and application health checks remain outside the implemented schema.
+
+The full AppSail Terraform lifecycle passed live in India Development: create, import, code/memory/environment update, variable clearing, stable plan and destroy, with baseline cleanup. An initial immediate-read implementation failed the live test because fresh and stale configuration observations alternated after upsert. Deployment verification now requires three consecutive matching configuration and artifact observations within two minutes; a focused regression exercises a match followed by stale data. No mutation is replayed by this verification loop.
+
+A follow-up live run also verified startup-command and application-port updates and their restoration. The full offline checks, race tests, static analysis, generated documentation and example validation passed locally. Hosted CI remains outside scope.

@@ -278,11 +278,13 @@
       "service": "appsail",
       "object": "service",
       "phase": 2,
-      "status": "unimplemented",
-      "api_evidence": "official_cli_candidate",
-      "resources": [],
+      "status": "managed",
+      "api_evidence": "live_india",
+      "resources": [
+        "catalyst_appsail"
+      ],
       "data_sources": [],
-      "note": "Management API and lifecycle verification required."
+      "note": "Node22 ZIP deployment, memory, startup command, port, authentication and complete environment map management. Import/artifact drift and confirmed deletion. Exclusive name ownership required for upserts. See API_COVERAGE.md for live evidence and limitations."
     },
     {
       "id": "gateway.configuration_and_rules",

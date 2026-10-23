@@ -2,14 +2,11 @@
 package provider
 
 import (
-	"archive/zip"
 	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"io"
-	"os"
-	"path"
 	"strings"
 	"time"
 
@@ -118,38 +115,9 @@ func (r *FunctionResource) ValidateConfig(ctx context.Context, req resource.Vali
 	}
 }
 func validateFunctionArchive(content []byte, name, stack, kind string) error {
-	archive, err := zip.NewReader(bytes.NewReader(content), int64(len(content)))
+	files, err := deploymentArchiveFiles(content)
 	if err != nil {
-		return errors.New("source must be a valid ZIP archive")
-	}
-	files := make(map[string]*zip.File)
-	var total uint64
-	for _, file := range archive.File {
-		if strings.Contains(file.Name, "\\") || strings.HasPrefix(file.Name, "/") || path.Clean(file.Name) == ".." || strings.HasPrefix(path.Clean(file.Name), "../") || (!file.Mode().IsRegular() && !file.FileInfo().IsDir()) || file.Mode()&os.ModeSymlink != 0 {
-			return errors.New("archive contains an unsafe entry")
-		}
-		if file.FileInfo().IsDir() {
-			continue
-		}
-		if files[file.Name] != nil {
-			return errors.New("archive contains duplicate entries")
-		}
-		files[file.Name] = file
-		if file.UncompressedSize64 > uint64(catalyst.MaxFileBytes)-total {
-			return errors.New("expanded Function archive exceeds 100 MB")
-		}
-		total += file.UncompressedSize64
-	}
-	for _, file := range files {
-		reader, err := file.Open()
-		if err != nil {
-			return errors.New("archive entry could not be opened")
-		}
-		size, readErr := io.Copy(io.Discard, io.LimitReader(reader, int64(file.UncompressedSize64)+1))
-		_ = reader.Close()
-		if readErr != nil || uint64(size) != file.UncompressedSize64 {
-			return errors.New("archive contains corrupt entries")
-		}
+		return err
 	}
 	read := func(name string, target any) error {
 		file := files[name]

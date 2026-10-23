@@ -56,7 +56,7 @@ func TestFunctionDeploymentSafety(t *testing.T) {
 		})
 	}
 	c := testClient(t, Config{AccessToken: "test"}, func(w http.ResponseWriter, r *http.Request) { t.Fatal("cancelled waiter made request") })
-	c.functionWrites <- struct{}{}
+	c.deploymentWrites <- struct{}{}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	if _, err := c.DeployFunction(ctx, "456", "", desired, nil); !errors.Is(err, context.Canceled) {

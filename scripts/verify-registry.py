@@ -34,7 +34,7 @@ def verify(version):
         result = subprocess.run(['terraform', 'providers', 'schema', '-json'],
                                 cwd=root, env=env, capture_output=True, text=True, check=True, timeout=60)
         provider = json.loads(result.stdout)['provider_schemas']['registry.terraform.io/edson-edwin/catalyst']
-        if not {'catalyst_webhook_cron', 'catalyst_filestore_file', 'catalyst_function'} <= provider.get('resource_schemas', {}).keys():
+        if not {'catalyst_webhook_cron', 'catalyst_filestore_file', 'catalyst_function', 'catalyst_appsail'} <= provider.get('resource_schemas', {}).keys():
             raise ValueError('Published package is missing required resources')
         expected = {'catalyst_project', 'catalyst_projects', 'catalyst_job_pools', 'catalyst_datastore_tables',
                     'catalyst_filestore_folders', 'catalyst_cache_segments', 'catalyst_stratus_buckets', 'catalyst_functions'}
