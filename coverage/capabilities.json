@@ -143,7 +143,7 @@
         "catalyst_filestore_file"
       ],
       "data_sources": [],
-      "note": "Existing five-byte fixture lifecycle verified; large-file performance not live validated. Legacy service."
+      "note": "Existing five-byte fixture lifecycle verified; large-file performance not live validated. Legacy service. Deprecated: vendor announces 31 October 2026 File Store sunset and no availability to new projects/accounts. Retained for existing state compatibility; new storage should use Stratus."
     },
     {
       "id": "filestore.folder",
@@ -156,7 +156,7 @@
       "data_sources": [
         "catalyst_filestore_folders"
       ],
-      "note": "Management API and lifecycle verification required."
+      "note": "Management API and lifecycle verification required. Deprecated: vendor announces 31 October 2026 File Store sunset and no availability to new projects/accounts. Retained for existing state compatibility; new storage should use Stratus."
     },
     {
       "id": "datastore.table",

@@ -56,7 +56,8 @@
     "UTC default encoded as API GMT with alias-preserving state; 60-step default-UTC Function and Webhook matrices passed",
     "catalyst_appsail_cron implemented with pool/target ownership and authenticated origin checks; root and /health scheduling API probes passed",
     "Live AppSail cron create/import/HTTP and retry updates/clear/drift repair/external deletion/recreation/stable plan/destroy and 30-step default-UTC schedule matrix passed; schedules stayed disabled and AppSail fixture baseline restored",
-    "Node24 AppSail deployment/import/code-memory-command-port-environment updates/clear/stable-plan/destroy passed live; temporary fixture baseline restored, no invocation"
+    "Node24 AppSail deployment/import/code-memory-command-port-environment updates/clear/stable-plan/destroy passed live; temporary fixture baseline restored, no invocation",
+    "File Store vendor retirement notice verified: 31 October 2026 sunset; existing resource/data source now emit Terraform deprecation warnings, preserving state compatibility and directing new storage to Stratus"
   ],
   "pending": [
     "complete per-field management API inventory",

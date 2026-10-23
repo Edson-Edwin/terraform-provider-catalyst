@@ -3,12 +3,12 @@
 page_title: "catalyst_filestore_folders Data Source - catalyst"
 subcategory: ""
 description: |-
-  List existing File Store folders. Requires ZohoCatalyst.folders.READ. It does not download files or create folders. Results are sorted lexicographically by ID. An empty project returns an empty list; denied access or malformed responses return an error.
+  Deprecated: Zoho has announced File Store sunset on 31 October 2026; use Stratus for new storage. See the vendor announcement https://docs.catalyst.zoho.com/en/announcements/2026/filestore-sunset/. List existing File Store folders. Requires ZohoCatalyst.folders.READ. It does not download files or create folders. Results are sorted lexicographically by ID. An empty project returns an empty list; denied access or malformed responses return an error.
 ---
 
 # catalyst_filestore_folders (Data Source)
 
-List existing File Store folders. Requires `ZohoCatalyst.folders.READ`. It does not download files or create folders. Results are sorted lexicographically by ID. An empty project returns an empty list; denied access or malformed responses return an error.
+Deprecated: Zoho has announced File Store sunset on 31 October 2026; use Stratus for new storage. See the [vendor announcement](https://docs.catalyst.zoho.com/en/announcements/2026/filestore-sunset/). List existing File Store folders. Requires `ZohoCatalyst.folders.READ`. It does not download files or create folders. Results are sorted lexicographically by ID. An empty project returns an empty list; denied access or malformed responses return an error.
 
 ## Example Usage
 

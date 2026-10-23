@@ -18,9 +18,9 @@ var _ datasource.DataSourceWithValidateConfig = &InventoryDataSource{}
 // InventoryDataSource shares the identical read-only contract of project inventories.
 // Each constructor fixes its API, Terraform type, collection and OAuth scope.
 type InventoryDataSource struct {
-	client                          *catalyst.Client
-	suffix, collection, description string
-	list                            func(*catalyst.Client, context.Context, string) ([]catalyst.NamedResource, error)
+	client                                       *catalyst.Client
+	suffix, collection, description, deprecation string
+	list                                         func(*catalyst.Client, context.Context, string) ([]catalyst.NamedResource, error)
 }
 type inventoryItemModel struct {
 	ID   types.String `tfsdk:"id"`
@@ -35,7 +35,7 @@ func NewTablesDataSource() datasource.DataSource {
 	return &InventoryDataSource{suffix: "datastore_tables", collection: "tables", description: "List existing Data Store tables. Requires `ZohoCatalyst.tables.READ`. Returns table identities only; it does not read rows or manage table schemas.", list: (*catalyst.Client).ListTables}
 }
 func NewFoldersDataSource() datasource.DataSource {
-	return &InventoryDataSource{suffix: "filestore_folders", collection: "folders", description: "List existing File Store folders. Requires `ZohoCatalyst.folders.READ`. It does not download files or create folders.", list: (*catalyst.Client).ListFolders}
+	return &InventoryDataSource{suffix: "filestore_folders", deprecation: filestoreDeprecation, collection: "folders", description: "Deprecated: Zoho has announced File Store sunset on 31 October 2026; use Stratus for new storage. See the [vendor announcement](https://docs.catalyst.zoho.com/en/announcements/2026/filestore-sunset/). List existing File Store folders. Requires `ZohoCatalyst.folders.READ`. It does not download files or create folders.", list: (*catalyst.Client).ListFolders}
 }
 func NewCacheSegmentsDataSource() datasource.DataSource {
 	return &InventoryDataSource{suffix: "cache_segments", collection: "segments", description: "List existing Cache segments using the official Catalyst CLI's read endpoint. Requires `ZohoCatalyst.segments.ALL`. It does not read cached values. Segment creation is console-only in the published API documentation.", list: (*catalyst.Client).ListCacheSegments}
@@ -57,7 +57,7 @@ func (d *InventoryDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 	} else {
 		attributes["id"] = schema.StringAttribute{Computed: true, MarkdownDescription: "Numeric ID represented as a string without loss of precision."}
 	}
-	resp.Schema = schema.Schema{MarkdownDescription: d.description + " Results are sorted lexicographically by " + order + ". An empty project returns an empty list; denied access or malformed responses return an error.", Attributes: map[string]schema.Attribute{
+	resp.Schema = schema.Schema{DeprecationMessage: d.deprecation, MarkdownDescription: d.description + " Results are sorted lexicographically by " + order + ". An empty project returns an empty list; denied access or malformed responses return an error.", Attributes: map[string]schema.Attribute{
 		"project_id": schema.StringAttribute{Required: true, MarkdownDescription: "Existing project's positive numeric ID, written as a string."},
 		d.collection: schema.ListNestedAttribute{Computed: true, MarkdownDescription: "Existing infrastructure, sorted by " + order + ".", NestedObject: schema.NestedAttributeObject{Attributes: attributes}},
 	}}

@@ -69,3 +69,8 @@ APPSAIL NODE.JS 24:
 
 - Extend `catalyst_appsail` to Node.js 24 while retaining the Node.js 22 default. Runtime changes still require replacement.
 - Pass local Terraform artifact drift/external deletion regressions for both runtimes and live Node.js 24 create/import/code and configuration updates/clear/stable plan/destroy. Restore the isolated test baseline without invoking the app.
+
+FILE STORE RETIREMENT:
+
+- Mark `catalyst_filestore_file` and `data.catalyst_filestore_folders` deprecated with Terraform configuration warnings. Zoho announces File Store sunset on 31 October 2026 and excludes new projects/accounts.
+- Keep existing schemas/state compatible; no automatic file or permission migration occurs. Direct new storage to Stratus and link the vendor notice in public documentation.

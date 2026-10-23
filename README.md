@@ -4,6 +4,8 @@ A community Terraform provider intended for public use, built with the Terraform
 
 **Current status:** Nine managed resources (`catalyst_webhook_cron`, `catalyst_filestore_file`, `catalyst_function`, `catalyst_appsail`, `catalyst_api_gateway`, `catalyst_api_gateway_ruleset`, `catalyst_stratus_object`, `catalyst_function_cron`, `catalyst_appsail_cron`) and eight read-only data sources are implemented. Discovery covers projects, job pools, Data Store tables, File Store folders, Cache segments, Stratus buckets and Functions. Registry releases are not available yet. This is a community provider, not an official Zoho provider. Discovery does not imply create/update/delete support for those services. See [API_COVERAGE.md](API_COVERAGE.md) for exact support and evidence.
 
+**File Store sunset:** Zoho has announced retirement on **31 October 2026** and says new projects/accounts do not receive File Store. The File Store resource and folder data source are deprecated. Use Stratus for new storage and plan existing file/permission migration separately. [Vendor announcement](https://docs.catalyst.zoho.com/en/announcements/2026/filestore-sunset/).
+
 ## Requirements
 
 - Go 1.25.8 or newer (see `go.mod`).
