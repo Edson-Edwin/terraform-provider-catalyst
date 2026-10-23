@@ -186,8 +186,15 @@ func applyCronSchedule(ctx context.Context, cron catalyst.Cron, d cronScheduleMo
 	}
 	return cron, diags
 }
-func readCronSchedule(ctx context.Context, value *catalyst.Cron) (cronScheduleModel, diag.Diagnostics) {
+func readCronSchedule(ctx context.Context, value *catalyst.Cron, preferredTimezone types.String) (cronScheduleModel, diag.Diagnostics) {
 	d := cronScheduleModel{Expression: types.StringValue(value.Expression), EndTime: types.Int64Value(int64(value.EndTime)), Timezone: types.StringValue(value.Detail.Timezone)}
+	if value.Detail.Timezone == "GMT" {
+		// Preserve an explicitly configured GMT alias; use the public UTC default
+		// for an import or for a UTC request encoded as GMT on the wire.
+		if preferredTimezone.IsNull() || preferredTimezone.IsUnknown() || preferredTimezone.ValueString() == "UTC" {
+			d.Timezone = types.StringValue("UTC")
+		}
+	}
 	var diags diag.Diagnostics
 	d.Calendar = types.ObjectNull(calendarScheduleTypes())
 	d.OneTimeAt = types.Int64Null()

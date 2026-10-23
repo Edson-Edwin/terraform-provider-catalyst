@@ -175,7 +175,7 @@ func (d *webhookCronModel) populate(ctx context.Context, c *catalyst.Cron) diag.
 	d.ID = types.StringValue(string(c.ID))
 	d.Name = types.StringValue(c.Name)
 	d.Description = types.StringValue(c.Description)
-	schedule, more := readCronSchedule(ctx, c)
+	schedule, more := readCronSchedule(ctx, c, d.Timezone)
 	diags.Append(more...)
 	d.Expression, d.Calendar, d.OneTimeAt, d.Interval, d.Timezone = schedule.Expression, schedule.Calendar, schedule.OneTimeAt, schedule.Interval, schedule.Timezone
 	d.Enabled = types.BoolValue(*c.Enabled)

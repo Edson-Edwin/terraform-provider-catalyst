@@ -43,6 +43,9 @@ func TestCronRequests(t *testing.T) {
 					if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 						t.Error(err)
 					}
+					if detail, ok := body["job_detail"].(map[string]any); !ok || detail["timezone"] != "GMT" {
+						t.Error("UTC must use the console-supported GMT API timezone")
+					}
 					if body["cron_status"] != false || body["cron_type"] != "CronExpression" {
 						t.Error("wrong cron payload")
 					}

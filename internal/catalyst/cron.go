@@ -109,15 +109,23 @@ func (c *Client) writeCron(ctx context.Context, method, projectID, id string, cr
 	if err != nil {
 		return nil, err
 	}
+	// Catalyst's wall-clock timezone catalog uses GMT for zero-offset UTC.
+	// The short UTC identifier is valid in Go but rejected by the live API.
+	if cron.Schedule.Timezone == "UTC" {
+		cron.Schedule.Timezone = "GMT"
+	}
 	job := map[string]any{"job_name": cron.Job.Name, "jobpool_id": cron.Job.PoolID, "target_type": cron.Job.TargetType, "source_type": cron.Job.SourceType, "params": cron.Job.Params, "job_config": cron.Job.Retry}
 	switch cron.Job.TargetType {
 	case "Webhook":
 		job["url"], job["request_method"], job["headers"], job["request_body"] = cron.Job.URL, cron.Job.Method, cron.Job.Headers, cron.Job.Body
-	case "Function":
+	case "Function", "AppSail":
 		if !ValidID(string(cron.Job.TargetID)) {
-			return nil, errors.New("the Function target requires a positive numeric target ID")
+			return nil, errors.New("the scheduled target requires a positive numeric target ID")
 		}
 		job["target_id"] = cron.Job.TargetID
+		if cron.Job.TargetType == "AppSail" {
+			job["url"], job["request_method"], job["headers"], job["request_body"] = cron.Job.URL, cron.Job.Method, cron.Job.Headers, cron.Job.Body
+		}
 	default:
 		return nil, errors.New("unsupported cron target type")
 	}

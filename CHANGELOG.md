@@ -53,3 +53,8 @@ APPSAIL DELETION RELIABILITY:
 
 - Reconcile a definitive AppSail deletion 404 against verified project access and complete listings. Retry the same immutable ID only while it remains listed, with a one-minute bound; never replay an ambiguous transport/server failure.
 - Add a gated recovery helper that deletes only explicitly selected recent acceptance-test fixture IDs. Confirmed cleanup in the isolated India Development project.
+
+SCHEDULING UTC DEFAULT:
+
+- Encode the public UTC default as the console-supported GMT wall-clock timezone. The Catalyst API rejects the literal UTC identifier. Preserve UTC in state and preserve an explicitly configured GMT alias.
+- Pass 60 live Terraform create/update/import/stable-plan steps across all Function and Webhook schedule forms using the default timezone, followed by confirmed fixture deletion. No scheduled jobs were executed.

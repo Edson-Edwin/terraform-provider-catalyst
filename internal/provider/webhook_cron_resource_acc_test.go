@@ -66,7 +66,10 @@ func runLiveWebhookCron(t *testing.T) {
 	})
 }
 
-func TestAccWebhookCronSchedules(t *testing.T) {
+func TestAccWebhookCronSchedules(t *testing.T)       { testAccWebhookCronSchedules(t, false) }
+func TestAccWebhookCronDefaultTimezone(t *testing.T) { testAccWebhookCronSchedules(t, true) }
+func testAccWebhookCronSchedules(t *testing.T, defaultTimezone bool) {
+	t.Helper()
 	if os.Getenv("TF_ACC") != "1" || os.Getenv("CATALYST_TEST_ALLOW_CRON_CREATE") != "1" {
 		t.Skip("requires explicit isolated disabled Webhook cron write opt-in")
 	}
@@ -93,6 +96,9 @@ func TestAccWebhookCronSchedules(t *testing.T) {
 	}
 	name := "tfacc" + strconv.FormatInt(time.Now().UnixNano(), 36)
 	initial := strings.Replace(webhookCronConfig(project, pool, name, false), `expression = "0 0 1 1 *"`, `expression = "0 0 * * *"`, 1)
+	if defaultTimezone {
+		initial = strings.Replace(initial, `timezone = "Asia/Kolkata"`, "", 1)
+	}
 	remember := func(state *terraform.State) error {
 		r := state.RootModule().Resources["catalyst_webhook_cron.test"]
 		if r == nil {

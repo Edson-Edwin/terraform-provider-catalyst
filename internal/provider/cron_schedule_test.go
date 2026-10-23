@@ -2,6 +2,8 @@
 package provider
 
 import (
+	"github.com/Edson-Edwin/terraform-provider-catalyst/internal/catalyst"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
@@ -84,6 +86,27 @@ func testCronScheduleConfigValidation(t *testing.T, resourceType string) {
 			valid := mode == "expression" || mode == "daily" || mode == "one_time" || mode == "periodic"
 			if hasError(response.Diagnostics) == valid {
 				t.Fatalf("wrong schedule validation: %v", response.Diagnostics)
+			}
+		})
+	}
+}
+
+func TestCronUTCStateAlias(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		preferred types.String
+		expected  string
+	}{
+		{"default", types.StringValue("UTC"), "UTC"},
+		{"explicit_gmt", types.StringValue("GMT"), "GMT"},
+		{"import", types.StringNull(), "UTC"},
+		{"drift", types.StringValue("Asia/Kolkata"), "GMT"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			value := &catalyst.Cron{Type: "CronExpression", Detail: catalyst.CronSchedule{Timezone: "GMT"}}
+			got, diags := readCronSchedule(t.Context(), value, test.preferred)
+			if diags.HasError() || got.Timezone.ValueString() != test.expected {
+				t.Fatalf("unexpected timezone %s: %v", got.Timezone, diags)
 			}
 		})
 	}

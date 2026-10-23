@@ -26,6 +26,8 @@ func TestAccFunctionCron(t *testing.T) { testAccFunctionCron(t, false) }
 
 func TestAccFunctionCronSchedules(t *testing.T) { testAccFunctionCron(t, true) }
 
+func TestAccFunctionCronDefaultTimezone(t *testing.T) { testAccFunctionCron(t, true, "utc") }
+
 func TestAccFunctionCronPeriodic(t *testing.T) { testAccFunctionCron(t, true, "periodic") }
 
 func testAccFunctionCron(t *testing.T, schedules bool, only ...string) {
@@ -58,6 +60,11 @@ func testAccFunctionCron(t *testing.T, schedules bool, only ...string) {
 		return handler + "\n" + cron
 	}
 	initial, updated := config(false), config(true)
+	if len(only) > 0 && only[0] == "utc" {
+		initial = strings.Replace(initial, `timezone = "Asia/Kolkata"`, "", 1)
+		updated = strings.Replace(updated, `timezone = "Asia/Kolkata"`, "", 1)
+		only = nil
+	}
 	var latestCronID string
 	rememberCron := func(state *terraform.State) error {
 		r := state.RootModule().Resources["catalyst_function_cron.test"]
