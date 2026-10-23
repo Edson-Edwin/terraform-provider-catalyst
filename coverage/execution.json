@@ -1,7 +1,7 @@
 {
   "updated": "2026-10-23",
   "objective_complete": false,
-  "current_phase": "Calendar and one-time Function scheduling complete; periodic schedules and remaining service management",
+  "current_phase": "Function scheduling forms complete; other scheduling targets and remaining service lifecycles",
   "completed": [
     "draft inventory of 43 capability areas",
     "registered type/docs/examples consistency test",
@@ -45,7 +45,9 @@
     "Live 26-step schedule matrix passed: same-ID form/time updates, imports, stable plans and confirmed destroy; no jobs submitted and Function baseline restored",
     "API rejected multiple weekdays; supported week calendars require exactly one weekday",
     "One-time timestamps verified as Unix seconds; job_detail response normalization and computed end sentinel tested",
-    "Shared resource types are deduplicated in coverage/package checks; capability counts do not inflate Terraform resource counts"
+    "Shared resource types are deduplicated in coverage/package checks; capability counts do not inflate Terraform resource counts",
+    "Periodic interval_seconds implemented with exact hours/minutes/seconds conversion, overflow-safe reads, omitted wall-clock timezone and UTC state normalization",
+    "Live direct periodic create/update/import/stable-plan/transition/destroy passed; combined 30-step seven-form scheduling matrix passed with no jobs executed"
   ],
   "pending": [
     "complete per-field management API inventory",
@@ -57,7 +59,7 @@
     "Other Gateway targets, authentication modes, system routes and configured throttling",
     "Remaining service lifecycle phases; draft service/field inventory is still incomplete",
     "Stratus bucket provisioning, policies, version history, multipart objects, TTL and custom metadata management",
-    "Periodic/every schedules and remaining scheduling target types; draft inventory expanded to 44 areas"
+    "Other scheduling targets and legacy Cron Function triggers; persistent project/storage/schema/authentication/hosting service management remains incomplete"
   ],
   "live_prerequisite": "Replacement isolated Development project verified in console and API.",
   "hosted_ci": "deferred by maintainer; billing outside scope",

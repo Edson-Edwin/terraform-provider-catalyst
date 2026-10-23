@@ -33,7 +33,7 @@ func calendarScheduleSchema() schema.SingleNestedAttribute {
 	for key, description := range map[string]string{"days": "Dates in the month, 1–31. Use dates or the weeks/weekdays pair.", "months": "Months: 1 is January and 12 is December. Required for yearly schedules; omit for daily/monthly.", "weeks_of_month": "Weeks, 1–5. Supply with week_days, instead of days.", "week_days": "Exactly one weekday: 1 Sunday, 2 Monday, 3 Tuesday, 4 Wednesday, 5 Thursday, 6 Friday, 7 Saturday. Multiple weekdays are rejected by the service. Supply with weeks_of_month, instead of days."} {
 		attributes[key] = schema.SetAttribute{Optional: true, Computed: true, ElementType: types.Int64Type, Default: setdefault.StaticValue(types.SetValueMust(types.Int64Type, []attr.Value{})), MarkdownDescription: description + " Defaults to an empty set."}
 	}
-	return schema.SingleNestedAttribute{Optional: true, Attributes: attributes, MarkdownDescription: "Daily, monthly or yearly calendar schedule, using the resource timezone. Choose dates or weeks/weekdays for monthly/yearly schedules. Mutually exclusive with expression and one_time_at."}
+	return schema.SingleNestedAttribute{Optional: true, Attributes: attributes, MarkdownDescription: "Daily, monthly or yearly calendar schedule, using the resource timezone. Choose dates or weeks/weekdays for monthly/yearly schedules. Mutually exclusive with expression, one_time_at and interval_seconds."}
 }
 func calendarScheduleAPI(ctx context.Context, value types.Object) (catalyst.CronSchedule, diag.Diagnostics) {
 	var model functionCalendarModel
@@ -55,17 +55,17 @@ func calendarScheduleAPI(ctx context.Context, value types.Object) (catalyst.Cron
 	return s, diags
 }
 func validateFunctionCronSchedule(ctx context.Context, data functionCronModel, diags *diag.Diagnostics) {
-	if data.Expression.IsUnknown() || data.Calendar.IsUnknown() || data.OneTimeAt.IsUnknown() {
+	if data.Expression.IsUnknown() || data.Calendar.IsUnknown() || data.OneTimeAt.IsUnknown() || data.Interval.IsUnknown() {
 		return
 	}
 	count := 0
-	for _, set := range []bool{!data.Expression.IsNull(), !data.Calendar.IsNull(), !data.OneTimeAt.IsNull()} {
+	for _, set := range []bool{!data.Expression.IsNull(), !data.Calendar.IsNull(), !data.OneTimeAt.IsNull(), !data.Interval.IsNull()} {
 		if set {
 			count++
 		}
 	}
 	if count != 1 {
-		diags.AddAttributeError(path.Root("expression"), "Choose one schedule mode", "Set exactly one of expression, calendar_schedule or one_time_at.")
+		diags.AddAttributeError(path.Root("expression"), "Choose one schedule mode", "Set exactly one of expression, calendar_schedule, one_time_at or interval_seconds.")
 		return
 	}
 	if !data.OneTimeAt.IsNull() {
@@ -77,6 +77,14 @@ func validateFunctionCronSchedule(ctx context.Context, data functionCronModel, d
 		}
 	} else if data.EndTime.IsNull() {
 		diags.AddAttributeError(path.Root("end_time"), "Missing recurring end time", "Recurring schedules require a positive end_time in Unix seconds.")
+	}
+	if !data.Interval.IsNull() {
+		if data.Interval.ValueInt64() <= 0 {
+			diags.AddAttributeError(path.Root("interval_seconds"), "Invalid interval", "Use a positive interval in seconds.")
+		}
+		if !data.Timezone.IsNull() && !data.Timezone.IsUnknown() && data.Timezone.ValueString() != "UTC" {
+			diags.AddAttributeError(path.Root("timezone"), "Periodic schedules use UTC", "Relative intervals have no wall-clock timezone; configure timezone = UTC.")
+		}
 	}
 	if data.Calendar.IsNull() {
 		return

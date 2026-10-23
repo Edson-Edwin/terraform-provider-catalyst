@@ -3,6 +3,7 @@ package catalyst
 
 import (
 	"encoding/json"
+	"math"
 	"net/http"
 	"testing"
 )
@@ -97,5 +98,59 @@ func TestOneTimeCronSecondsAndResponseNormalization(t *testing.T) {
 	value, err := c.CreateCron(t.Context(), "999", Cron{Name: "test", Type: "OneTime", ExecutionType: "pre-defined", Enabled: &enabled, Schedule: CronSchedule{Timezone: "UTC", TimeOfExecution: &at}, Job: CronJob{Name: "job", PoolID: "456", TargetType: "Function", TargetID: "789"}})
 	if err != nil || value.Detail.TimeOfExecution == nil || *value.Detail.TimeOfExecution != at {
 		t.Fatalf("one-time normalization failed: %v", err)
+	}
+}
+
+func TestPeriodicScheduleValidationAndOverflow(t *testing.T) {
+	for _, mode := range []string{"valid", "zero", "negative", "invalid_minute", "missing_clock", "wrong_repetition", "calendar_fields", "overflow"} {
+		t.Run(mode, func(t *testing.T) {
+			hour, minute, second := Integer(2), Integer(1), Integer(3)
+			s := CronSchedule{RepetitionType: "every", Hour: &hour, Minute: &minute, Second: &second}
+			switch mode {
+			case "zero":
+				hour, minute, second = 0, 0, 0
+			case "negative":
+				hour = -1
+			case "invalid_minute":
+				minute = 60
+			case "missing_clock":
+				s.Second = nil
+			case "wrong_repetition":
+				s.RepetitionType = "daily"
+			case "calendar_fields":
+				s.Days = []Integer{1}
+			case "overflow":
+				hour = Integer(math.MaxInt64)
+			}
+			got, err := PeriodicScheduleSeconds(s)
+			if (err == nil) != (mode == "valid") || mode == "valid" && got != 7263 {
+				t.Fatalf("wrong periodic interval: %d %v", got, err)
+			}
+		})
+	}
+}
+func TestPeriodicCronRelativeClockAndResponseNormalization(t *testing.T) {
+	enabled := false
+	hour, minute, second := Integer(2), Integer(1), Integer(3)
+	c := testClient(t, Config{AccessToken: "test"}, func(w http.ResponseWriter, r *http.Request) {
+		var request struct {
+			Detail map[string]json.RawMessage `json:"job_detail"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Error(err)
+		}
+		if _, ok := request.Detail["timezone"]; ok {
+			t.Error("wall-clock timezone sent for a relative interval")
+		}
+		for key, want := range map[string]string{"hour": "2", "minute": "1", "second": "3"} {
+			if string(request.Detail[key]) != want {
+				t.Error("periodic interval rescaled")
+			}
+		}
+		writeResponse(t, w, `{"status":"success","data":{"id":"123","cron_name":"test","cron_type":"Periodic","cron_execution_type":"pre-defined","cron_status":false,"end_time":"1893456000","cron_detail":{"repetition_type":"every","hour":2,"minute":1,"second":3},"job_meta":{"job_name":"job","jobpool_id":"456","target_type":"Function","target_details":{"id":"789"}}}}`)
+	})
+	got, err := c.CreateCron(t.Context(), "999", Cron{Name: "test", Type: "Periodic", ExecutionType: "pre-defined", Enabled: &enabled, EndTime: 1893456000, Schedule: CronSchedule{RepetitionType: "every", Hour: &hour, Minute: &minute, Second: &second}, Job: CronJob{Name: "job", PoolID: "456", TargetType: "Function", TargetID: "789"}})
+	if err != nil || got.Detail.Timezone != "UTC" {
+		t.Fatalf("periodic normalization failed: %v", err)
 	}
 }

@@ -35,7 +35,7 @@ func (i *Integer) UnmarshalJSON(raw []byte) error {
 }
 
 type CronSchedule struct {
-	Timezone        string    `json:"timezone"`
+	Timezone        string    `json:"timezone,omitempty"`
 	RepetitionType  string    `json:"repetition_type,omitempty"`
 	Hour            *Integer  `json:"hour,omitempty"`
 	Minute          *Integer  `json:"minute,omitempty"`
@@ -260,8 +260,16 @@ func (c *Client) readCron(ctx context.Context, res *http.Response, projectID, id
 	if cron.Type == "OneTime" && cron.Detail.Timezone == "" {
 		cron.Detail = cron.Schedule
 	}
+	if cron.Type == "Periodic" {
+		if cron.Detail.Hour == nil && cron.Schedule.Hour != nil {
+			cron.Detail = cron.Schedule
+		}
+		if cron.Detail.Timezone == "" {
+			cron.Detail.Timezone = "UTC"
+		}
+	}
 	// Return the valid ID alongside metadata errors so Create can retain it for recovery.
-	supported := cron.Type == "CronExpression" || (target == "Function" && (cron.Type == "Calendar" || cron.Type == "OneTime"))
+	supported := cron.Type == "CronExpression" || (target == "Function" && (cron.Type == "Calendar" || cron.Type == "OneTime" || cron.Type == "Periodic"))
 	if !supported || cron.ExecutionType != "pre-defined" || cron.Job.TargetType != target {
 		return cron, errors.New("cron type or target does not match the managed resource")
 	}
@@ -272,6 +280,11 @@ func (c *Client) readCron(ctx context.Context, res *http.Response, projectID, id
 		return cron, errors.New("the Catalyst API returned incomplete webhook metadata")
 	}
 	if target == "Function" {
+		if cron.Type == "Periodic" {
+			if _, err := PeriodicScheduleSeconds(cron.Detail); err != nil {
+				return cron, err
+			}
+		}
 		if cron.Type == "Calendar" {
 			if err := ValidCalendarSchedule(cron.Detail); err != nil {
 				return cron, err

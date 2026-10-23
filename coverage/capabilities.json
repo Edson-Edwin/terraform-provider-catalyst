@@ -61,7 +61,7 @@
         "catalyst_function_cron"
       ],
       "data_sources": [],
-      "note": "Pre-defined CronExpression schedules targeting an existing Job Function and Function pool. Live India Development Terraform create/import/update/parameter clear/drift repair/external deletion and recreation/stable plan/destroy passed while disabled; temporary Job Function cleanup confirmed. Calendar and one-time schedules are supported and tracked separately. Periodic schedules and legacy Cron Function triggers remain pending."
+      "note": "Pre-defined CronExpression schedules targeting an existing Job Function and Function pool. Live India Development Terraform create/import/update/parameter clear/drift repair/external deletion and recreation/stable plan/destroy passed while disabled; temporary Job Function cleanup confirmed. Calendar and one-time schedules are supported and tracked separately. Periodic schedules are also supported; legacy Cron Function triggers remain pending."
     },
     {
       "id": "scheduling.appsail_cron",
@@ -116,11 +116,13 @@
       "service": "scheduling",
       "object": "periodic_schedule",
       "phase": 3,
-      "status": "unimplemented",
-      "api_evidence": "documented",
-      "resources": [],
+      "status": "managed",
+      "api_evidence": "live_india",
+      "resources": [
+        "catalyst_function_cron"
+      ],
       "data_sources": [],
-      "note": "Periodic/every schedules appear in the official SDK contract; pre-defined ownership and live lifecycle still need validation."
+      "note": "Positive relative interval_seconds for Job Function schedules, with UTC normalization and recurring end_time. Live India Development direct create/six-hour to 2h1m3s update/import/stable plan/transition/destroy and the combined seven-form matrix passed while disabled. Other targets remain pending."
     },
     {
       "id": "filestore.file",

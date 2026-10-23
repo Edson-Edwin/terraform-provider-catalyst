@@ -9,7 +9,7 @@ import (
 )
 
 func TestFunctionCronScheduleConfigValidation(t *testing.T) {
-	for _, mode := range []string{"expression", "daily", "one_time", "missing_mode", "mixed_modes", "one_time_end", "one_time_zero", "missing_recurring_end", "invalid_hour", "incomplete_month", "mixed_month_dates", "invalid_job_name"} {
+	for _, mode := range []string{"expression", "daily", "one_time", "missing_mode", "mixed_modes", "one_time_end", "one_time_zero", "missing_recurring_end", "invalid_hour", "incomplete_month", "mixed_month_dates", "invalid_job_name", "periodic", "periodic_zero", "periodic_timezone", "periodic_missing_end"} {
 		t.Run(mode, func(t *testing.T) {
 			values := map[string]any{"project_id": "123", "job_pool_id": "456", "function_id": "789", "name": "test", "expression": "0 0 * * *", "timezone": "UTC", "end_time": 1893456000, "job_name": "job"}
 			switch mode {
@@ -44,6 +44,19 @@ func TestFunctionCronScheduleConfigValidation(t *testing.T) {
 				values["one_time_at"] = 1893456000
 			case "missing_recurring_end":
 				delete(values, "end_time")
+			case "periodic", "periodic_zero", "periodic_timezone", "periodic_missing_end":
+				delete(values, "expression")
+				values["interval_seconds"] = 7263
+				values["timezone"] = "UTC"
+				if mode == "periodic_zero" {
+					values["interval_seconds"] = 0
+				}
+				if mode == "periodic_timezone" {
+					values["timezone"] = "Asia/Kolkata"
+				}
+				if mode == "periodic_missing_end" {
+					delete(values, "end_time")
+				}
 			case "invalid_job_name":
 				values["job_name"] = "invalid-name"
 			}
@@ -52,7 +65,7 @@ func TestFunctionCronScheduleConfigValidation(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			valid := mode == "expression" || mode == "daily" || mode == "one_time"
+			valid := mode == "expression" || mode == "daily" || mode == "one_time" || mode == "periodic"
 			if hasError(response.Diagnostics) == valid {
 				t.Fatalf("wrong schedule validation: %v", response.Diagnostics)
 			}

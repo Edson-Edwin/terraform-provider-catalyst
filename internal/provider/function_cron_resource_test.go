@@ -138,7 +138,7 @@ func testFunctionCronLifecycle(t *testing.T, schedules bool) {
 	}
 	resource.UnitTest(t, testCase)
 	if schedules {
-		if creates != 1 || updates != 12 || deletes != 1 {
+		if creates != 1 || updates != 14 || deletes != 1 {
 			t.Fatalf("unexpected schedule transitions: %d/%d/%d", creates, updates, deletes)
 		}
 		return

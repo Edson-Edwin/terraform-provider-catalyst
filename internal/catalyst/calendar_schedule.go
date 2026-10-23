@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MPL-2.0
 package catalyst
 
-import "errors"
+import (
+	"errors"
+	"math"
+)
 
 // ValidCalendarSchedule checks the supported daily/monthly/yearly schedule union.
 // Unknown response-only scheduler fields are not inputs to this contract.
@@ -43,4 +46,20 @@ func ValidCalendarSchedule(s CronSchedule) error {
 		return errors.New("supported calendar repetitions are daily, monthly and yearly")
 	}
 	return nil
+}
+
+// PeriodicScheduleSeconds validates a relative interval without overflow.
+func PeriodicScheduleSeconds(s CronSchedule) (int64, error) {
+	if s.RepetitionType != "every" || s.Hour == nil || s.Minute == nil || s.Second == nil || *s.Hour < 0 || *s.Minute < 0 || *s.Minute > 59 || *s.Second < 0 || *s.Second > 59 || s.TimeOfExecution != nil || len(s.Days)+len(s.Months)+len(s.WeeksOfMonth)+len(s.WeekDays) != 0 {
+		return 0, errors.New("periodic schedules require nonnegative hours, minutes/seconds from 0 to 59 and no calendar fields")
+	}
+	remainder := int64(*s.Minute)*60 + int64(*s.Second)
+	if int64(*s.Hour) > (math.MaxInt64-remainder)/3600 {
+		return 0, errors.New("periodic schedule interval exceeds integer range")
+	}
+	seconds := int64(*s.Hour)*3600 + remainder
+	if seconds == 0 {
+		return 0, errors.New("periodic schedule interval must be positive")
+	}
+	return seconds, nil
 }
