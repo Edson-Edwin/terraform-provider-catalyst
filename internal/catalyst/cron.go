@@ -42,16 +42,20 @@ type CronRetry struct {
 	Interval Integer `json:"retry_interval,omitempty"`
 }
 type CronJob struct {
-	Name       string            `json:"job_name"`
-	PoolID     ID                `json:"jobpool_id"`
-	TargetType string            `json:"target_type"`
-	SourceType string            `json:"source_type"`
-	URL        string            `json:"url"`
-	Method     string            `json:"request_method"`
-	Headers    map[string]string `json:"headers"`
-	Params     map[string]string `json:"params"`
-	Body       string            `json:"request_body"`
-	Retry      CronRetry         `json:"job_config"`
+	Name          string            `json:"job_name"`
+	PoolID        ID                `json:"jobpool_id"`
+	TargetType    string            `json:"target_type"`
+	SourceType    string            `json:"source_type"`
+	URL           string            `json:"url"`
+	Method        string            `json:"request_method"`
+	Headers       map[string]string `json:"headers"`
+	Params        map[string]string `json:"params"`
+	Body          string            `json:"request_body"`
+	Retry         CronRetry         `json:"job_config"`
+	TargetID      ID                `json:"target_id,omitempty"`
+	TargetDetails *struct {
+		ID ID `json:"id"`
+	} `json:"target_details,omitempty"`
 }
 
 // Cron is the supported pre-defined CronExpression webhook configuration.
@@ -96,19 +100,31 @@ func (c *Client) writeCron(ctx context.Context, method, projectID, id string, cr
 	if err != nil {
 		return nil, err
 	}
+	job := map[string]any{"job_name": cron.Job.Name, "jobpool_id": cron.Job.PoolID, "target_type": cron.Job.TargetType, "source_type": cron.Job.SourceType, "params": cron.Job.Params, "job_config": cron.Job.Retry}
+	switch cron.Job.TargetType {
+	case "Webhook":
+		job["url"], job["request_method"], job["headers"], job["request_body"] = cron.Job.URL, cron.Job.Method, cron.Job.Headers, cron.Job.Body
+	case "Function":
+		if !ValidID(string(cron.Job.TargetID)) {
+			return nil, errors.New("the Function target requires a positive numeric target ID")
+		}
+		job["target_id"] = cron.Job.TargetID
+	default:
+		return nil, errors.New("unsupported cron target type")
+	}
 	// Marshal only supported request fields, excluding the response-only cron_detail.
 	payload := struct {
-		ID            ID           `json:"id,omitempty"`
-		Name          string       `json:"cron_name"`
-		Description   string       `json:"description"`
-		Type          string       `json:"cron_type"`
-		ExecutionType string       `json:"cron_execution_type"`
-		Expression    string       `json:"cron_expression"`
-		Enabled       *bool        `json:"cron_status"`
-		EndTime       Integer      `json:"end_time"`
-		Schedule      CronSchedule `json:"job_detail"`
-		Job           CronJob      `json:"job_meta"`
-	}{cron.ID, cron.Name, cron.Description, cron.Type, cron.ExecutionType, cron.Expression, cron.Enabled, cron.EndTime, cron.Schedule, cron.Job}
+		ID            ID             `json:"id,omitempty"`
+		Name          string         `json:"cron_name"`
+		Description   string         `json:"description"`
+		Type          string         `json:"cron_type"`
+		ExecutionType string         `json:"cron_execution_type"`
+		Expression    string         `json:"cron_expression"`
+		Enabled       *bool          `json:"cron_status"`
+		EndTime       Integer        `json:"end_time"`
+		Schedule      CronSchedule   `json:"job_detail"`
+		Job           map[string]any `json:"job_meta"`
+	}{cron.ID, cron.Name, cron.Description, cron.Type, cron.ExecutionType, cron.Expression, cron.Enabled, cron.EndTime, cron.Schedule, job}
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, errors.New("could not encode cron request")
@@ -118,9 +134,15 @@ func (c *Client) writeCron(ctx context.Context, method, projectID, id string, cr
 		return nil, err
 	}
 	defer res.Body.Close()
-	return c.readCron(ctx, res, projectID, id)
+	return c.readCron(ctx, res, projectID, id, cron.Job.TargetType)
 }
 func (c *Client) GetCron(ctx context.Context, projectID, id string) (*Cron, error) {
+	return c.getCronTarget(ctx, projectID, id, "Webhook")
+}
+func (c *Client) GetFunctionCron(ctx context.Context, projectID, id string) (*Cron, error) {
+	return c.getCronTarget(ctx, projectID, id, "Function")
+}
+func (c *Client) getCronTarget(ctx context.Context, projectID, id, target string) (*Cron, error) {
 	if !ValidID(id) {
 		return nil, errors.New("invalid cron ID")
 	}
@@ -133,7 +155,7 @@ func (c *Client) GetCron(ctx context.Context, projectID, id string) (*Cron, erro
 		return nil, err
 	}
 	defer res.Body.Close()
-	return c.readCron(ctx, res, projectID, id)
+	return c.readCron(ctx, res, projectID, id, target)
 }
 func (c *Client) DeleteCron(ctx context.Context, projectID, id string) error {
 	if !ValidID(id) {
@@ -166,10 +188,16 @@ func (c *Client) DeleteCron(ctx context.Context, projectID, id string) error {
 // WaitCronDeleted confirms absence while preserving errors such as lost project access.
 // The caller supplies an operation deadline; the wait also has a two-minute upper bound.
 func (c *Client) WaitCronDeleted(ctx context.Context, projectID, id string) error {
+	return c.waitCronTargetDeleted(ctx, projectID, id, "Webhook")
+}
+func (c *Client) WaitFunctionCronDeleted(ctx context.Context, projectID, id string) error {
+	return c.waitCronTargetDeleted(ctx, projectID, id, "Function")
+}
+func (c *Client) waitCronTargetDeleted(ctx context.Context, projectID, id, target string) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 	for {
-		_, err := c.GetCron(ctx, projectID, id)
+		_, err := c.getCronTarget(ctx, projectID, id, target)
 		if errors.Is(err, ErrCronNotFound) {
 			return nil
 		}
@@ -193,7 +221,7 @@ func (c *Client) cronError(ctx context.Context, res *http.Response, projectID st
 	}
 	return failureError("Catalyst cron request", res.StatusCode, failure)
 }
-func (c *Client) readCron(ctx context.Context, res *http.Response, projectID, id string) (*Cron, error) {
+func (c *Client) readCron(ctx context.Context, res *http.Response, projectID, id, target string) (*Cron, error) {
 	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusCreated {
 		return nil, c.cronError(ctx, res, projectID)
 	}
@@ -219,11 +247,25 @@ func (c *Client) readCron(ctx context.Context, res *http.Response, projectID, id
 		return &Cron{ID: identity.ID}, errors.New("the Catalyst API returned invalid cron metadata; the cron ID was retained for recovery")
 	}
 	// Return the valid ID alongside metadata errors so Create can retain it for recovery.
-	if cron.Type != "CronExpression" || cron.ExecutionType != "pre-defined" || cron.Job.TargetType != "Webhook" {
-		return cron, errors.New("only pre-defined CronExpression crons targeting Webhook are supported")
+	if cron.Type != "CronExpression" || cron.ExecutionType != "pre-defined" || cron.Job.TargetType != target {
+		return cron, errors.New("cron type or target does not match the managed resource")
 	}
-	if cron.Name == "" || cron.Expression == "" || cron.Enabled == nil || cron.Detail.Timezone == "" || cron.Job.Name == "" || !ValidID(string(cron.Job.PoolID)) || cron.Job.URL == "" || cron.Job.Method == "" {
+	if cron.Name == "" || cron.Expression == "" || cron.Enabled == nil || cron.Detail.Timezone == "" || cron.Job.Name == "" || !ValidID(string(cron.Job.PoolID)) {
 		return cron, errors.New("the Catalyst API returned incomplete cron metadata")
+	}
+	if target == "Webhook" && (cron.Job.URL == "" || cron.Job.Method == "") {
+		return cron, errors.New("the Catalyst API returned incomplete webhook metadata")
+	}
+	if target == "Function" {
+		if cron.Job.TargetDetails != nil {
+			if cron.Job.TargetID != "" && cron.Job.TargetID != cron.Job.TargetDetails.ID {
+				return cron, errors.New("mismatched Function target identities")
+			}
+			cron.Job.TargetID = cron.Job.TargetDetails.ID
+		}
+		if !ValidID(string(cron.Job.TargetID)) {
+			return cron, errors.New("the Catalyst API returned incomplete Function target metadata")
+		}
 	}
 	return cron, nil
 }

@@ -1,7 +1,7 @@
 {
   "updated": "2026-10-23",
   "objective_complete": false,
-  "current_phase": "Stratus object lifecycle complete; remaining service management inventory",
+  "current_phase": "Function-target CronExpression lifecycle complete; remaining schedule variants and service management",
   "completed": [
     "draft inventory of 43 capability areas",
     "registered type/docs/examples consistency test",
@@ -36,7 +36,11 @@
     "Go Stratus binary transfer probe passed; overwrite=false atomically rejected duplicate creation",
     "catalyst_stratus_object implemented with strict regional transfers, in-memory signatures, exact-key ownership and SHA-256 drift detection",
     "Live Terraform Stratus create/import/content and type update/same-size drift repair/external deletion and recreation/stable plan/destroy passed; exact key cleanup confirmed",
-    "Node22/24 Event, Cron and Job Function create/import/code-memory-environment update/clear/stable-plan/destroy passed live; all six test baselines restored, no invocation"
+    "Node22/24 Event, Cron and Job Function create/import/code-memory-environment update/clear/stable-plan/destroy passed live; all six test baselines restored, no invocation",
+    "Empty 128 MB Function Job Pool prepared in isolated India Development as a reusable test prerequisite",
+    "catalyst_function_cron implemented with pool/Job Function identity checks and separate Webhook/Function read ownership",
+    "Live disabled Function cron create/import/update/parameter clear/drift repair/external deletion and recreation/stable plan/destroy passed; Job Function fixture baseline restored",
+    "Function cron job names restricted to verified ASCII letters, digits and underscores after a hyphenated name was rejected by the service"
   ],
   "pending": [
     "complete per-field management API inventory",

@@ -97,6 +97,10 @@ func (r *WebhookCronResource) ValidateConfig(ctx context.Context, req resource.V
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	validateCronFields(data, resp)
+}
+
+func validateCronFields(data webhookCronModel, resp *resource.ValidateConfigResponse) {
 	for key, value := range map[string]types.String{"project_id": data.ProjectID, "job_pool_id": data.JobPoolID} {
 		if !value.IsNull() && !value.IsUnknown() && !catalyst.ValidID(value.ValueString()) {
 			resp.Diagnostics.AddAttributeError(path.Root(key), "Invalid ID", "Specify a positive integer written as a string.")

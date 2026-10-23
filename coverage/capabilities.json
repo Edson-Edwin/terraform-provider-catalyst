@@ -55,11 +55,13 @@
       "service": "scheduling",
       "object": "function_cron",
       "phase": 3,
-      "status": "unimplemented",
-      "api_evidence": "documented",
-      "resources": [],
+      "status": "managed",
+      "api_evidence": "live_india",
+      "resources": [
+        "catalyst_function_cron"
+      ],
       "data_sources": [],
-      "note": "Management API and lifecycle verification required."
+      "note": "Pre-defined CronExpression schedules targeting an existing Job Function and Function pool. Live India Development Terraform create/import/update/parameter clear/drift repair/external deletion and recreation/stable plan/destroy passed while disabled; temporary Job Function cleanup confirmed. Calendar/periodic/one-time schedules and legacy Cron Function triggers remain outside this resource."
     },
     {
       "id": "scheduling.appsail_cron",

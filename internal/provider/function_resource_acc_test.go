@@ -64,38 +64,7 @@ func testAccFunctionVariant(t *testing.T, stack, kind string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		// testing cancels t.Context before running cleanup callbacks.
-		ctx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), 30*time.Second)
-		defer cancel()
-		stable := 0
-		for {
-			current, err := client.ListFunctions(ctx, project)
-			matches := err == nil && len(current) == len(baseline)
-			if matches {
-				for i := range current {
-					if current[i].ID != baseline[i].ID {
-						matches = false
-						break
-					}
-				}
-			}
-			if matches {
-				stable++
-				if stable == 3 {
-					return
-				}
-			} else {
-				stable = 0
-			}
-			select {
-			case <-ctx.Done():
-				t.Error("Function baseline not restored after bounded reconciliation")
-				return
-			case <-time.After(2 * time.Second):
-			}
-		}
-	})
+	registerFunctionBaselineCheck(t, client, project, baseline)
 	first := writeFunctionArchiveVariant(t, dir, name, "first", stack, kind)
 	second := writeFunctionArchiveVariant(t, dir, name, "second", stack, kind)
 	config := func(source string, update bool) string {
@@ -129,4 +98,40 @@ func testAccFunctionVariant(t *testing.T, stack, kind string) {
 		{Config: initial, Check: resource.TestCheckResourceAttr("catalyst_function.test", "environment_variables.%", "0")},
 		{Config: initial, PlanOnly: true},
 	}})
+}
+
+func registerFunctionBaselineCheck(t *testing.T, client *catalyst.Client, project string, baseline []catalyst.FunctionMetadata) {
+	t.Helper()
+	t.Cleanup(func() {
+		// testing cancels t.Context before running cleanup callbacks.
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), 30*time.Second)
+		defer cancel()
+		stable := 0
+		for {
+			current, err := client.ListFunctions(ctx, project)
+			matches := err == nil && len(current) == len(baseline)
+			if matches {
+				for i := range current {
+					if current[i].ID != baseline[i].ID {
+						matches = false
+						break
+					}
+				}
+			}
+			if matches {
+				stable++
+				if stable == 3 {
+					return
+				}
+			} else {
+				stable = 0
+			}
+			select {
+			case <-ctx.Done():
+				t.Error("Function baseline not restored after bounded reconciliation")
+				return
+			case <-time.After(2 * time.Second):
+			}
+		}
+	})
 }

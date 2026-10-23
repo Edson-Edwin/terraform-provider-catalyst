@@ -2,7 +2,7 @@
 
 A community Terraform provider intended for public use, built with the Terraform Plugin Framework. Each user supplies their own Zoho credentials and selects their account's data center. No personal account credentials or organization settings are built into the provider.
 
-**Current status:** Seven managed resources (`catalyst_webhook_cron`, `catalyst_filestore_file`, `catalyst_function`, `catalyst_appsail`, `catalyst_api_gateway`, `catalyst_api_gateway_ruleset`, `catalyst_stratus_object`) and eight read-only data sources are implemented. Discovery covers projects, job pools, Data Store tables, File Store folders, Cache segments, Stratus buckets and Functions. Registry releases are not available yet. This is a community provider, not an official Zoho provider. Discovery does not imply create/update/delete support for those services. See [API_COVERAGE.md](API_COVERAGE.md) for exact support and evidence.
+**Current status:** Eight managed resources (`catalyst_webhook_cron`, `catalyst_filestore_file`, `catalyst_function`, `catalyst_appsail`, `catalyst_api_gateway`, `catalyst_api_gateway_ruleset`, `catalyst_stratus_object`, `catalyst_function_cron`) and eight read-only data sources are implemented. Discovery covers projects, job pools, Data Store tables, File Store folders, Cache segments, Stratus buckets and Functions. Registry releases are not available yet. This is a community provider, not an official Zoho provider. Discovery does not imply create/update/delete support for those services. See [API_COVERAGE.md](API_COVERAGE.md) for exact support and evidence.
 
 ## Requirements
 
@@ -313,3 +313,11 @@ make testacc-stratus-object
 The acceptance test only supports India Development and cleans up its unique key. It leaves the bucket in place. Live tests do not run with `make test`.
 
 `catalyst_function` additionally supports Node.js 22/24 Event, Cron and Job handlers through `type = "event"`, `"cron"` or `"job"`. All six background lifecycle combinations passed live in India Development without invocation. See [the example](examples/background_function/resource.tf). Handler deployment does not configure triggers, job pools or schedules. Integration and Browser Logic Functions and other languages remain pending.
+
+## Schedule a Job Function
+
+`catalyst_function_cron` manages pre-defined CronExpression schedules targeting an existing Job Function and Function Job Pool in the same project. It defaults to disabled and verifies pool/target identities before writes. Use a Terraform reference such as `function_id = catalyst_function.example.id` to order creation and destruction. The target must use `type = "job"`; legacy `type = "cron"` handlers use a separate trigger system.
+
+See the [resource reference](docs/resources/function_cron.md) and [example](examples/resources/catalyst_function_cron/resource.tf). Creation, import, updates, parameter clearing, external parameter drift repair, external deletion/recreation, stable plan and destroy passed live in India Development with scheduling disabled. No jobs were submitted. Calendar/periodic/one-time schedules and other targets remain pending.
+
+To repeat the test using your isolated India Development Function Job Pool, set `CATALYST_TEST_FUNCTION_POOL_ID`, `CATALYST_TEST_PROJECT_ID`, `CATALYST_TEST_ALLOW_FUNCTION_CREATE=1` and `CATALYST_TEST_ALLOW_FUNCTION_CRON_CREATE=1`, then run `make testacc-function-cron`. The test removes its disabled cron and Job Function; the empty pool remains.
