@@ -3,12 +3,12 @@
 page_title: "catalyst_appsail Resource - catalyst"
 subcategory: ""
 description: |-
-  Deploy a Node.js 22 AppSail from a prebuilt ZIP using ZohoCatalyst.appsail read/create/update/delete scopes and project read access. Supports code, memory, startup command, port, authentication and complete environment-map updates, import and artifact drift detection. Names must be unique. Catalyst uses name-keyed upserts: keep project/name ownership exclusive across Terraform states and external tools; no atomic conditional-create primitive has been established. Compressed and expanded archives are limited to 100 MB. Sensitive environment values remain in Terraform state; source code does not. The provider verifies configuration and artifact persistence without invoking the app or proving runtime health. Authentication defaults to enabled. Import with project_id/appsail_id, then supply matching source/hash. Deletion is confirmed for up to two minutes. Live validation is limited to India Development.
+  Deploy a Node.js 22 or 24 AppSail from a prebuilt ZIP using ZohoCatalyst.appsail read/create/update/delete scopes and project read access. Supports code, memory, startup command, port, authentication and complete environment-map updates, import and artifact drift detection. Names must be unique. Catalyst uses name-keyed upserts: keep project/name ownership exclusive across Terraform states and external tools; no atomic conditional-create primitive has been established. Compressed and expanded archives are limited to 100 MB. Sensitive environment values remain in Terraform state; source code does not. The provider verifies configuration and artifact persistence without invoking the app or proving runtime health. Authentication defaults to enabled. Import with project_id/appsail_id, then supply matching source/hash. Deletion is confirmed for up to two minutes. Live validation is limited to India Development.
 ---
 
 # catalyst_appsail (Resource)
 
-Deploy a Node.js 22 AppSail from a prebuilt ZIP using ZohoCatalyst.appsail read/create/update/delete scopes and project read access. Supports code, memory, startup command, port, authentication and complete environment-map updates, import and artifact drift detection. Names must be unique. Catalyst uses name-keyed upserts: keep project/name ownership exclusive across Terraform states and external tools; no atomic conditional-create primitive has been established. Compressed and expanded archives are limited to 100 MB. Sensitive environment values remain in Terraform state; source code does not. The provider verifies configuration and artifact persistence without invoking the app or proving runtime health. Authentication defaults to enabled. Import with project_id/appsail_id, then supply matching source/hash. Deletion is confirmed for up to two minutes. Live validation is limited to India Development.
+Deploy a Node.js 22 or 24 AppSail from a prebuilt ZIP using ZohoCatalyst.appsail read/create/update/delete scopes and project read access. Supports code, memory, startup command, port, authentication and complete environment-map updates, import and artifact drift detection. Names must be unique. Catalyst uses name-keyed upserts: keep project/name ownership exclusive across Terraform states and external tools; no atomic conditional-create primitive has been established. Compressed and expanded archives are limited to 100 MB. Sensitive environment values remain in Terraform state; source code does not. The provider verifies configuration and artifact persistence without invoking the app or proving runtime health. Authentication defaults to enabled. Import with project_id/appsail_id, then supply matching source/hash. Deletion is confirmed for up to two minutes. Live validation is limited to India Development.
 
 ## Example Usage
 
@@ -16,6 +16,7 @@ Deploy a Node.js 22 AppSail from a prebuilt ZIP using ZohoCatalyst.appsail read/
 resource "catalyst_appsail" "example" {
   project_id            = var.project_id
   name                  = "exampleapp"
+  stack                 = "node24"
   source                = var.source_zip
   source_sha256         = var.source_sha256
   memory                = 128
@@ -42,7 +43,7 @@ resource "catalyst_appsail" "example" {
 - `environment_variables` (Map of String, Sensitive) Complete desired environment-variable map. Removing keys clears them remotely. Values remain in Terraform state.
 - `memory` (Number) Memory allocation in MB: 128, 256, 512, 1024 or 2048; defaults to 128.
 - `port` (Number) Application port: 80, 443, or 1025 through 65535. Defaults to 9000. Bind the app to the configured port or X_ZOHO_CATALYST_LISTEN_PORT.
-- `stack` (String) Supported runtime: node22.
+- `stack` (String) Supported runtimes: node22 or node24.
 - `startup_command` (String) Command used to start the application; defaults to node index.js.
 
 ### Read-Only

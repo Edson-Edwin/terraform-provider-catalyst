@@ -148,7 +148,7 @@ Project listing and both empty and populated pool listings have been verified li
 
 ## Manage a webhook cron
 
-The first managed resource, `catalyst_webhook_cron`, manages **pre-defined CronExpression schedules with Webhook targets**. Calendar schedules, dynamic crons, Function/Circuit/AppSail targets, and job-pool creation are not part of this resource. It requires an existing project and a Webhook job pool in the selected environment. Use the console to create these prerequisites, then use the discovery data sources to find their IDs.
+`catalyst_webhook_cron` manages **pre-defined expression, calendar, one-time and periodic schedules with Webhook targets**. Function and AppSail targets use their separate cron resources. Dynamic crons, Circuit targets and job-pool creation remain outside these resources. It requires an existing project and a Webhook job pool in the selected environment. Use the console to create these prerequisites, then use the discovery data sources to find their IDs.
 
 Obtain OAuth credentials with `ZohoCatalyst.cron.CREATE`, `ZohoCatalyst.cron.READ`, `ZohoCatalyst.cron.UPDATE`, and `ZohoCatalyst.cron.DELETE`. Also include `ZOHOCATALYST.projects.Read`: the provider checks parent access before treating a missing cron as deleted. Add `ZohoCatalyst.jobpool.READ` when using pool discovery.
 
@@ -263,11 +263,11 @@ The four new data sources and file upload/import/replacement/destroy passed live
 
 `make coverage-status` reports the draft capability inventory. A schema contract test checks registered types against inventory entries, documentation and examples. The inventory is deliberately incomplete pending service/field/API verification; it does not assign a numerical coverage score.
 
-Function discovery is available as `data.catalyst_functions`. It lists IDs and names without invoking or deploying code. Direct API tests in a replacement India Development project verified unique fixture upload, metadata reads, code update with a stable ID, exact artifact download and deletion. Populated discovery passed live Terraform checks. Function deployment is now available through `catalyst_function` for Node.js 22/24 Basic I/O and Advanced I/O. It verifies artifact/configuration persistence and documents the name-based upsert ownership constraint. The maintainer deleted the previous test project; old live evidence is historical and its old prerequisites must not be assumed present.
+Function discovery is available as `data.catalyst_functions`. It lists IDs and names without invoking or deploying code. Direct API tests in a replacement India Development project verified unique fixture upload, metadata reads, code update with a stable ID, exact artifact download and deletion. Populated discovery passed live Terraform checks. Function deployment is now available through `catalyst_function` for Node.js 22/24 Basic I/O, Advanced I/O, Event, Cron and Job. It verifies artifact/configuration persistence and documents the name-based upsert ownership constraint. The maintainer deleted the previous test project; old live evidence is historical and its old prerequisites must not be assumed present.
 
 ## Managed Functions
 
-`catalyst_function` deploys prebuilt Node.js 22/24 Basic I/O and Advanced I/O ZIPs, updates their code, memory and environment variables, detects remote changes, supports import, and confirms deletion. See [the Function example](examples/resources/catalyst_function/) and [resource reference](docs/resources/function.md). The ZIP's `catalyst-config.json` deployment name/runtime/type and `package.json` name/entry point must match the Terraform settings. The provider validates source hashes, archive paths and archive integrity before deployment.
+`catalyst_function` deploys prebuilt Node.js 22/24 Basic I/O, Advanced I/O, Event, Cron and Job ZIPs, updates their code, memory and environment variables, detects remote changes, supports import, and confirms deletion. See [the Function example](examples/resources/catalyst_function/) and [resource reference](docs/resources/function.md). The ZIP's `catalyst-config.json` deployment name/runtime/type and `package.json` name/entry point must match the Terraform settings. The provider validates source hashes, archive paths and archive integrity before deployment.
 
 Function names use Catalyst's upsert API. Creation rejects an existing name; import existing Functions explicitly. Keep project/name ownership exclusive across Terraform states and other tools: these local checks are not a server-side conditional-create guarantee. Code and environment updates happen in place; changing project/name/runtime/type requires replacement. The verified subset supports Node.js 22/24 Basic I/O, Advanced I/O, Event, Cron and Job Functions, supported memory values and complete environment-variable management. Other languages and runtime/type combinations remain future work.
 
@@ -277,7 +277,7 @@ Run `make testacc-function` with `CATALYST_TEST_ALLOW_FUNCTION_CREATE=1`, an iso
 
 ## Managed AppSail services
 
-`catalyst_appsail` deploys a prebuilt Node.js 22 application ZIP and manages code, memory, startup command, port, Catalyst authentication and complete environment-variable maps. It supports import and remote artifact drift detection. Authentication defaults to enabled. See the [AppSail example](examples/resources/catalyst_appsail/) and [resource reference](docs/resources/appsail.md).
+`catalyst_appsail` deploys a prebuilt Node.js 22 or 24 application ZIP and manages code, memory, startup command, port, Catalyst authentication and complete environment-variable maps. It supports import and remote artifact drift detection. Authentication defaults to enabled. See the [AppSail example](examples/resources/catalyst_appsail/) and [resource reference](docs/resources/appsail.md).
 
 Build application dependencies into the ZIP before applying. Include `package.json` at its root and bind the application to its configured port or `X_ZOHO_CATALYST_LISTEN_PORT`. No build or application invocation happens in the provider. Configuration/artifact persistence does not prove runtime health. Existing names require explicit import, and project/name ownership must remain exclusive across states and external deployment tools because Catalyst's upsert is name-based.
 

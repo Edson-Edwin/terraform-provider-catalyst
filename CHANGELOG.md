@@ -64,3 +64,8 @@ APPSAIL SCHEDULING:
 - Add `catalyst_appsail_cron` for expression, calendar, one-time and periodic schedules. Verify AppSail/pool membership and the authenticated HTTPS target origin. Manage HTTP fields and retries, with disabled-by-default scheduling and sensitive request values.
 - Pass live Terraform create/import/update/clear/drift repair/external deletion and recreation/stable plan/destroy and all seven schedule forms using the UTC default. Confirm temporary AppSail cleanup without executing jobs or endpoints.
 - Record vendor-documented Data Store schema automation limits, Circuit regional restrictions and the legacy CloudScale Cron sunset separately from provider implementation gaps. Coverage remains incomplete.
+
+APPSAIL NODE.JS 24:
+
+- Extend `catalyst_appsail` to Node.js 24 while retaining the Node.js 22 default. Runtime changes still require replacement.
+- Pass local Terraform artifact drift/external deletion regressions for both runtimes and live Node.js 24 create/import/code and configuration updates/clear/stable plan/destroy. Restore the isolated test baseline without invoking the app.

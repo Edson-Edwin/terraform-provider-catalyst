@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,7 +17,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
-func TestAccAppSail(t *testing.T) {
+func TestAccAppSail(t *testing.T)       { testAccAppSail(t, "node22") }
+func TestAccAppSailNode24(t *testing.T) { testAccAppSail(t, "node24") }
+func testAccAppSail(t *testing.T, stack string) {
+	t.Helper()
 	if os.Getenv("TF_ACC") != "1" || os.Getenv("CATALYST_TEST_ALLOW_APPSAIL_CREATE") != "1" {
 		t.Skip("requires TF_ACC=1 and explicit CATALYST_TEST_ALLOW_APPSAIL_CREATE=1")
 	}
@@ -31,12 +35,17 @@ func TestAccAppSail(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	baseline, err := client.ListAppSails(t.Context(), project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	registerAppSailBaselineCheck(t, client, project, baseline)
 	name := "tfacc" + strconv.FormatInt(time.Now().UnixNano(), 36)
 	dir := t.TempDir()
 	first := writeAppSailArchive(t, dir, name, "first")
 	second := writeAppSailArchive(t, dir, name, "second")
-	initial := appsailConfig(project, name, first, false)
-	updated := appsailConfig(project, name, second, true)
+	initial := strings.Replace(appsailConfig(project, name, first, false), `resource "catalyst_appsail" "test" {`, `resource "catalyst_appsail" "test" {`+"\n"+`stack = "`+stack+`"`, 1)
+	updated := strings.Replace(appsailConfig(project, name, second, true), `resource "catalyst_appsail" "test" {`, `resource "catalyst_appsail" "test" {`+"\n"+`stack = "`+stack+`"`, 1)
 	resource.Test(t, resource.TestCase{ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){"catalyst": providerserver.NewProtocol6WithError(New("test")())}, CheckDestroy: func(state *terraform.State) error {
 		for _, r := range state.RootModule().Resources {
 			if r.Type != "catalyst_appsail" {
@@ -49,7 +58,7 @@ func TestAccAppSail(t *testing.T) {
 		}
 		return nil
 	}, Steps: []resource.TestStep{
-		{Config: initial, Check: resource.TestCheckResourceAttr("catalyst_appsail.test", "memory", "128")},
+		{Config: initial, Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttr("catalyst_appsail.test", "memory", "128"), resource.TestCheckResourceAttr("catalyst_appsail.test", "stack", stack))},
 		{ResourceName: "catalyst_appsail.test", ImportState: true, ImportStateVerify: true, ImportStateVerifyIgnore: []string{"source"}, ImportStateIdFunc: func(state *terraform.State) (string, error) {
 			r := state.RootModule().Resources["catalyst_appsail.test"]
 			if r == nil {

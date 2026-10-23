@@ -14,7 +14,7 @@ This community provider is under development. Public availability and broad serv
 | `catalyst_webhook_cron` | Manage expression, calendar, one-time and periodic schedules with Webhook targets | Offline lifecycle/import/drift/error tests; live India create, import, update, clear, stable plan and verified destroy |
 | `catalyst_api_gateway` | Enable/disable project Gateway routing | Offline Terraform lifecycle and recovery tests; live India Development enable/import/destroy |
 | `catalyst_api_gateway_ruleset` | Complete Basic I/O ruleset replacement, OAuth/no-auth, import and drift | Offline lifecycle/policy preservation; live India Development create/import/replace/clear/stable plan/destroy |
-| `catalyst_appsail` | Manage Node.js 22 ZIP deployment, memory, command, port, authentication and environment maps; import and artifact drift | Offline lifecycle, safety and recovery tests; live results recorded below |
+| `catalyst_appsail` | Manage Node.js 22/24 ZIP deployment, memory, command, port, authentication and environment maps; import and artifact drift | Offline lifecycle, safety and recovery tests; live results recorded below |
 | `catalyst_function` | Manage Node.js 22/24 Basic I/O, Advanced I/O, Event, Cron and Job Function code, memory and environment variables; import and drift | Offline lifecycle/safety regressions; live India Development create/import/update/clear/stable plan/destroy with baseline cleanup; never invoked |
 | `data.catalyst_functions` | List serverless Function IDs and names | Offline contracts and populated live Terraform discovery in replacement India Development project; never invokes Functions |
 | `data.catalyst_datastore_tables` | List existing Data Store table IDs and names | Offline API/protocol/real Terraform tests; live India empty listing and stable plan |
@@ -24,7 +24,7 @@ This community provider is under development. Public availability and broad serv
 | `catalyst_stratus_object` | Manage unversioned object bytes, content type, import and SHA-256 drift | Offline safety/protocol tests; live India Development full Terraform lifecycle with exact-key cleanup |
 | `catalyst_filestore_file` | Upload, read, import and delete files; replace on changes | Offline binary upload, content drift, external deletion and recovery tests; live India tiny binary upload/import/rename replacement/stable plan/destroy with baseline cleanup |
 
-All data sources are read-only. Webhook and Function crons, File Store files, Functions, AppSail services, API Gateway and unversioned Stratus objects are the managed resource areas. Live tests are opt-in; credentials and account IDs are never included in repository fixtures.
+All data sources are read-only. Webhook, Function and AppSail crons, File Store files, Functions, AppSail services, API Gateway and unversioned Stratus objects are the managed resource areas. Live tests are opt-in; credentials and account IDs are never included in repository fixtures.
 
 ## API findings
 
@@ -32,7 +32,7 @@ Reviewed on 2026-10-23 against the [official Catalyst REST reference](https://do
 
 - **Projects:** the reference documents create, read, list and delete. A request to create a uniquely named temporary project returned HTTP 400 with `PROJECT_CREATION_NOT_ALLOWED` in the test account. That API request created no project. This establishes a restriction for that account/authentication context, not a universal conclusion for all accounts. The console explicitly states that project names cannot be edited. A dedicated development project was successfully created through the signed-in console for lifecycle tests. Keep project creation out of the provider until supported OAuth access and full cleanup can be demonstrated.
 - **Job pools:** the published reference documents list and get endpoints, with `ZohoCatalyst.jobpool.READ`. Create/update/delete pool endpoints were not found in the reviewed reference. Pool management is therefore not implemented. A reusable Webhook pool was successfully created through the console in the isolated development test project. No jobs were submitted.
-- **Crons:** the reference documents create, read, update and delete under `/baas/v1/project/{project_id}/job_scheduling/cron`, plus enabled/disabled status. The cron resources now implement pre-defined expression, calendar, one-time and periodic schedules targeting Webhooks and Job Functions. Create, import, rename/update, clearing optional fields, stable plans and deletion were verified live. Test crons stayed disabled and were removed. The dedicated development project and empty pool remain as reusable test prerequisites. Live validation also established a 20-character job-name limit and a 60–86400 second retry interval when retries are enabled. The provider distinguishes `404 INVALID_ID` from permission errors by checking parent-project access before removing state.
+- **Crons:** the reference documents create, read, update and delete under `/baas/v1/project/{project_id}/job_scheduling/cron`, plus enabled/disabled status. The cron resources now implement pre-defined expression, calendar, one-time and periodic schedules targeting Webhooks, Job Functions and AppSail. Create, import, rename/update, clearing optional fields, stable plans and deletion were verified live. Test crons stayed disabled and were removed. The dedicated development project and empty pool remain as reusable test prerequisites. Live validation also established a 20-character job-name limit and a 60–86400 second retry interval when retries are enabled. The provider distinguishes `404 INVALID_ID` from permission errors by checking parent-project access before removing state.
 - **Other services:** File Store folders, Data Store table schemas and other infrastructure require a separate management API review. A data-operation API (for example inserting rows or executing a function) does not by itself establish a supported infrastructure lifecycle.
 
 ## Next implementation gates
@@ -77,7 +77,7 @@ This is a capability inventory, not a claim of 100% coverage. A read-only data s
 | Cache | Segment discovery | Segment creation is explicitly console-only; cache entries expire within 48 hours and are not durable infrastructure |
 | Stratus | Bucket discovery; unversioned object upload/read/import/update/drift repair/delete | Bucket provisioning API not established; bucket-policy/versioning, multipart, TTL and custom metadata remain unimplemented |
 | NoSQL | None | Public reference documents item operations; table/index provisioning must be verified separately |
-| Functions / AppSail / Circuits | Node.js 22/24 Basic I/O, Advanced I/O, Event, Cron and Job Function management; Node.js 22 AppSail management; Function discovery | Other Function runtimes/types and Circuit deployment/configuration remain unimplemented; AppSail currently supports Node.js 22 only |
+| Functions / AppSail / Circuits | Node.js 22/24 Basic I/O, Advanced I/O, Event, Cron and Job Function management; Node.js 22/24 AppSail management; Function discovery | Other Function runtimes/types and Circuit deployment/configuration remain unimplemented; other AppSail languages/runtimes are unimplemented |
 | API Gateway / Authentication / Connections | Gateway enabled setting and complete Basic I/O rulesets; OAuth/default and explicit no-auth | Other Gateway targets/authentication/throttling, Authentication and Connections management remain unimplemented |
 | Web Client / Domain Mappings / Slate / Pipelines | None | Deployment and domain/configuration lifecycles remain unimplemented |
 | Mail / Notifications / Search / ZCQL / Zia / SmartBrowz / ConvoKraft / QuickML / Signals / Data Streams | None | Separate persistent configuration from send/execute/query operations; verify supported management APIs before defining Terraform resources |
@@ -122,7 +122,7 @@ The name-keyed upsert API still has no established atomic conditional-create pri
 
 ## Managed AppSail milestone (2026-10-23)
 
-`catalyst_appsail` manages Node.js 22 ZIP deployment with memory (128/256/512/1024/2048 MB), startup command, port, Catalyst authentication and complete environment-variable maps. Project/name/runtime changes require replacement. Creation refuses an existing name; independent states and external tools must keep name ownership exclusive. The same per-client gate serializes Function and AppSail upserts. No distributed locking is claimed.
+`catalyst_appsail` manages Node.js 22/24 ZIP deployment with memory (128/256/512/1024/2048 MB), startup command, port, Catalyst authentication and complete environment-variable maps. Project/name/runtime changes require replacement. Creation refuses an existing name; independent states and external tools must keep name ownership exclusive. The same per-client gate serializes Function and AppSail upserts. No distributed locking is claimed.
 
 The installed official CLI establishes PUT `/appsail/upsert`, multipart code and top-level memory with configuration fields for command/port/authentication/environment. Live probes in the isolated India Development project verified deployment, typed configuration reads, exact downloaded ZIP bytes and deletion, with baseline cleanup. The app endpoint was never invoked. [AppSail configuration documentation](https://docs.catalyst.zoho.com/en/serverless/help/appsail/appsail-configurations/) describes command, port and allocation behavior.
 
@@ -223,3 +223,9 @@ The provider registers **nine resources and eight data sources**. **11 of 44 dra
 - The same announcement sets legacy CloudScale Cron sunset to October 1, 2026. Retired triggers are not a valid new coverage milestone; use current Job Scheduling.
 
 Remaining provider gaps still include project/pool/bucket/schema/authentication/hosting management and wider fields, languages, runtime combinations and regions. Public Registry publication and release signing have not been verified. Hosted CI is deliberately outside this review at the maintainer’s request.
+
+## AppSail Node.js 24 (2026-10-23)
+
+`catalyst_appsail` accepts `stack = "node24"` as well as the default `node22`. Runtime changes require replacement. [Zoho lists Node.js 24 as a managed AppSail runtime](https://docs.catalyst.zoho.com/en/serverless/help/appsail/catalyst-managed-runtimes/key-concepts/). The Node24 resource passed live India Development create/import/code, memory, startup command, port and environment updates/clearing/stable plan/destroy. The temporary AppSail baseline was restored. No runtime health or invocation is claimed. Local Terraform lifecycle tests cover artifact drift repair and external deletion/recreation for both supported Node runtimes. Java, Python and custom runtime deployment remain unimplemented in this provider.
+
+The maintainer confirmed on 2026-10-23 that no eligible Circuit test project is available. Circuit coverage remains unimplemented and unverified; offline mocks would not remove this live-validation gap.

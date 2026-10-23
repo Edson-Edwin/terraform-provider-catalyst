@@ -145,7 +145,7 @@ func (c *Client) DeployAppSail(ctx context.Context, project, id string, desired 
 	if err != nil {
 		return nil, err
 	}
-	if (id != "" && !ValidID(id)) || !ValidAppSailName(desired.Name) || desired.Stack != "node22" || int64(len(archive)) > MaxFileBytes || !validAppSailConfiguration(desired.Configuration) {
+	if (id != "" && !ValidID(id)) || !ValidAppSailName(desired.Name) || (desired.Stack != "node22" && desired.Stack != "node24") || int64(len(archive)) > MaxFileBytes || !validAppSailConfiguration(desired.Configuration) {
 		return nil, errors.New("invalid or unsupported AppSail configuration")
 	}
 	select {

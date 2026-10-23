@@ -1,6 +1,7 @@
 resource "catalyst_appsail" "example" {
   project_id            = var.project_id
   name                  = "exampleapp"
+  stack                 = "node24"
   source                = var.source_zip
   source_sha256         = var.source_sha256
   memory                = 128

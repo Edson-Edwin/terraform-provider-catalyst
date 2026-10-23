@@ -49,11 +49,11 @@ func (r *AppSailResource) Metadata(_ context.Context, req resource.MetadataReque
 }
 func (r *AppSailResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	replace := []planmodifier.String{stringplanmodifier.RequiresReplace()}
-	resp.Schema = schema.Schema{MarkdownDescription: "Deploy a Node.js 22 AppSail from a prebuilt ZIP using ZohoCatalyst.appsail read/create/update/delete scopes and project read access. Supports code, memory, startup command, port, authentication and complete environment-map updates, import and artifact drift detection. Names must be unique. Catalyst uses name-keyed upserts: keep project/name ownership exclusive across Terraform states and external tools; no atomic conditional-create primitive has been established. Compressed and expanded archives are limited to 100 MB. Sensitive environment values remain in Terraform state; source code does not. The provider verifies configuration and artifact persistence without invoking the app or proving runtime health. Authentication defaults to enabled. Import with project_id/appsail_id, then supply matching source/hash. Deletion is confirmed for up to two minutes. Live validation is limited to India Development.", Attributes: map[string]schema.Attribute{
+	resp.Schema = schema.Schema{MarkdownDescription: "Deploy a Node.js 22 or 24 AppSail from a prebuilt ZIP using ZohoCatalyst.appsail read/create/update/delete scopes and project read access. Supports code, memory, startup command, port, authentication and complete environment-map updates, import and artifact drift detection. Names must be unique. Catalyst uses name-keyed upserts: keep project/name ownership exclusive across Terraform states and external tools; no atomic conditional-create primitive has been established. Compressed and expanded archives are limited to 100 MB. Sensitive environment values remain in Terraform state; source code does not. The provider verifies configuration and artifact persistence without invoking the app or proving runtime health. Authentication defaults to enabled. Import with project_id/appsail_id, then supply matching source/hash. Deletion is confirmed for up to two minutes. Live validation is limited to India Development.", Attributes: map[string]schema.Attribute{
 		"id":                    schema.StringAttribute{Computed: true, MarkdownDescription: "AppSail ID as a precision-preserving string.", PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
 		"project_id":            schema.StringAttribute{Required: true, MarkdownDescription: "Existing project ID.", PlanModifiers: replace},
 		"name":                  schema.StringAttribute{Required: true, MarkdownDescription: "Unique alphanumeric AppSail name starting with a letter, up to 100 characters. Changing it replaces the service.", PlanModifiers: replace},
-		"stack":                 schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("node22"), MarkdownDescription: "Supported runtime: node22.", PlanModifiers: replace},
+		"stack":                 schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("node22"), MarkdownDescription: "Supported runtimes: node22 or node24.", PlanModifiers: replace},
 		"startup_command":       schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("node index.js"), MarkdownDescription: "Command used to start the application; defaults to node index.js."},
 		"port":                  schema.Int64Attribute{Optional: true, Computed: true, Default: int64default.StaticInt64(9000), MarkdownDescription: "Application port: 80, 443, or 1025 through 65535. Defaults to 9000. Bind the app to the configured port or X_ZOHO_CATALYST_LISTEN_PORT."},
 		"catalyst_auth":         schema.BoolAttribute{Optional: true, Computed: true, Default: booldefault.StaticBool(true), MarkdownDescription: "Require Catalyst authentication for application access. Defaults to true."},
@@ -99,7 +99,7 @@ func (r *AppSailResource) ValidateConfig(ctx context.Context, req resource.Valid
 		case "name":
 			valid = catalyst.ValidAppSailName(v)
 		case "stack":
-			valid = v == "node22"
+			valid = v == "node22" || v == "node24"
 		case "startup_command":
 			valid = strings.TrimSpace(v) != "" && !strings.ContainsRune(v, 0)
 		case "source":

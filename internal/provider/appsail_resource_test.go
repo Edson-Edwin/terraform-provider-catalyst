@@ -71,7 +71,10 @@ catalyst_auth = true
 }
 `, project, name, source, source, mem, command, port, env)
 }
-func TestAppSailLifecycle(t *testing.T) {
+func TestAppSailLifecycle(t *testing.T)       { testAppSailLifecycle(t, "node22") }
+func TestAppSailNode24Lifecycle(t *testing.T) { testAppSailLifecycle(t, "node24") }
+func testAppSailLifecycle(t *testing.T, stack string) {
+	t.Helper()
 	clearEnvironment(t)
 	t.Setenv("CATALYST_ACCESS_TOKEN", "offline-test")
 	dir := t.TempDir()
@@ -139,8 +142,8 @@ func TestAppSailLifecycle(t *testing.T) {
 		}
 		return &http.Response{StatusCode: status, Header: make(http.Header), Body: io.NopCloser(bytes.NewReader(raw))}, nil
 	})}}
-	initial := appsailConfig("123", "testappsail", first, false)
-	updated := appsailConfig("123", "testappsail", second, true)
+	initial := strings.Replace(appsailConfig("123", "testappsail", first, false), `project_id = "123"`, `stack = "`+stack+`"`+"\n"+`project_id = "123"`, 1)
+	updated := strings.Replace(appsailConfig("123", "testappsail", second, true), `project_id = "123"`, `stack = "`+stack+`"`+"\n"+`project_id = "123"`, 1)
 	resource.UnitTest(t, resource.TestCase{ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){"catalyst": providerserver.NewProtocol6WithError(p)}, CheckDestroy: func(_ *terraform.State) error {
 		mu.Lock()
 		defer mu.Unlock()
@@ -149,7 +152,7 @@ func TestAppSailLifecycle(t *testing.T) {
 		}
 		return nil
 	}, Steps: []resource.TestStep{
-		{Config: initial, Check: resource.TestCheckResourceAttr("catalyst_appsail.test", "id", "9007199254740993123")},
+		{Config: initial, Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttr("catalyst_appsail.test", "id", "9007199254740993123"), resource.TestCheckResourceAttr("catalyst_appsail.test", "stack", stack))},
 		{ResourceName: "catalyst_appsail.test", ImportState: true, ImportStateId: "123/9007199254740993123", ImportStateVerify: true, ImportStateVerifyIgnore: []string{"source"}},
 		{Config: updated, Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttr("catalyst_appsail.test", "id", "9007199254740993123"), resource.TestCheckResourceAttr("catalyst_appsail.test", "memory", "256"), resource.TestCheckResourceAttr("catalyst_appsail.test", "environment_variables.TEST_VALUE", "fixture"))},
 		{Config: initial, Check: resource.TestCheckResourceAttr("catalyst_appsail.test", "environment_variables.%", "0")},
