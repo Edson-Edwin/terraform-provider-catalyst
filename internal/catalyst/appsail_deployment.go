@@ -41,9 +41,10 @@ type AppSailDeployment struct {
 
 func (c *Client) appsailError(ctx context.Context, res *http.Response, project, id string) error {
 	var failure apiFailure
-	if decode(res.Body, &failure) == nil && res.StatusCode == 404 && failure.Status == "failure" && failure.Data.Code == "INVALID_ID" {
+	if res.StatusCode == 404 && ValidID(id) {
 		return c.confirmAppSailAbsent(ctx, project, id)
 	}
+	_ = decode(res.Body, &failure)
 	return failureError("Catalyst AppSail request", res.StatusCode, failure)
 }
 
@@ -248,6 +249,21 @@ func (c *Client) AppSailSHA256(ctx context.Context, project, id string) (string,
 }
 
 func (c *Client) DeleteAppSail(ctx context.Context, project, id string) error {
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+	for {
+		err := c.deleteAppSailOnce(ctx, project, id)
+		if !errors.Is(err, errAppSailPending) {
+			return err
+		}
+		// Retry only a definitive 404 while the same immutable ID remains listed.
+		// Transport errors and ambiguous server failures are never replayed.
+		if err = c.wait(ctx, 2*time.Second); err != nil {
+			return err
+		}
+	}
+}
+func (c *Client) deleteAppSailOnce(ctx context.Context, project, id string) error {
 	if !ValidID(id) {
 		return errors.New("invalid AppSail ID")
 	}

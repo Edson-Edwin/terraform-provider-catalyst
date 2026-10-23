@@ -202,3 +202,51 @@ func TestAppSailWaitRequiresConsecutiveMatches(t *testing.T) {
 		t.Fatalf("unstable deployment accepted: reads=%d waits=%d err=%v", reads, waits, err)
 	}
 }
+
+func TestAppSailDeleteReconcilesDefinitive404Only(t *testing.T) {
+	for _, status := range []int{404, 503} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			writes := 0
+			deleted := false
+			c := testClient(t, Config{AccessToken: "test"}, func(w http.ResponseWriter, r *http.Request) {
+				switch {
+				case r.Method == "DELETE":
+					writes++
+					if writes == 1 {
+						w.WriteHeader(status)
+						writeResponse(t, w, "server-secret")
+						return
+					}
+					deleted = true
+					writeResponse(t, w, `{"status":"success","data":{"id":"123"}}`)
+				case r.URL.Path == "/baas/v1/project/456":
+					writeResponse(t, w, `{"status":"success","data":{"id":"456","project_name":"test"}}`)
+				case strings.HasSuffix(r.URL.Path, "/appsail"):
+					if deleted {
+						writeResponse(t, w, `{"status":"success","data":[]}`)
+					} else {
+						writeResponse(t, w, `{"status":"success","data":[{"id":"123","name":"fixture","stack":"node22"}]}`)
+					}
+				default:
+					if deleted {
+						writeResponse(t, w, `{"status":"success","data":null}`)
+					} else {
+						writeResponse(t, w, `{"status":"success","data":{"id":"123","name":"fixture","stack":"node22"}}`)
+					}
+				}
+			})
+			c.wait = func(ctx context.Context, _ time.Duration) error { return ctx.Err() }
+			err := c.DeleteAppSail(t.Context(), "456", "123")
+			if status == 404 {
+				if err != nil || writes != 2 {
+					t.Fatalf("temporary deletion 404 not reconciled: %v", err)
+				}
+				if err = c.WaitAppSailDeleted(t.Context(), "456", "123"); err != nil {
+					t.Fatal(err)
+				}
+			} else if err == nil || writes != 1 || strings.Contains(err.Error(), "server-secret") {
+				t.Fatal("ambiguous deletion replayed or response body leaked")
+			}
+		})
+	}
+}

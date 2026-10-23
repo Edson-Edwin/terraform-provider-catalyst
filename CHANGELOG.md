@@ -48,3 +48,8 @@ FUNCTION MANAGEMENT:
 - Reject existing names before creation and retain created IDs after incomplete metadata or verification failures.
 - Handle success/data:null absence, transient metadata/listing gaps and 404 artifact propagation with bounded reads and verified parent access.
 - Validate ZIP configuration, paths, integrity and source hash before uploading; protect environment variables as sensitive state.
+
+APPSAIL DELETION RELIABILITY:
+
+- Reconcile a definitive AppSail deletion 404 against verified project access and complete listings. Retry the same immutable ID only while it remains listed, with a one-minute bound; never replay an ambiguous transport/server failure.
+- Add a gated recovery helper that deletes only explicitly selected recent acceptance-test fixture IDs. Confirmed cleanup in the isolated India Development project.
