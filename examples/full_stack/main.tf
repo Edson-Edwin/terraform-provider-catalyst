@@ -34,6 +34,12 @@ variable "application_environment" {
   default   = {}
   sensitive = true
 }
+variable "datastore_config_values_json" {
+  type        = string
+  default     = null
+  sensitive   = true
+  description = "Optional scalar configuration row for existing application columns. Null skips row provisioning. Values remain in Terraform state."
+}
 
 data "catalyst_project" "existing" { id = var.project_id }
 data "catalyst_datastore_table" "records" {
@@ -43,6 +49,12 @@ data "catalyst_datastore_table" "records" {
 data "catalyst_nosql_table" "configuration" {
   project_id = data.catalyst_project.existing.id
   id         = var.nosql_table_id
+}
+resource "catalyst_datastore_row" "site" {
+  count       = nonsensitive(var.datastore_config_values_json == null) ? 0 : 1
+  project_id  = data.catalyst_project.existing.id
+  table_id    = data.catalyst_datastore_table.records.id
+  values_json = var.datastore_config_values_json
 }
 
 resource "catalyst_nosql_item" "site" {
@@ -90,11 +102,12 @@ resource "catalyst_appsail" "website" {
   memory          = 256
   catalyst_auth   = var.catalyst_auth
   environment_variables = merge(var.application_environment, {
-    DATASTORE_TABLE_ID = data.catalyst_datastore_table.records.id
-    NOSQL_TABLE_ID     = data.catalyst_nosql_table.configuration.id
-    STRATUS_BUCKET     = catalyst_stratus_object.asset.bucket_name
-    SITE_CONFIG_PK     = "terraform"
-    SITE_CONFIG_SK     = "site"
+    DATASTORE_TABLE_ID      = data.catalyst_datastore_table.records.id
+    DATASTORE_CONFIG_ROW_ID = try(catalyst_datastore_row.site[0].row_id, "")
+    NOSQL_TABLE_ID          = data.catalyst_nosql_table.configuration.id
+    STRATUS_BUCKET          = catalyst_stratus_object.asset.bucket_name
+    SITE_CONFIG_PK          = "terraform"
+    SITE_CONFIG_SK          = "site"
   })
   depends_on = [catalyst_nosql_item.site]
 }

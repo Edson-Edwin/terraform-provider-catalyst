@@ -3,12 +3,12 @@
 page_title: "catalyst_api_gateway_ruleset Resource - catalyst"
 subcategory: ""
 description: |-
-  Own the complete API Gateway ruleset for an enabled project. Supports Basic I/O Function targets with OAuth authentication or explicitly unauthenticated routes, without throttling. Updating replaces the complete ruleset; omitted rules are deleted. Creation requires an empty ruleset; import existing supported rules using the project ID. Unsupported target/authentication/throttling/system policies fail safely instead of being discarded. Requires Gateway API read/create/update/delete scopes. Use project_id = catalyst_api_gateway.example.id to order enablement and destruction. Destroy removes all owned rules but does not disable Gateway. Reads of a disabled Gateway return an error and retain state. Do not share ruleset ownership across states, console users or other deployment tools: the bulk API has no established conditional-write primitive. Changes wait up to five minutes per migration, inspect asynchronous job failures and require consecutive matching reads. No routes or Functions are invoked. Live evidence is limited to India Development; client/Advanced I/O/system routes and configured throttling remain unsupported.
+  Own the complete API Gateway ruleset for an enabled project. Supports Basic I/O and Advanced I/O Function targets, web client routes, OAuth/APIKey/CatalystUserManagement authentication combinations and explicitly unauthenticated routes. Client routes require GET and no authentication; a hosted web client is a prerequisite. Updating replaces the complete ruleset; omitted rules are deleted. Creation requires an empty ruleset; import existing supported rules using the project ID. Unsupported throttling/system policies fail safely instead of being discarded. Requires Gateway API read/create/update/delete scopes. Reference catalyst_api_gateway.id for lifecycle ordering. Destroy removes owned rules without disabling Gateway. Disabled Gateway reads retain state with an error. Use exclusive ruleset ownership across states, console users and deployment tools; the bulk API has no conditional-write primitive. Mutations wait for migration jobs and matching readback; no routes or Functions are invoked. Live evidence is limited to India Development; web client routes have offline/documented-contract verification only. Configured throttling and system routes remain unsupported.
 ---
 
 # catalyst_api_gateway_ruleset (Resource)
 
-Own the complete API Gateway ruleset for an enabled project. Supports Basic I/O Function targets with OAuth authentication or explicitly unauthenticated routes, without throttling. Updating replaces the complete ruleset; omitted rules are deleted. Creation requires an empty ruleset; import existing supported rules using the project ID. Unsupported target/authentication/throttling/system policies fail safely instead of being discarded. Requires Gateway API read/create/update/delete scopes. Use project_id = catalyst_api_gateway.example.id to order enablement and destruction. Destroy removes all owned rules but does not disable Gateway. Reads of a disabled Gateway return an error and retain state. Do not share ruleset ownership across states, console users or other deployment tools: the bulk API has no established conditional-write primitive. Changes wait up to five minutes per migration, inspect asynchronous job failures and require consecutive matching reads. No routes or Functions are invoked. Live evidence is limited to India Development; client/Advanced I/O/system routes and configured throttling remain unsupported.
+Own the complete API Gateway ruleset for an enabled project. Supports Basic I/O and Advanced I/O Function targets, web client routes, OAuth/APIKey/CatalystUserManagement authentication combinations and explicitly unauthenticated routes. Client routes require GET and no authentication; a hosted web client is a prerequisite. Updating replaces the complete ruleset; omitted rules are deleted. Creation requires an empty ruleset; import existing supported rules using the project ID. Unsupported throttling/system policies fail safely instead of being discarded. Requires Gateway API read/create/update/delete scopes. Reference catalyst_api_gateway.id for lifecycle ordering. Destroy removes owned rules without disabling Gateway. Disabled Gateway reads retain state with an error. Use exclusive ruleset ownership across states, console users and deployment tools; the bulk API has no conditional-write primitive. Mutations wait for migration jobs and matching readback; no routes or Functions are invoked. Live evidence is limited to India Development; web client routes have offline/documented-contract verification only. Configured throttling and system routes remain unsupported.
 
 ## Example Usage
 
@@ -49,14 +49,15 @@ resource "catalyst_api_gateway_ruleset" "example" {
 
 Required:
 
-- `function_id` (String) Existing Basic I/O Function's positive numeric ID.
 - `source_endpoint` (String) Custom request path beginning with /, without query or fragment.
-- `target_endpoint` (String) Existing Basic I/O target path /server/function_name/execute.
+- `target_endpoint` (String) Basic I/O /server/name/execute, Advanced I/O /server/name/route, or web client /app/route.
 
 Optional:
 
-- `authentication` (Set of String) Defaults to ["OAuth"]. An explicit empty set makes the route unauthenticated. Other authentication modes are not yet supported.
+- `authentication` (Set of String) Any combination of OAuth, APIKey and CatalystUserManagement. Defaults to ["OAuth"]. An explicit empty set makes the route unauthenticated and is required for client targets. Keys and user credentials are not retrieved or stored by this resource.
+- `function_id` (String) Existing Function's positive numeric ID; required for basicio/advancedio and omitted for client.
 - `method` (String) GET (default), POST, PUT, DELETE, PATCH or ANY. ANY cannot overlap other methods for the same source.
+- `target` (String) basicio (default), advancedio, or client. Client routes require GET, authentication=[] and no function_id.
 
 ## Import
 

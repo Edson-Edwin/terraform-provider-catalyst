@@ -29,6 +29,15 @@ second = { source_endpoint = "/second", target_endpoint = %q, function_id = %s, 
 	if mode == 2 {
 		rules = ""
 	}
+	if mode == 3 {
+		rules = fmt.Sprintf(`advanced = { source_endpoint = "/advanced", target_endpoint = "/server/example/path", function_id = %s, target = "advancedio", method = "ANY" }`, targetID)
+	}
+	if mode == 4 {
+		rules = `website = { source_endpoint = "/website", target_endpoint = "/app/index.html", target = "client", method = "GET", authentication = [] }`
+	}
+	if mode == 5 {
+		rules = fmt.Sprintf(`secured = { source_endpoint = "/secured", target_endpoint = %q, function_id = %s, authentication = ["APIKey", "CatalystUserManagement", "OAuth"] }`, targetEndpoint, targetID)
+	}
 	return fmt.Sprintf(`resource "catalyst_api_gateway" "test" { project_id = %q }
 resource "catalyst_api_gateway_ruleset" "test" {
  project_id = catalyst_api_gateway.test.id
@@ -115,10 +124,13 @@ func TestGatewayLifecycle(t *testing.T) {
 		{ResourceName: "catalyst_api_gateway_ruleset.test", ImportState: true, ImportStateId: "123", ImportStateVerify: true},
 		{Config: updated, Check: resource.TestCheckResourceAttr("catalyst_api_gateway_ruleset.test", "rules.%", "1")},
 		{PreConfig: func() { mu.Lock(); rules = []catalyst.GatewayRule{}; mu.Unlock() }, Config: updated},
+		{Config: gatewayConfig("123", "456", "/server/example/execute", 3), Check: resource.TestCheckResourceAttr("catalyst_api_gateway_ruleset.test", "rules.advanced.target", "advancedio")},
+		{Config: gatewayConfig("123", "456", "/server/example/execute", 4), Check: resource.TestCheckResourceAttr("catalyst_api_gateway_ruleset.test", "rules.website.target", "client")},
+		{Config: gatewayConfig("123", "456", "/server/example/execute", 5), Check: resource.TestCheckResourceAttr("catalyst_api_gateway_ruleset.test", "rules.secured.authentication.#", "3")},
 		{Config: empty, Check: resource.TestCheckResourceAttr("catalyst_api_gateway_ruleset.test", "rules.%", "0")},
 		{Config: empty, PlanOnly: true},
 	}})
-	if writes != 4 || toggles != 2 {
+	if writes != 7 || toggles != 2 {
 		t.Fatalf("unexpected mutations: rules=%d toggles=%d", writes, toggles)
 	}
 }

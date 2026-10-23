@@ -10,6 +10,8 @@ dev: build
 	sh scripts/setup-dev.sh
 
 verify: dev
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_datastore_row validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/gateway_advanced validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_auth_user_role validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_auth_user validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/full_stack validate
@@ -185,3 +187,11 @@ testacc-auth-user-role:
 	TF_ACC=1 go test -race -count=1 -timeout=5m -run '^TestAccAuthUserRole$$' ./internal/provider
 
 .PHONY: testacc-auth-user-role
+
+testacc-datastore-row:
+	TF_ACC=1 go test -race -count=1 -timeout=5m -run '^TestAccDataStoreRow$$' ./internal/provider
+
+testacc-stratus-multipart:
+	TF_ACC=1 go test -race -count=1 -timeout=10m -run '^TestAccStratusMultipart$$' ./internal/provider
+
+.PHONY: testacc-datastore-row testacc-stratus-multipart

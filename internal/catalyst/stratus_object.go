@@ -199,6 +199,9 @@ func (c *Client) stratusSignature(ctx context.Context, project, bucket string) (
 // signedObjectRequest never forwards OAuth or organization headers to the data host.
 // The regional origin comes from a strict expected-host comparison, not user-supplied URLs.
 func (c *Client) signedObjectRequest(ctx context.Context, project string, bucket *StratusBucket, key, method string, body []byte, contentType string, overwrite bool) (*http.Response, error) {
+	return c.signedStratusRequest(ctx, project, bucket, key, method, body, contentType, overwrite, nil)
+}
+func (c *Client) signedStratusRequest(ctx context.Context, project string, bucket *StratusBucket, key, method string, body []byte, contentType string, overwrite bool, query url.Values) (*http.Response, error) {
 	signature, err := c.stratusSignature(ctx, project, bucket.Name)
 	if err != nil {
 		return nil, err
@@ -208,7 +211,17 @@ func (c *Client) signedObjectRequest(ctx context.Context, project string, bucket
 		return nil, errors.New("invalid Stratus origin")
 	}
 	endpoint.Path = "/_signed/" + key
-	endpoint.RawQuery = signature
+	params, err := url.ParseQuery(signature)
+	if err != nil {
+		return nil, errors.New("invalid temporary Stratus signature")
+	}
+	for name, values := range query {
+		if _, exists := params[name]; exists {
+			return nil, errors.New("multipart parameters conflict with the Stratus signature")
+		}
+		params[name] = values
+	}
+	endpoint.RawQuery = params.Encode()
 	retries := 0
 	for {
 		req, err := http.NewRequestWithContext(ctx, method, endpoint.String(), bytes.NewReader(body))

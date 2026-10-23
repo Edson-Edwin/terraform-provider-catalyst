@@ -387,3 +387,47 @@ fallback role. The test changes that user's role, imports, updates, checks a sta
 plan and verifies the fallback after destroy. It does not invite a user or send
 password-reset emails. If the process is terminated, inspect the supplied fixture
 user and restore its fallback role manually before reusing it.
+
+## Expanded Data Store, Stratus and Gateway management
+
+- `catalyst_datastore_row` owns configuration/seed columns in a generated or
+  imported row of an existing table. It supports updates, explicit null clearing
+  of removed fields, import, drift repair and confirmed deletion. Customer
+  transactions belong in the application, not Terraform. Values remain in
+  sensitive Terraform state; server-generated profiles are excluded.
+- `catalyst_stratus_object.multipart_part_size_mb` opts into multipart transfer
+  with 5–20 MiB parts. Default 0 retains single uploads. The source limit remains
+  100 MiB. Create/import/update/stable-plan/destroy passed live with a two-part
+  6 MiB object. Abort/resume is not implemented; failed sessions report their ID.
+- Gateway rules now accept `target = "advancedio"` and `target = "client"` in
+  addition to the default `basicio`. Function routes support combinations of
+  `OAuth`, `APIKey` and `CatalystUserManagement`. Advanced I/O and authentication
+  combinations passed live Terraform lifecycle checks. Web client routes require
+  GET, `authentication = []`, no `function_id`, and an existing hosted client;
+  they have documented/offline verification only. Throttling remains unsupported.
+
+Live tests used generated fixtures in isolated India Development, confirmed
+deletion, and restored the disabled Gateway and original Function inventory.
+No route or Function was invoked. The AppSail container audit accepted an OCI
+upload/callback, but still lacked usable configuration/artifact readback after
+waiting; its generated service was removed. This is not a complete container
+resource or proof that the image ran.
+
+The [six-area implementation matrix](docs/guides/service_expansion.md) records
+what was added and the remaining AppSail, bucket, schema, authentication and
+Gateway API/fixture requirements. Full service coverage is not established.
+
+For row acceptance tests, configure the normal provider credentials with
+`ZohoCatalyst.tables.READ`, `ZohoCatalyst.tables.columns.READ` and
+`ZohoCatalyst.tables.rows.CREATE/READ/UPDATE/DELETE` (request each scope
+individually). Set `CATALYST_ENVIRONMENT=Development`, an isolated
+`CATALYST_TEST_PROJECT_ID`, `CATALYST_TEST_DATASTORE_TABLE_ID` pointing to the
+dedicated `TerraformProviderDataStoreTests` fixture table with a nullable
+`message` text column, and `CATALYST_TEST_ALLOW_DATASTORE_ROW_CREATE=1`; run
+`make testacc-datastore-row`.
+
+For multipart tests, use the existing unversioned test bucket, ordinary Stratus
+object scopes, `CATALYST_TEST_BUCKET`, and
+`CATALYST_TEST_ALLOW_STRATUS_OBJECT_CREATE=1`; run
+`make testacc-stratus-multipart`. `make testacc-gateway` now exercises the expanded
+Function targets/authentication modes with the existing Gateway write opt-in.

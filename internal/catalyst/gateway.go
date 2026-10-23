@@ -162,6 +162,10 @@ func (c *Client) ListGatewayRules(ctx context.Context, project string) ([]Gatewa
 			if rule.Authentication == nil {
 				rule.Authentication = []string{}
 			}
+			slices.Sort(rule.Authentication)
+			if rule.Target == "default" && !rule.System && strings.HasPrefix(rule.Endpoint, "/app/") {
+				rule.Target = "client"
+			}
 			rules = append(rules, rule)
 		}
 		if len(rules) > 1000 {
@@ -177,13 +181,29 @@ func (c *Client) ListGatewayRules(ctx context.Context, project string) ([]Gatewa
 
 // SupportedGatewayRule deliberately rejects policies that the Terraform schema cannot represent.
 func SupportedGatewayRule(rule GatewayRule) bool {
-	if rule.unsupported || strings.TrimSpace(rule.Name) == "" || rule.Name == "Login Redirect" || rule.System || rule.Target != "basicio" || !ValidID(string(rule.TargetID)) || !strings.HasPrefix(rule.Source, "/") || strings.ContainsAny(rule.Source, "\r\n?#") || !strings.HasPrefix(rule.Endpoint, "/server/") || !strings.HasSuffix(rule.Endpoint, "/execute") || strings.ContainsAny(rule.Endpoint, "\r\n?#") || len(rule.Throttling.Overall) > 0 || len(rule.Throttling.IP) > 0 {
+	if rule.unsupported || strings.TrimSpace(rule.Name) == "" || rule.Name == "Login Redirect" || rule.System || !strings.HasPrefix(rule.Source, "/") || strings.ContainsAny(rule.Source, "\r\n?#") || strings.ContainsAny(rule.Endpoint, "\r\n?#") || len(rule.Throttling.Overall) > 0 || len(rule.Throttling.IP) > 0 {
 		return false
 	}
 	if !slices.Contains([]string{"GET", "POST", "PUT", "DELETE", "PATCH", "ANY"}, rule.Method) {
 		return false
 	}
-	return len(rule.Authentication) == 0 || (len(rule.Authentication) == 1 && rule.Authentication[0] == "OAuth")
+	seen := map[string]bool{}
+	for _, method := range rule.Authentication {
+		if !slices.Contains([]string{"OAuth", "APIKey", "CatalystUserManagement"}, method) || seen[method] {
+			return false
+		}
+		seen[method] = true
+	}
+	switch rule.Target {
+	case "basicio":
+		return ValidID(string(rule.TargetID)) && strings.HasPrefix(rule.Endpoint, "/server/") && strings.HasSuffix(rule.Endpoint, "/execute")
+	case "advancedio":
+		return ValidID(string(rule.TargetID)) && strings.HasPrefix(rule.Endpoint, "/server/") && len(strings.TrimPrefix(rule.Endpoint, "/server/")) > 0
+	case "client":
+		return rule.TargetID == "" && strings.HasPrefix(rule.Endpoint, "/app/") && rule.Method == "GET" && len(rule.Authentication) == 0
+	default:
+		return false
+	}
 }
 func gatewayRulesEqual(a, b []GatewayRule) bool {
 	if len(a) != len(b) {
@@ -195,7 +215,7 @@ func gatewayRulesEqual(a, b []GatewayRule) bool {
 	}
 	for _, r := range a {
 		e, ok := expected[r.Name]
-		if !ok || !SupportedGatewayRule(r) || r.Source != e.Source || r.Endpoint != e.Endpoint || r.TargetID != e.TargetID || r.Method != e.Method || !slices.Equal(r.Authentication, e.Authentication) {
+		if !ok || !SupportedGatewayRule(r) || r.Source != e.Source || r.Endpoint != e.Endpoint || r.Target != e.Target || r.TargetID != e.TargetID || r.Method != e.Method || !slices.Equal(r.Authentication, e.Authentication) {
 			return false
 		}
 	}

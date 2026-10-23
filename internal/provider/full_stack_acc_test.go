@@ -41,6 +41,7 @@ http.createServer(async(req,res)=>{
   stage='stratus';const buckets=await app.stratus().listBuckets(),bucket=buckets.find(b=>b.getName()===process.env.STRATUS_BUCKET);if(!bucket)throw Error();
   const stream=await bucket.getObject(process.env.STRATUS_KEY);let content='';for await(const chunk of stream){content+=chunk.toString();if(content.length>64)throw Error();}if(content!=='fixture')throw Error();
   stage='datastore_metadata';table=await app.datastore().getTableDetails(process.env.DATASTORE_TABLE_ID);if(table.toJSON().table_name!=='TerraformProviderDataStoreTests')throw Error();
+  stage='datastore_config';if((await table.getRow(process.env.DATASTORE_CONFIG_ROW_ID)).message!==process.env.CONFIG_PK+'config')throw Error();
   stage='datastore_create';row=await table.insertRow({message:process.env.CONFIG_PK});
   stage='datastore_read';if((await table.getRow(row.ROWID)).message!==process.env.CONFIG_PK)throw Error();
   stage='datastore_update';await table.updateRow({ROWID:row.ROWID,message:process.env.CONFIG_PK+'updated'});if((await table.getRow(row.ROWID)).message!==process.env.CONFIG_PK+'updated')throw Error();
@@ -154,12 +155,13 @@ func TestAccFullStackWebsite(t *testing.T) {
 	}
 	t.Cleanup(func() { cleanupFullStackDataStoreRows(t, project, ds, name) })
 	app := strings.Replace(appsailConfig(project, name, source, false), "catalyst_auth = true", "catalyst_auth = false", 1)
-	app = strings.Replace(app, "environment_variables = {}", fmt.Sprintf(`environment_variables = { FIXTURE_KEY=%q, CONFIG_PK=%q, DATASTORE_TABLE_ID=%q, NOSQL_TABLE_ID=%q, STRATUS_BUCKET=%q, STRATUS_KEY=%q }`, fixtureKey, name, ds, nosql, bucket, key), 1)
+	app = strings.Replace(app, "environment_variables = {}", fmt.Sprintf(`environment_variables = { FIXTURE_KEY=%q, CONFIG_PK=%q, DATASTORE_TABLE_ID=%q, DATASTORE_CONFIG_ROW_ID=catalyst_datastore_row.test.row_id, NOSQL_TABLE_ID=%q, STRATUS_BUCKET=%q, STRATUS_KEY=%q }`, fixtureKey, name, ds, nosql, bucket, key), 1)
 	app = strings.Replace(app, `resource "catalyst_appsail" "test" {`, `resource "catalyst_appsail" "test" {
  stack="node24"
  depends_on=[catalyst_nosql_item.test,catalyst_stratus_object.test]`, 1)
-	config := noSQLItemConfig(project, nosql, name, false) + strings.TrimPrefix(stratusObjectConfig(project, bucket, key, asset, "text/plain"), "provider \"catalyst\" { data_center = \"in\" }\n") + strings.TrimPrefix(app, "provider \"catalyst\" {}\n")
-	resource.Test(t, resource.TestCase{ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){"catalyst": providerserver.NewProtocol6WithError(New("test")())}, CheckDestroy: func(_ *terraform.State) error {
+	rowConfig := strings.TrimPrefix(dataStoreRowConfig(project, ds, `{"message":"`+name+`config"}`), "provider \"catalyst\" {}\n")
+	config := noSQLItemConfig(project, nosql, name, false) + rowConfig + "\n" + strings.TrimPrefix(stratusObjectConfig(project, bucket, key, asset, "text/plain"), "provider \"catalyst\" { data_center = \"in\" }\n") + strings.TrimPrefix(app, "provider \"catalyst\" {}\n")
+	resource.Test(t, resource.TestCase{ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){"catalyst": providerserver.NewProtocol6WithError(New("test")())}, CheckDestroy: func(state *terraform.State) error {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		defer cancel()
 		keys, _ := json.Marshal(map[string]any{"pk": map[string]string{"S": name}, "sk": map[string]string{"S": "site"}})
@@ -171,6 +173,11 @@ func TestAccFullStackWebsite(t *testing.T) {
 		}
 		if _, err := client.GetDataStoreSchema(ctx, project, ds); err != nil {
 			return err
+		}
+		if row := state.RootModule().Resources["catalyst_datastore_row.test"]; row != nil {
+			if _, err := client.GetDataStoreRow(ctx, project, ds, row.Primary.Attributes["row_id"]); !errors.Is(err, catalyst.ErrDataStoreRowNotFound) {
+				return errors.New("full-stack managed Data Store row absence unverified")
+			}
 		}
 		return nil
 	}, Steps: []resource.TestStep{{Config: config, Check: func(state *terraform.State) error {
@@ -199,7 +206,7 @@ func TestAccFullStackWebsite(t *testing.T) {
 				_ = res.Body.Close()
 				if decodeErr == nil {
 					switch result.Stage {
-					case "initialize", "nosql", "stratus", "datastore_metadata", "datastore_create", "datastore_read", "datastore_update", "datastore_cleanup":
+					case "initialize", "nosql", "stratus", "datastore_metadata", "datastore_config", "datastore_create", "datastore_read", "datastore_update", "datastore_cleanup":
 						lastStage = result.Stage
 					}
 					if res.StatusCode == 200 && result.OK && result.NoSQL && result.Stratus && result.DataStore {
@@ -266,7 +273,7 @@ func cleanupFullStackDataStoreRows(t *testing.T, project, table, name string) {
 		}
 		return e.Data, nil
 	}
-	query := "SELECT ROWID, message FROM TerraformProviderDataStoreTests WHERE message = '" + name + "' OR message = '" + name + "updated'"
+	query := "SELECT ROWID, message FROM TerraformProviderDataStoreTests WHERE message = '" + name + "' OR message = '" + name + "updated' OR message = '" + name + "config'"
 	raw, err := call("POST", "/query", map[string]string{"query": query})
 	if err != nil {
 		t.Error(err)
@@ -282,7 +289,7 @@ func cleanupFullStackDataStoreRows(t *testing.T, project, table, name string) {
 	}
 	for _, wrapper := range rows {
 		row, ok := wrapper["TerraformProviderDataStoreTests"]
-		if !ok || !catalyst.ValidID(string(row.ID)) || (row.Message != name && row.Message != name+"updated") {
+		if !ok || !catalyst.ValidID(string(row.ID)) || (row.Message != name && row.Message != name+"updated" && row.Message != name+"config") {
 			t.Error("fixture cleanup refused foreign row")
 			return
 		}

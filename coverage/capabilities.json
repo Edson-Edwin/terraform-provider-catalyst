@@ -199,6 +199,17 @@
       "note": "Management API and lifecycle verification required."
     },
     {
+      "id": "datastore.configuration_row",
+      "service": "datastore",
+      "object": "configuration_row",
+      "phase": 5,
+      "status": "managed",
+      "api_evidence": "live_india",
+      "resources": ["catalyst_datastore_row"],
+      "data_sources": [],
+      "note": "Configuration/seed rows in existing tables. Precision-preserving scalar JSON, generated ROWID, import, owned-column updates/removal through explicit null PATCH, drift repair, recreation after deletion and confirmed destroy. System profiles are excluded. Official SDK PATCH contract and live India Development Terraform create/import/update/null-clear/stable-plan/destroy verified. Table/column/index/permission provisioning remains unimplemented."
+    },
+    {
       "id": "datastore.index",
       "service": "datastore",
       "object": "index",
@@ -246,7 +257,18 @@
         "catalyst_stratus_object"
       ],
       "data_sources": [],
-      "note": "Unversioned existing bucket object management with binary upload, in-place content/type updates, SHA-256 drift detection, import and confirmed exact-key deletion. 100 MB provider limit; bucket provisioning, version history, TTL, custom metadata and multipart uploads remain unsupported. Live India Development Terraform create/import/update/same-size drift repair/external deletion and recreation/stable plan/destroy passed; exact test-key cleanup confirmed. Complete custom metadata-map replacement, clearing, import and drift repair pass live Terraform lifecycle tests through the dedicated putMeta API. Bucket provisioning, versioning, TTL, policies and multipart remain unsupported."
+      "note": "Existing unversioned bucket object upload, content/type and complete custom metadata updates, import, SHA-256 drift detection and confirmed exact-key deletion. Optional multipart transfers are implemented and live-verified; source limit remains 100 MiB. Bucket provisioning, policies/CORS, versioning/history and TTL remain unimplemented."
+    },
+    {
+      "id": "stratus.multipart_transfer",
+      "service": "stratus",
+      "object": "multipart_transfer",
+      "phase": 4,
+      "status": "managed",
+      "api_evidence": "live_india",
+      "resources": ["catalyst_stratus_object"],
+      "data_sources": [],
+      "note": "Opt-in multipart_part_size_mb=5..20; default 0 preserves single upload. SDK initiate/numbered part/complete protocol, regional signed-transfer isolation, overwrite guards and no ambiguous mutation replay. Live 6 MiB/two-part create/import/update/stable-plan/destroy passed in India Development. Limit remains 100 MiB. Public abort/resume lifecycle is not established; failed sessions report upload IDs and uncertain completion retains object identity."
     },
     {
       "id": "stratus.versioning",
@@ -337,7 +359,7 @@
         "catalyst_api_gateway_ruleset"
       ],
       "data_sources": [],
-      "note": "Gateway enable/disable and complete Basic I/O ruleset management with OAuth or explicit no-auth, import and asynchronous failure handling. API lifecycle verified live in isolated India Development; live Terraform evidence is recorded in API_COVERAGE.md. Other targets, auth modes and configured throttling remain unsupported."
+      "note": "Gateway enable/disable and complete rulesets with Basic/Advanced I/O Function targets, all combinations of OAuth/APIKey/CatalystUserManagement or explicit no-auth, import and async failure handling. Expanded live India Development lifecycle passed, with disabled Gateway and Function baselines restored and no invocation. Client GET routes have documented/offline verification only; a hosted web client is a prerequisite. Configured throttling and system routes remain unsupported."
     },
     {
       "id": "authentication.user_role_assignment",

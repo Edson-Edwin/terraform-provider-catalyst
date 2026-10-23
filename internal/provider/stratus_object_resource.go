@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -26,16 +27,17 @@ var _ resource.ResourceWithValidateConfig = &StratusObjectResource{}
 
 type StratusObjectResource struct{ client *catalyst.Client }
 type stratusObjectModel struct {
-	ID          types.String `tfsdk:"id"`
-	ProjectID   types.String `tfsdk:"project_id"`
-	Bucket      types.String `tfsdk:"bucket_name"`
-	Key         types.String `tfsdk:"key"`
-	Source      types.String `tfsdk:"source"`
-	SHA256      types.String `tfsdk:"source_sha256"`
-	ContentType types.String `tfsdk:"content_type"`
-	Size        types.Int64  `tfsdk:"size"`
-	ETag        types.String `tfsdk:"etag"`
-	Metadata    types.Map    `tfsdk:"metadata"`
+	MultipartMiB types.Int64  `tfsdk:"multipart_part_size_mb"`
+	ID           types.String `tfsdk:"id"`
+	ProjectID    types.String `tfsdk:"project_id"`
+	Bucket       types.String `tfsdk:"bucket_name"`
+	Key          types.String `tfsdk:"key"`
+	Source       types.String `tfsdk:"source"`
+	SHA256       types.String `tfsdk:"source_sha256"`
+	ContentType  types.String `tfsdk:"content_type"`
+	Size         types.Int64  `tfsdk:"size"`
+	ETag         types.String `tfsdk:"etag"`
+	Metadata     types.Map    `tfsdk:"metadata"`
 }
 
 func NewStratusObjectResource() resource.Resource { return &StratusObjectResource{} }
@@ -45,18 +47,19 @@ func (r *StratusObjectResource) Metadata(_ context.Context, req resource.Metadat
 func (r *StratusObjectResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	replace := []planmodifier.String{stringplanmodifier.RequiresReplace()}
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manage an object in an existing unversioned Stratus bucket. Uploads local bytes and content type, supports in-place content updates, import, SHA-256 drift detection and confirmed deletion. This provider limits files to 100 MB; multipart uploads, versioned keys, TTL are not supported. Owns the complete custom metadata map; removing entries clears them remotely. The object key must belong exclusively to this resource; do not use keys with version history. Destroy permanently removes the managed key using the Stratus object deletion API. Creation checks absence and uses overwrite=false; an existing key requires explicit import. Temporary bucket signatures remain in memory and never enter Terraform state or diagnostics; transfers are restricted to the expected regional Stratus origin and do not forward OAuth headers. Source contents are not stored in state. Requires bucket read and object read/create/update/delete scopes; custom metadata needs ZohoCatalyst.buckets.objects.UPDATE. Import with project_id/bucket_name/object_key, retaining slashes in nested keys; then supply a matching local source/hash/content type. Live validation is limited to India Development.",
+		MarkdownDescription: "Manage an object in an existing unversioned Stratus bucket. Uploads local bytes and content type, supports in-place content updates, import, SHA-256 drift detection and confirmed deletion. Files are limited to 100 MiB. Single upload is the default; multipart_part_size_mb opts into multipart transfers. Versioned keys and TTL are not supported. Owns the complete custom metadata map; removing entries clears them remotely. The key must belong exclusively to this resource and have no version history. Destroy permanently removes the managed key. Creation checks absence and uses overwrite=false; existing keys require explicit import. Temporary signatures remain in memory; transfers use the expected regional Stratus origin without OAuth headers. Source contents are not stored in state. Requires bucket read and object read/create/update/delete scopes; metadata updates need ZohoCatalyst.buckets.objects.UPDATE. Import as project_id/bucket_name/object_key, retaining nested slashes. Multipart transfer settings are local and must be supplied again after import. Incomplete sessions are reported with an upload ID; a public abort/resume lifecycle has not been established. Live validation is limited to India Development.",
 		Attributes: map[string]schema.Attribute{
-			"id":            schema.StringAttribute{Computed: true, MarkdownDescription: "Composite project_id/bucket_name/object_key identity.", PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
-			"project_id":    schema.StringAttribute{Required: true, MarkdownDescription: "Existing project ID.", PlanModifiers: replace},
-			"bucket_name":   schema.StringAttribute{Required: true, MarkdownDescription: "Existing unversioned bucket's lowercase DNS name.", PlanModifiers: replace},
-			"key":           schema.StringAttribute{Required: true, MarkdownDescription: "Object key, up to 1024 UTF-8 bytes. Nested paths are supported; absolute paths, dot segments, control characters and backslashes are rejected.", PlanModifiers: replace},
-			"source":        schema.StringAttribute{Required: true, MarkdownDescription: "Local regular file, up to 100 MB. Build or prepare it before applying."},
-			"source_sha256": schema.StringAttribute{Required: true, MarkdownDescription: "Lowercase hex SHA-256, usually filesha256(source). Refresh downloads bytes to detect changes independently of ETag."},
-			"content_type":  schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("application/octet-stream"), MarkdownDescription: "Canonical MIME content type; defaults to application/octet-stream."},
-			"size":          schema.Int64Attribute{Computed: true, MarkdownDescription: "Remote object size in bytes."},
-			"metadata":      schema.MapAttribute{Optional: true, Computed: true, ElementType: types.StringType, Default: mapdefault.StaticValue(types.MapValueMust(types.StringType, map[string]attr.Value{})), MarkdownDescription: "Complete custom metadata map. Keys/values use ASCII letters, digits, spaces, underscores and hyphens; total size is limited to 2047 characters including delimiters. Empty clears all metadata. Values remain in Terraform state; do not put secrets here."},
-			"etag":          schema.StringAttribute{Computed: true, MarkdownDescription: "Opaque ETag returned by Stratus; source_sha256 verifies actual content."},
+			"multipart_part_size_mb": schema.Int64Attribute{Optional: true, Computed: true, Default: int64default.StaticInt64(0), MarkdownDescription: "0 (default) uses one upload; 5–20 opts into multipart uploads with that part size in MiB. The 100 MiB source limit still applies. Incomplete sessions are reported with their upload ID; no public abort contract is established. Changing this local transfer option reuploads the object."},
+			"id":                     schema.StringAttribute{Computed: true, MarkdownDescription: "Composite project_id/bucket_name/object_key identity.", PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
+			"project_id":             schema.StringAttribute{Required: true, MarkdownDescription: "Existing project ID.", PlanModifiers: replace},
+			"bucket_name":            schema.StringAttribute{Required: true, MarkdownDescription: "Existing unversioned bucket's lowercase DNS name.", PlanModifiers: replace},
+			"key":                    schema.StringAttribute{Required: true, MarkdownDescription: "Object key, up to 1024 UTF-8 bytes. Nested paths are supported; absolute paths, dot segments, control characters and backslashes are rejected.", PlanModifiers: replace},
+			"source":                 schema.StringAttribute{Required: true, MarkdownDescription: "Local regular file, up to 100 MB. Build or prepare it before applying."},
+			"source_sha256":          schema.StringAttribute{Required: true, MarkdownDescription: "Lowercase hex SHA-256, usually filesha256(source). Refresh downloads bytes to detect changes independently of ETag."},
+			"content_type":           schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("application/octet-stream"), MarkdownDescription: "Canonical MIME content type; defaults to application/octet-stream."},
+			"size":                   schema.Int64Attribute{Computed: true, MarkdownDescription: "Remote object size in bytes."},
+			"metadata":               schema.MapAttribute{Optional: true, Computed: true, ElementType: types.StringType, Default: mapdefault.StaticValue(types.MapValueMust(types.StringType, map[string]attr.Value{})), MarkdownDescription: "Complete custom metadata map. Keys/values use ASCII letters, digits, spaces, underscores and hyphens; total size is limited to 2047 characters including delimiters. Empty clears all metadata. Values remain in Terraform state; do not put secrets here."},
+			"etag":                   schema.StringAttribute{Computed: true, MarkdownDescription: "Opaque ETag returned by Stratus; source_sha256 verifies actual content."},
 		}}
 }
 func (r *StratusObjectResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -82,6 +85,12 @@ func (r *StratusObjectResource) ValidateConfig(ctx context.Context, req resource
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+	if !data.MultipartMiB.IsUnknown() && !data.MultipartMiB.IsNull() {
+		v := data.MultipartMiB.ValueInt64()
+		if v != 0 && (v < 5 || v > 20) {
+			resp.Diagnostics.AddAttributeError(path.Root("multipart_part_size_mb"), "Invalid multipart part size", "Use 0 for single upload or a part size of 5–20 MiB.")
+		}
 	}
 	for key, value := range map[string]types.String{"project_id": data.ProjectID, "bucket_name": data.Bucket, "key": data.Key, "source": data.Source, "source_sha256": data.SHA256, "content_type": data.ContentType} {
 		if value.IsNull() || value.IsUnknown() {
@@ -117,6 +126,9 @@ func (r *StratusObjectResource) ValidateConfig(ctx context.Context, req resource
 
 }
 func (d *stratusObjectModel) populate(value *catalyst.StratusObject, hash string) {
+	if d.MultipartMiB.IsNull() || d.MultipartMiB.IsUnknown() {
+		d.MultipartMiB = types.Int64Value(0)
+	}
 	values := map[string]attr.Value{}
 	for key, v := range value.Metadata {
 		values[key] = types.StringValue(v)
@@ -144,7 +156,12 @@ func (r *StratusObjectResource) persist(ctx context.Context, data *stratusObject
 		diags.AddError("Invalid object source", err.Error())
 		return
 	}
-	accepted, err := r.client.PutStratusObject(ctx, data.ProjectID.ValueString(), data.Bucket.ValueString(), data.Key.ValueString(), data.ContentType.ValueString(), body, creating)
+	var accepted bool
+	if data.MultipartMiB.ValueInt64() == 0 {
+		accepted, err = r.client.PutStratusObject(ctx, data.ProjectID.ValueString(), data.Bucket.ValueString(), data.Key.ValueString(), data.ContentType.ValueString(), body, creating)
+	} else {
+		accepted, err = r.client.PutStratusObjectMultipart(ctx, data.ProjectID.ValueString(), data.Bucket.ValueString(), data.Key.ValueString(), data.ContentType.ValueString(), body, creating, data.MultipartMiB.ValueInt64())
+	}
 	if accepted {
 		data.ID = types.StringValue(data.ProjectID.ValueString() + "/" + data.Bucket.ValueString() + "/" + data.Key.ValueString())
 		setState()

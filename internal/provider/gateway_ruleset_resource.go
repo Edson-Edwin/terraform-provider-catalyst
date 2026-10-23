@@ -29,6 +29,7 @@ type gatewayRulesetModel struct {
 	Rules     types.Map    `tfsdk:"rules"`
 }
 type gatewayRuleModel struct {
+	Target         types.String `tfsdk:"target"`
 	Source         types.String `tfsdk:"source_endpoint"`
 	Endpoint       types.String `tfsdk:"target_endpoint"`
 	TargetID       types.String `tfsdk:"function_id"`
@@ -36,7 +37,7 @@ type gatewayRuleModel struct {
 	Authentication types.Set    `tfsdk:"authentication"`
 }
 
-var gatewayRuleTypes = map[string]attr.Type{"source_endpoint": types.StringType, "target_endpoint": types.StringType, "function_id": types.StringType, "method": types.StringType, "authentication": types.SetType{ElemType: types.StringType}}
+var gatewayRuleTypes = map[string]attr.Type{"target": types.StringType, "source_endpoint": types.StringType, "target_endpoint": types.StringType, "function_id": types.StringType, "method": types.StringType, "authentication": types.SetType{ElemType: types.StringType}}
 
 func NewGatewayRulesetResource() resource.Resource { return &GatewayRulesetResource{} }
 func (r *GatewayRulesetResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -44,16 +45,17 @@ func (r *GatewayRulesetResource) Metadata(_ context.Context, req resource.Metada
 }
 func (r *GatewayRulesetResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Own the complete API Gateway ruleset for an enabled project. Supports Basic I/O Function targets with OAuth authentication or explicitly unauthenticated routes, without throttling. Updating replaces the complete ruleset; omitted rules are deleted. Creation requires an empty ruleset; import existing supported rules using the project ID. Unsupported target/authentication/throttling/system policies fail safely instead of being discarded. Requires Gateway API read/create/update/delete scopes. Use project_id = catalyst_api_gateway.example.id to order enablement and destruction. Destroy removes all owned rules but does not disable Gateway. Reads of a disabled Gateway return an error and retain state. Do not share ruleset ownership across states, console users or other deployment tools: the bulk API has no established conditional-write primitive. Changes wait up to five minutes per migration, inspect asynchronous job failures and require consecutive matching reads. No routes or Functions are invoked. Live evidence is limited to India Development; client/Advanced I/O/system routes and configured throttling remain unsupported.",
+		MarkdownDescription: "Own the complete API Gateway ruleset for an enabled project. Supports Basic I/O and Advanced I/O Function targets, web client routes, OAuth/APIKey/CatalystUserManagement authentication combinations and explicitly unauthenticated routes. Client routes require GET and no authentication; a hosted web client is a prerequisite. Updating replaces the complete ruleset; omitted rules are deleted. Creation requires an empty ruleset; import existing supported rules using the project ID. Unsupported throttling/system policies fail safely instead of being discarded. Requires Gateway API read/create/update/delete scopes. Reference catalyst_api_gateway.id for lifecycle ordering. Destroy removes owned rules without disabling Gateway. Disabled Gateway reads retain state with an error. Use exclusive ruleset ownership across states, console users and deployment tools; the bulk API has no conditional-write primitive. Mutations wait for migration jobs and matching readback; no routes or Functions are invoked. Live evidence is limited to India Development; web client routes have offline/documented-contract verification only. Configured throttling and system routes remain unsupported.",
 		Attributes: map[string]schema.Attribute{
 			"id":         schema.StringAttribute{Computed: true, MarkdownDescription: "Project ID identifying the single ruleset.", PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
 			"project_id": schema.StringAttribute{Required: true, MarkdownDescription: "Enabled Gateway's project ID; reference catalyst_api_gateway.id to establish lifecycle ordering.", PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()}},
 			"rules": schema.MapNestedAttribute{Required: true, MarkdownDescription: "Complete ruleset keyed by unique rule name. Use an empty map to remove all rules. Names and source/method combinations must be unique.", NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
+				"target":          schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("basicio"), MarkdownDescription: "basicio (default), advancedio, or client. Client routes require GET, authentication=[] and no function_id."},
 				"source_endpoint": schema.StringAttribute{Required: true, MarkdownDescription: "Custom request path beginning with /, without query or fragment."},
-				"target_endpoint": schema.StringAttribute{Required: true, MarkdownDescription: "Existing Basic I/O target path /server/function_name/execute."},
-				"function_id":     schema.StringAttribute{Required: true, MarkdownDescription: "Existing Basic I/O Function's positive numeric ID."},
+				"target_endpoint": schema.StringAttribute{Required: true, MarkdownDescription: "Basic I/O /server/name/execute, Advanced I/O /server/name/route, or web client /app/route."},
+				"function_id":     schema.StringAttribute{Optional: true, MarkdownDescription: "Existing Function's positive numeric ID; required for basicio/advancedio and omitted for client."},
 				"method":          schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("GET"), MarkdownDescription: "GET (default), POST, PUT, DELETE, PATCH or ANY. ANY cannot overlap other methods for the same source."},
-				"authentication":  schema.SetAttribute{Optional: true, Computed: true, ElementType: types.StringType, Default: setdefault.StaticValue(types.SetValueMust(types.StringType, []attr.Value{types.StringValue("OAuth")})), MarkdownDescription: "Defaults to [\"OAuth\"]. An explicit empty set makes the route unauthenticated. Other authentication modes are not yet supported."},
+				"authentication":  schema.SetAttribute{Optional: true, Computed: true, ElementType: types.StringType, Default: setdefault.StaticValue(types.SetValueMust(types.StringType, []attr.Value{types.StringValue("OAuth")})), MarkdownDescription: "Any combination of OAuth, APIKey and CatalystUserManagement. Defaults to [\"OAuth\"]. An explicit empty set makes the route unauthenticated and is required for client targets. Keys and user credentials are not retrieved or stored by this resource."},
 			}}},
 		}}
 }
@@ -87,7 +89,11 @@ func (d *gatewayRulesetModel) api(ctx context.Context) ([]catalyst.GatewayRule, 
 		auth := []string{}
 		diags.Append(v.Authentication.ElementsAs(ctx, &auth, false)...)
 		slices.Sort(auth)
-		result = append(result, catalyst.GatewayRule{Name: name, Source: v.Source.ValueString(), Endpoint: v.Endpoint.ValueString(), TargetID: catalyst.ID(v.TargetID.ValueString()), Target: "basicio", Method: v.Method.ValueString(), Authentication: auth})
+		target := v.Target.ValueString()
+		if target == "" {
+			target = "basicio"
+		}
+		result = append(result, catalyst.GatewayRule{Name: name, Source: v.Source.ValueString(), Endpoint: v.Endpoint.ValueString(), TargetID: catalyst.ID(v.TargetID.ValueString()), Target: target, Method: v.Method.ValueString(), Authentication: auth})
 	}
 	return result, diags
 }
@@ -109,14 +115,18 @@ func (r *GatewayRulesetResource) ValidateConfig(ctx context.Context, req resourc
 	var input map[string]gatewayRuleModel
 	resp.Diagnostics.Append(data.Rules.ElementsAs(ctx, &input, true)...)
 	for name, v := range input {
-		if v.Source.IsUnknown() || v.Endpoint.IsUnknown() || v.TargetID.IsUnknown() || v.Method.IsNull() || v.Method.IsUnknown() || v.Authentication.IsNull() || v.Authentication.IsUnknown() {
+		if v.Target.IsUnknown() || v.Source.IsUnknown() || v.Endpoint.IsUnknown() || v.TargetID.IsUnknown() || v.Method.IsNull() || v.Method.IsUnknown() || v.Authentication.IsNull() || v.Authentication.IsUnknown() {
 			continue
 		}
 		auth := []string{}
 		resp.Diagnostics.Append(v.Authentication.ElementsAs(ctx, &auth, true)...)
-		rule := catalyst.GatewayRule{Name: name, Source: v.Source.ValueString(), Endpoint: v.Endpoint.ValueString(), TargetID: catalyst.ID(v.TargetID.ValueString()), Target: "basicio", Method: v.Method.ValueString(), Authentication: auth}
+		target := v.Target.ValueString()
+		if target == "" {
+			target = "basicio"
+		}
+		rule := catalyst.GatewayRule{Name: name, Source: v.Source.ValueString(), Endpoint: v.Endpoint.ValueString(), TargetID: catalyst.ID(v.TargetID.ValueString()), Target: target, Method: v.Method.ValueString(), Authentication: auth}
 		if !catalyst.SupportedGatewayRule(rule) {
-			resp.Diagnostics.AddAttributeError(path.Root("rules").AtMapKey(name), "Unsupported Gateway rule", "Use a Basic I/O Function target, documented method, valid paths and OAuth authentication or an explicit empty set.")
+			resp.Diagnostics.AddAttributeError(path.Root("rules").AtMapKey(name), "Unsupported Gateway rule", "Use basicio/advancedio Function targets with a function_id, or client targets with GET, no function_id and authentication=[]. Use valid target paths and documented authentication modes.")
 		}
 	}
 }
@@ -130,7 +140,11 @@ func (d *gatewayRulesetModel) populate(ctx context.Context, rules []catalyst.Gat
 		}
 		auth, dg := types.SetValueFrom(ctx, types.StringType, rule.Authentication)
 		diags.Append(dg...)
-		values[rule.Name] = gatewayRuleModel{Source: types.StringValue(rule.Source), Endpoint: types.StringValue(rule.Endpoint), TargetID: types.StringValue(string(rule.TargetID)), Method: types.StringValue(rule.Method), Authentication: auth}
+		id := types.StringNull()
+		if rule.TargetID != "" {
+			id = types.StringValue(string(rule.TargetID))
+		}
+		values[rule.Name] = gatewayRuleModel{Target: types.StringValue(rule.Target), Source: types.StringValue(rule.Source), Endpoint: types.StringValue(rule.Endpoint), TargetID: id, Method: types.StringValue(rule.Method), Authentication: auth}
 	}
 	value, dg := types.MapValueFrom(ctx, types.ObjectType{AttrTypes: gatewayRuleTypes}, values)
 	diags.Append(dg...)

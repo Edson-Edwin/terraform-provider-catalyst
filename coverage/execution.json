@@ -1,7 +1,7 @@
 {
   "updated": "2026-10-23",
   "objective_complete": false,
-  "current_phase": "Authentication/Connections API audit and experimental existing-user role assignment; no disposable user available for live writes; configuration/role/permission/Connection provisioning remain incomplete",
+  "current_phase": "Data Store configuration rows, Stratus multipart transfer and expanded Gateway targets/authentication verified live; full-stack managed configuration row integration passed; remaining management contracts and fixtures still incomplete",
   "completed": [
     "draft inventory of 43 capability areas",
     "registered type/docs/examples consistency test",
@@ -75,7 +75,16 @@
     "Added data.catalyst_auth_user for precision-preserving role/account metadata; privacy, malformed responses, permission errors, administrator protection and ambiguous-write handling tested offline",
     "Authentication/Connections guide and resource/data-source references generated from retained templates; executable examples validate",
     "Authentication milestone make check passed: dependency/format checks, vet, full offline race suite, all example validations, schema loading and no-change plan; configured golangci-lint v2.15.0 reported zero issues",
-    "Opt-in disposable-user live assignment test added but not executed: maintainer confirmed no disposable application user is available. No live writes or hosted CI checks in this milestone."
+    "Opt-in disposable-user live assignment test added but not executed: maintainer confirmed no disposable application user is available. No live writes or hosted CI checks in the Authentication milestone.",
+    "Added catalyst_datastore_row with generated ROWID, scalar values, explicit null clearing, owned-column refresh, import, drift handling and confirmed deletion; live India Development Terraform lifecycle passed",
+    "Added opt-in Stratus multipart_part_size_mb with regional signed transfers and no ambiguous mutation replay; live two-part 6 MiB create/import/update/stable-plan/destroy passed",
+    "Expanded Gateway to Advanced I/O Functions and all combinations of OAuth/APIKey/CatalystUserManagement; full live Terraform lifecycle and import passed; generated Functions removed and disabled Gateway baseline restored; no invocation",
+    "Gateway client GET routes implemented against official help/CLI and offline lifecycle tests; no live hosted-client fixture is available for verification",
+    "AppSail OCI upload/upsert contract accepted a generated fixture, but configuration remained incomplete after readiness wait and artifact download returned HTTP 500; both generated service cleanup checks succeeded; no container resource/runtime success is claimed",
+    "Fixed AppSail metadata discovery to accept verified custom_runtime entries without a managed stack field; offline regression test added",
+    "Full-stack Node24 website smoke passed with Terraform-managed Data Store configuration row read, SDK row CRUD, NoSQL config and private Stratus asset; managed-resource deletion and independent generated-row cleanup verified",
+    "Retained documentation templates, new Data Store/Gateway examples and explicit six-area implementation/contract matrix added",
+    "Final exact-source make check passed after numeric-format normalization fix: dependency/format checks, vet, complete offline race suite, all examples/schema validation and no-change plan. Final configured static analysis reported zero issues."
   ],
   "pending": [
     "Live user-role assignment read/write/import/drift/fallback verification requires an existing disposable application end-user and two test roles; maintainer confirmed no disposable user is available",
@@ -86,9 +95,9 @@
     "establish meaning of is_deployed and function_output in Development",
     "establish safe ownership for name-keyed upsert",
     "Remaining Function languages/runtime versions/types beyond Node22/24 Basic I/O, Advanced I/O, Event, Cron and Job Functions",
-    "Other Gateway targets, authentication modes, system routes and configured throttling",
+    "Gateway client-route live fixture, configured throttling and system routes; broader persistent policy contracts remain incomplete",
     "Remaining service lifecycle phases; draft service/field inventory is still incomplete",
-    "Stratus bucket provisioning, policies, version history, multipart objects and TTL management",
+    "Stratus bucket provisioning, policies/CORS, version history, TTL, multipart abort/resume and source sizes over 100 MiB",
     "Circuit cron unavailable in the current India account region; needs an eligible region and verified Circuit management lifecycle; maintainer confirmed no eligible test project is available on 2026-10-23",
     "CloudScale legacy Cron sunset announced for October 1 2026; do not implement retired triggers as new coverage",
     "Vendor says Data Store table/schema creation is console-only; supported automation contract or vendor change is required",
@@ -102,21 +111,25 @@
   "commits_and_pushes": "Authorized by maintainer for main.",
   "latest_milestone": {
     "date": "2026-10-23",
-    "resources": 12,
+    "resources": 13,
     "data_sources": 12,
-    "draft_capabilities": 46,
-    "partially_managed_areas": 14,
+    "draft_capabilities": 48,
+    "partially_managed_areas": 16,
     "discovery_only_areas": 8,
     "unimplemented_areas": 24,
     "objective_complete": false,
-    "live_region": "No live writes in the Authentication milestone; prior website evidence is India Development",
-    "full_stack_smoke": "Passed in the earlier website milestone; not rerun for experimental user-role assignment",
+    "live_region": "India Development only",
+    "full_stack_smoke": "Passed with Terraform-managed Data Store configuration read, SDK row CRUD, NoSQL config and private Stratus content; cleanup confirmed",
     "hosted_ci": "not queried as requested",
     "registry_publication": "not established",
     "authentication_role_assignment": "Experimental; complete offline lifecycle passed; live write/readback unverified because no disposable end-user is available",
     "authentication_setup_and_permissions": "Unimplemented; supported public management lifecycle not established",
     "connections_provisioning": "Unimplemented; verified SDK capability is credential retrieval inside Catalyst runtime",
-    "local_verification": "make generate, make check and configured golangci-lint passed; zero static-analysis issues",
-    "packaging": "Historical website milestone: 14 unsigned platform archives and native mirror/schema checks passed. New Authentication milestone has not been packaged or published."
+    "datastore_rows": "Live create/import/update/null-clear/stable-plan/destroy passed; table/schema/index/permission provisioning remains incomplete",
+    "stratus_multipart": "Live two-part 6 MiB create/import/content-update/stable-plan/destroy passed; 100 MiB limit and no public abort/resume lifecycle",
+    "gateway_expansion": "Advanced I/O and three authentication modes passed full live lifecycle; client GET routes are offline/documented only; configured throttling/system routes unsupported",
+    "appsail_container_probe": "Upload/callback accepted; configuration readback incomplete after readiness wait; download HTTP 500; generated service cleanup confirmed; no managed container lifecycle claimed",
+    "local_verification": "make generate and final exact-source make check passed, including complete offline race suite, vet, all examples/schema/no-change checks. Final configured golangci-lint reported zero issues.",
+    "packaging": "Historical website milestone: 14 unsigned platform archives and native mirror/schema checks passed. The service-expansion milestone has not been packaged or published."
   }
 }

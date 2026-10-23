@@ -2,23 +2,39 @@
 
 This community provider is under development. Public availability and broad service coverage remain goals; implemented capabilities are listed below. API availability must be verified separately from the Terraform schema and mock tests.
 
-Latest Authentication/Connections milestone (2026-10-23): **12 resources and 12
-data sources**, with a draft inventory of **46 capability areas**: 14 partly
-managed, 8 discovery-only and 24 unimplemented. The new existing-user assignment
-resource is experimental and has no live write verification. Authentication
-setup, custom role/default management, table permission editing and Connections
-provisioning remain unimplemented. The [API-boundary and integration guide](docs/guides/authentication_connections.md)
-records the official sources and requirements for completing those areas.
-Local `make check` passed, including the full offline race suite, vet, example
-validation, provider schema and no-change plan. Configured static analysis
-reported zero issues. No disposable user was available; no live writes or hosted
-CI checks were performed for this milestone. Earlier live evidence below applies
-only to the capabilities explicitly tested in those milestones.
+Latest service expansion (2026-10-23): **13 resources and 12 data sources**,
+with a draft inventory of **48 capability areas**: 16 partly managed,
+8 discovery-only and 24 unimplemented. Data Store configuration rows, opt-in
+Stratus multipart transfer, Advanced I/O Gateway targets and the three documented
+Gateway authentication modes passed live India Development lifecycle tests.
+Generated objects/rows/Functions were deleted and the disabled Gateway restored.
+Client Gateway routes have documented/offline verification only. No routes or
+Functions were invoked during Gateway tests. The [six-area matrix](docs/guides/service_expansion.md)
+records the remaining API and fixture requirements; no 10/10 claim is made.
+
+The AppSail OCI audit accepted an image upload/callback but still lacked usable
+configuration fields after a readiness wait; artifact download returned HTTP 500.
+The generated service was deleted. This is failed readback evidence, not a
+passing container lifecycle. Authentication setup, custom roles/permissions,
+schema/bucket provisioning and other remaining fields are still unimplemented.
+Existing-user assignment remains experimental and live-unverified because no
+disposable user is available. Earlier evidence below applies only to its stated
+milestone. Hosted CI remains outside scope.
+
+The updated full-stack smoke test also passed: the AppSail frontend/backend read
+a Terraform-managed Data Store configuration row, used NoSQL and private Stratus
+content, and completed SDK row CRUD. All generated rows/resources were removed;
+independent row cleanup recovered zero leftovers. Final `make check` passed
+after the numeric JSON normalization fix, including the complete offline race
+suite, vet, all examples, schema loading and no-change plan. Final static analysis
+reported zero issues. The failed container readback probe remains a documented
+gap; it is not included as a passing managed-container lifecycle.
 
 ## Implemented coverage and verification
 
 | Terraform type | Capability | Verification |
 | --- | --- | --- |
+| `catalyst_datastore_row` | Manage scalar configuration/seed row columns in existing tables; import, drift, null clearing and deletion | Offline lifecycle/privacy/precision/error tests; live India Development create/import/update/null-clear/stable-plan/destroy |
 | `catalyst_auth_user_role` (experimental) | Assign an existing end-user to an existing role; explicit fallback on destroy; no user provisioning | Offline Terraform lifecycle/import/update/drift/stable-plan/recovery/destroy tests; live writes pending because no disposable user is available |
 | `data.catalyst_auth_user` | Read a specific user's role/account metadata, excluding email and profiles from state | Offline API and Terraform tests; live user fixture pending |
 | `data.catalyst_project` | Read a project by ID | Offline protocol/client tests; live India access-token and refresh-token reads |
@@ -28,7 +44,7 @@ only to the capabilities explicitly tested in those milestones.
 | `catalyst_function_cron` | Manage CronExpression, calendar, one-time and periodic schedules targeting existing Job Functions/Function pools | Offline lifecycle/ownership/recovery tests; live disabled India Development create/import/update/clear/stable plan/destroy |
 | `catalyst_webhook_cron` | Manage expression, calendar, one-time and periodic schedules with Webhook targets | Offline lifecycle/import/drift/error tests; live India create, import, update, clear, stable plan and verified destroy |
 | `catalyst_api_gateway` | Enable/disable project Gateway routing | Offline Terraform lifecycle and recovery tests; live India Development enable/import/destroy |
-| `catalyst_api_gateway_ruleset` | Complete Basic I/O ruleset replacement, OAuth/no-auth, import and drift | Offline lifecycle/policy preservation; live India Development create/import/replace/clear/stable plan/destroy |
+| `catalyst_api_gateway_ruleset` | Basic/Advanced I/O Function targets, client GET routes and OAuth/APIKey/CatalystUserManagement combinations; import and drift | Expanded live India Development Function-target/authentication lifecycle; client routes have offline/documented verification only; throttling/system policies remain unsupported |
 | `catalyst_appsail` | Manage 15 Node/Java SE/Python managed runtime ZIPs, memory, command, port, authentication, login redirect/root reset and environment maps; URL, import and artifact drift | Offline lifecycle, safety and recovery tests; live results recorded below |
 | `catalyst_function` | Manage Node.js 22/24 Basic I/O, Advanced I/O, Event, Cron and Job Function code, memory and environment variables; import and drift | Offline lifecycle/safety regressions; live India Development create/import/update/clear/stable plan/destroy with baseline cleanup; never invoked |
 | `data.catalyst_functions` | List serverless Function IDs and names | Offline contracts and populated live Terraform discovery in replacement India Development project; never invokes Functions |
@@ -40,10 +56,10 @@ only to the capabilities explicitly tested in those milestones.
 | `data.catalyst_filestore_folders` | List existing File Store folder IDs and names | Offline API/protocol/real Terraform tests; live India populated listing and stable plan |
 | `data.catalyst_cache_segments` | List existing Cache segments | Official CLI read endpoint; offline tests and live India default segment with stable plan |
 | `data.catalyst_stratus_buckets` | List existing Stratus bucket names and endpoints | Offline tests, live India empty listing and stable plan; populated live buckets untested |
-| `catalyst_stratus_object` | Manage unversioned object bytes, content type, complete custom metadata, import and SHA-256 drift | Offline safety/protocol tests; live India Development full Terraform lifecycle with exact-key cleanup |
+| `catalyst_stratus_object` | Manage unversioned object bytes, content type, complete metadata and optional multipart transfers; import and SHA-256 drift | Offline safety/protocol tests; live India Development single/multipart lifecycles with exact-key cleanup |
 | `catalyst_filestore_file` | Upload, read, import and delete files; replace on changes | Offline binary upload, content drift, external deletion and recovery tests; live India tiny binary upload/import/rename replacement/stable plan/destroy with baseline cleanup |
 
-All data sources are read-only. Webhook, Function and AppSail crons, File Store files, Functions, AppSail services, API Gateway, NoSQL configuration items and unversioned Stratus objects/metadata are the live-tested resource areas. Project creation/deletion is experimental and only offline-tested. Live tests are opt-in; credentials and account IDs are never included in repository fixtures.
+All data sources are read-only. Webhook, Function and AppSail crons, File Store files, Functions, managed AppSail services, API Gateway Function routes/authentication modes, Data Store configuration rows, NoSQL configuration items and unversioned Stratus single/multipart objects/metadata have live evidence. Project creation/deletion and existing-user role assignment remain experimental; Gateway client routes have offline/documented verification only. Live tests are opt-in; credentials and account IDs are never included in repository fixtures.
 
 ## API findings
 
@@ -89,15 +105,15 @@ This is a capability inventory, not a claim of 100% coverage. A read-only data s
 
 | Area | Implemented | Remaining or blocked |
 | --- | --- | --- |
-| Projects | Single and list discovery | Create/delete API exists, but create was rejected in this account; no managed project resource |
+| Projects | Single/list discovery and experimental lifecycle resource | Live create/delete remains unverified because creation was rejected in the test account |
 | Job Scheduling | Pool discovery; Webhook, Job Function and AppSail expression/calendar/one-time/periodic lifecycles | Circuit targets require an eligible region; pool creation API not established; legacy CloudScale Cron is retired |
-| Data Store | Table and column-schema discovery | Table/column provisioning API not established; rows are data operations, not table provisioning |
+| Data Store | Table/column discovery and configuration-row lifecycle | Table/column/index/permission provisioning remains unimplemented; changing customer transactions belong in the app |
 | File Store | Folder discovery; file upload/read/import/delete and replacement | Folder provisioning API not established; metadata updates have no documented endpoint; legacy service |
 | Cache | Segment discovery | Segment creation is explicitly console-only; cache entries expire within 48 hours and are not durable infrastructure |
-| Stratus | Bucket discovery; unversioned object upload/read/import/update/drift repair/delete | Bucket provisioning API not established; bucket-policy/versioning, multipart and TTL remain unimplemented |
+| Stratus | Bucket discovery; unversioned single/multipart objects, metadata, import, drift and deletion | Bucket provisioning/policies/CORS/versioning/TTL remain unimplemented; multipart abort/resume and sources over 100 MiB are not implemented |
 | NoSQL | Table/key/TTL/index metadata discovery; persistent configuration-item create/import/update/attribute removal/drift/delete | Table/index provisioning, TTL configuration and permissions remain unsupported; ordinary changing application data belongs in the app |
 | Functions / AppSail / Circuits | Node.js 22/24 Basic I/O, Advanced I/O, Event, Cron and Job Function management; 15 managed Node/Java SE/Python AppSail runtimes; Function discovery | Other Function runtimes/types and Circuit deployment/configuration remain unimplemented; AppSail WAR/custom runtimes, scaling and domains remain unimplemented |
-| API Gateway / Authentication / Connections | Gateway enabled setting and complete Basic I/O rulesets; OAuth/default and explicit no-auth | Other Gateway targets/authentication/throttling, Authentication and Connections management remain unimplemented |
+| API Gateway / Authentication / Connections | Basic/Advanced I/O and client Gateway routes; OAuth/APIKey/CatalystUserManagement or explicit no-auth; experimental existing-user role assignment | Gateway client live verification, throttling/system policies, Authentication setup/custom roles/permissions and Connections provisioning remain incomplete |
 | Web Client / Domain Mappings / Slate / Pipelines | None | Deployment and domain/configuration lifecycles remain unimplemented |
 | Mail / Notifications / Search / ZCQL / Zia / SmartBrowz / ConvoKraft / QuickML / Signals / Data Streams | None | Separate persistent configuration from send/execute/query operations; verify supported management APIs before defining Terraform resources |
 

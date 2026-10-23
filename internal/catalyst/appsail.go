@@ -32,7 +32,7 @@ func appsailPath(projectID, id string) (string, error) {
 	return path, nil
 }
 func validAppSail(f AppSailMetadata) bool {
-	return ValidID(string(f.ID)) && strings.TrimSpace(f.Name) != "" && strings.TrimSpace(f.Stack) != ""
+	return ValidID(string(f.ID)) && strings.TrimSpace(f.Name) != "" && (strings.TrimSpace(f.Stack) != "" || f.Platform == "custom_runtime")
 }
 
 // ListAppSails reads managed and custom runtime metadata without configuration secrets.

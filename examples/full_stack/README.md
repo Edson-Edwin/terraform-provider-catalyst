@@ -2,6 +2,14 @@
 
 This example connects the provider's supported pieces. It is not automatic provisioning of an entire Catalyst account, nor a prebuilt website. Terraform validates existing Data Store/NoSQL schemas, manages one persistent NoSQL configuration item and a private Stratus asset, deploys your prebuilt AppSail website, and passes the verified database/storage identifiers to it. The application must implement the corresponding database/storage calls and its own routes.
 
+Optionally set `datastore_config_values_json` to a nonempty scalar JSON object
+for existing application columns, for example `jsonencode({ message = "site configuration" })`.
+Terraform then manages that seed/configuration row and passes its generated ID
+as `DATASTORE_CONFIG_ROW_ID`. Null (the default) skips row creation and passes an
+empty ID. The application must read/use the row explicitly. Values remain in
+sensitive state; removing a previously managed column clears its value to null.
+This does not provision columns or manage changing customer transactions.
+
 Before applying:
 
 1. Create a Catalyst project, a Data Store table with the application's columns, an ONLINE NoSQL table with string keys `pk` and `sk`, and a private authenticated **unversioned** Stratus bucket in that project/environment. These are explicit manual prerequisites: table/schema and bucket provisioning are not implemented by the provider.
