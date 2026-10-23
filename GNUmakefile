@@ -10,6 +10,7 @@ dev: build
 	sh scripts/setup-dev.sh
 
 verify: dev
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/background_function validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_stratus_object validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/advancedio validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_api_gateway validate
@@ -116,3 +117,8 @@ testacc-stratus-object:
 	TF_ACC=1 go test -race -count=1 -timeout=15m -run '^TestAccStratusObject$$' ./internal/provider
 
 .PHONY: testacc-stratus-object
+
+testacc-function-background:
+	TF_ACC=1 go test -race -count=1 -timeout=15m -run '^TestAccFunctionBackgroundVariants$$' ./internal/provider
+
+.PHONY: testacc-function-background

@@ -32,6 +32,16 @@ func TestAccFunctionVariants(t *testing.T) {
 	}
 }
 
+func TestAccFunctionBackgroundVariants(t *testing.T) {
+	for _, stack := range []string{"node22", "node24"} {
+		for _, kind := range []string{"event", "cron", "job"} {
+			if !t.Run(stack+"/"+kind, func(t *testing.T) { testAccFunctionVariant(t, stack, kind) }) {
+				return
+			}
+		}
+	}
+}
+
 func testAccFunctionVariant(t *testing.T, stack, kind string) {
 	t.Helper()
 	if os.Getenv("TF_ACC") != "1" || os.Getenv("CATALYST_TEST_ALLOW_FUNCTION_CREATE") != "1" {

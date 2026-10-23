@@ -242,28 +242,43 @@ func TestFunctionDeleteReconcilesDefinitive404Only(t *testing.T) {
 	}
 }
 
-func TestAdvancedFunctionManagementRoutesAndLegacyType(t *testing.T) {
+func TestFunctionManagementRoutesAndLegacyType(t *testing.T) {
+	for _, kind := range []string{"basicio", "advancedio", "event", "cron", "job"} {
+		t.Run(kind, func(t *testing.T) { testFunctionManagementRoute(t, kind) })
+	}
+}
+
+func testFunctionManagementRoute(t *testing.T, kind string) {
+	t.Helper()
+	remoteType, endpoint := kind, "function"
+	if kind == "advancedio" {
+		remoteType, endpoint = "applogic", "server"
+	}
 	stored := false
 	writes, deletes := 0, 0
-	metadata := `{"id":"123","name":"example","stack":"node24","type":"applogic","configuration":{"memory":128,"environment":{"variables":{}}}}`
+	metadata := fmt.Sprintf(`{"id":"123","name":"example","stack":"node24","type":%q,"configuration":{"memory":128,"environment":{"variables":{}}}}`, remoteType)
 	c := testClient(t, Config{AccessToken: "test"}, func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == "PUT":
-			if r.URL.Path != "/baas/v1/project/456/server/upsert" {
+			if r.URL.Path != "/baas/v1/project/456/"+endpoint+"/upsert" {
 				t.Error("Advanced I/O used generic Function upsert")
 			}
 			if err := r.ParseMultipartForm(1 << 20); err != nil {
 				t.Fatal(err)
 			}
 			defer func() { _ = r.MultipartForm.RemoveAll() }()
-			if r.FormValue("type") != "" {
+			expectedType := kind
+			if kind == "advancedio" {
+				expectedType = ""
+			}
+			if r.FormValue("type") != expectedType {
 				t.Error("server upsert must not send generic type")
 			}
 			stored = true
 			writes++
 			writeResponse(t, w, `{"status":"success","data":`+metadata+`}`)
 		case r.Method == "DELETE":
-			if r.URL.Path != "/baas/v1/project/456/server/123" {
+			if r.URL.Path != "/baas/v1/project/456/"+endpoint+"/123" {
 				t.Error("Advanced I/O used generic Function deletion")
 			}
 			stored = false
@@ -286,12 +301,12 @@ func TestAdvancedFunctionManagementRoutesAndLegacyType(t *testing.T) {
 		}
 	})
 	c.wait = func(ctx context.Context, _ time.Duration) error { return ctx.Err() }
-	desired := FunctionDeployment{FunctionMetadata: FunctionMetadata{Name: "example", Stack: "node24", Type: "advancedio"}}
+	desired := FunctionDeployment{FunctionMetadata: FunctionMetadata{Name: "example", Stack: "node24", Type: kind}}
 	desired.Configuration.Memory = 128
 	desired.Configuration.Environment.Variables = map[string]string{}
 	for _, id := range []string{"", "123"} {
 		value, err := c.DeployFunction(t.Context(), "456", id, desired, []byte("fixture"))
-		if err != nil || value == nil || value.Type != "advancedio" {
+		if err != nil || value == nil || value.Type != kind {
 			t.Fatalf("legacy type/routing failure: %v", err)
 		}
 	}

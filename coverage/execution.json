@@ -35,7 +35,8 @@
     "Authenticated unversioned Stratus test bucket prepared in isolated India Development; public access disabled",
     "Go Stratus binary transfer probe passed; overwrite=false atomically rejected duplicate creation",
     "catalyst_stratus_object implemented with strict regional transfers, in-memory signatures, exact-key ownership and SHA-256 drift detection",
-    "Live Terraform Stratus create/import/content and type update/same-size drift repair/external deletion and recreation/stable plan/destroy passed; exact key cleanup confirmed"
+    "Live Terraform Stratus create/import/content and type update/same-size drift repair/external deletion and recreation/stable plan/destroy passed; exact key cleanup confirmed",
+    "Node22/24 Event, Cron and Job Function create/import/code-memory-environment update/clear/stable-plan/destroy passed live; all six test baselines restored, no invocation"
   ],
   "pending": [
     "complete per-field management API inventory",
@@ -43,7 +44,7 @@
     "implement remaining service lifecycle phases",
     "establish meaning of is_deployed and function_output in Development",
     "establish safe ownership for name-keyed upsert",
-    "Remaining Function languages/runtime versions/types beyond Node22/24 Basic I/O and Advanced I/O",
+    "Remaining Function languages/runtime versions/types beyond Node22/24 Basic I/O, Advanced I/O, Event, Cron and Job Functions",
     "Other Gateway targets, authentication modes, system routes and configured throttling",
     "Remaining service lifecycle phases; draft service/field inventory is still incomplete",
     "Stratus bucket provisioning, policies, version history, multipart objects, TTL and custom metadata management"

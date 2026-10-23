@@ -311,3 +311,5 @@ make testacc-stratus-object
 ```
 
 The acceptance test only supports India Development and cleans up its unique key. It leaves the bucket in place. Live tests do not run with `make test`.
+
+`catalyst_function` additionally supports Node.js 22/24 Event, Cron and Job handlers through `type = "event"`, `"cron"` or `"job"`. All six background lifecycle combinations passed live in India Development without invocation. See [the example](examples/background_function/resource.tf). Handler deployment does not configure triggers, job pools or schedules. Integration and Browser Logic Functions and other languages remain pending.

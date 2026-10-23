@@ -8,4 +8,3 @@ terraform {
 
 # Each user supplies credentials and region using CATALYST_ environment variables.
 provider "catalyst" {}
-

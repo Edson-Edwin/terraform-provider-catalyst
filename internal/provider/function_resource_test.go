@@ -40,6 +40,9 @@ func writeFunctionArchiveVariant(t *testing.T, directory, name, message, stack, 
 	if kind == "advancedio" {
 		code = "module.exports = (req, res) => { res.setHeader('Content-Type', 'text/plain'); res.end('" + message + "'); };"
 	}
+	if kind == "event" || kind == "cron" || kind == "job" {
+		code = "module.exports = (request, context) => { console.log('" + message + "'); context.closeWithSuccess(); };"
+	}
 	for _, entry := range []struct{ name, content string }{{"index.js", code}, {"catalyst-config.json", config}, {"package.json", pkg}} {
 		f, err := w.Create(entry.name)
 		if err != nil {

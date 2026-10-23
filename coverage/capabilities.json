@@ -273,7 +273,7 @@
       "data_sources": [
         "catalyst_functions"
       ],
-      "note": "Node22/24 Basic I/O and Advanced I/O lifecycles passed live Terraform tests in India Development. Other languages/runtime versions/types remain unimplemented. Advanced I/O uses server management endpoints and normalized applogic metadata. Exact artifact/configuration verification is bounded; exclusive name ownership is required."
+      "note": "Node22/24 Basic I/O, Advanced I/O, Event, Cron and Job Function lifecycles passed live Terraform tests in India Development. Background triggers, Job Scheduling pools/schedules, integration/browser functions and other languages remain outside this resource. Advanced I/O uses server endpoints and normalized applogic metadata. Exclusive name ownership is required; no function was invoked."
     },
     {
       "id": "appsail.service",

@@ -21,7 +21,14 @@ type FunctionMetadata struct {
 }
 
 func ValidFunctionStack(stack string) bool { return stack == "node22" || stack == "node24" }
-func ValidFunctionType(kind string) bool   { return kind == "basicio" || kind == "advancedio" }
+func ValidFunctionType(kind string) bool {
+	switch kind {
+	case "basicio", "advancedio", "event", "cron", "job":
+		return true
+	default:
+		return false
+	}
+}
 
 func normalizeFunctionType(kind string) string {
 	if kind == "applogic" {
