@@ -1,0 +1,1 @@
+terraform import catalyst_api_gateway.example 1234567890123456789

@@ -291,11 +291,14 @@
       "service": "gateway",
       "object": "configuration_and_rules",
       "phase": 6,
-      "status": "unimplemented",
-      "api_evidence": "official_cli_candidate",
-      "resources": [],
+      "status": "managed",
+      "api_evidence": "live_india",
+      "resources": [
+        "catalyst_api_gateway",
+        "catalyst_api_gateway_ruleset"
+      ],
       "data_sources": [],
-      "note": "Determine whether updates replace the entire ruleset before deciding resource ownership."
+      "note": "Gateway enable/disable and complete Basic I/O ruleset management with OAuth or explicit no-auth, import and asynchronous failure handling. API lifecycle verified live in isolated India Development; live Terraform evidence is recorded in API_COVERAGE.md. Other targets, auth modes and configured throttling remain unsupported."
     },
     {
       "id": "authentication.configuration",

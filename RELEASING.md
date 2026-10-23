@@ -27,10 +27,10 @@ Download the draft's files into an empty directory. Verify that the release poin
 
 ```sh
 gpg --verify terraform-provider-catalyst_VERSION_SHA256SUMS.sig terraform-provider-catalyst_VERSION_SHA256SUMS
-python3 scripts/verify-release.py /path/to/downloaded-artifacts --version VERSION --signer-fingerprint FULL_TRUSTED_FINGERPRINT
+go run ./internal/cmd/provider-tools verify-release -version VERSION -signer-fingerprint FULL_TRUSTED_FINGERPRINT /path/to/downloaded-artifacts
 ```
 
-Replace `VERSION` with the version without the leading `v`. The verification script checks SHA-256 hashes, the protocol-6 Registry manifest, all 14 configured platform archives, consistent version and executable names, local-mirror installation through `terraform init`, and the native provider's Terraform schema handshake. It needs Python 3 and Terraform. Foreign platform binaries are cross-compiled and inspected, not executed by this check.
+Replace `VERSION` with the version without the leading `v`. The Go verifier checks SHA-256 hashes, the protocol-6 Registry manifest, all 14 configured platform archives, consistent version and executable names, local-mirror installation through `terraform init`, and the native provider's Terraform schema handshake. It needs Go and Terraform. Foreign platform binaries are cross-compiled and inspected, not executed by this check.
 
 Only publish the draft after signature, artifact and lifecycle checks succeed. Complete provider registration at the Terraform Registry using the public repository and signing key. From a fresh directory with no development override, test `terraform init` using `Edson-Edwin/catalyst` pinned to the released version, then inspect its schema and run a read-only plan with test credentials. A successful local-mirror installation is not proof of public Registry installation or signature verification by the Registry.
 
@@ -48,16 +48,16 @@ The maintainer has deferred hosted CI while resolving billing. Continue local im
 
 The draft verification step now downloads the actual GitHub draft assets into a temporary directory, validates the detached signature against the imported maintainer fingerprint, checks every archive/manifest/version, and performs a native local-mirror install and schema handshake. It verifies the files a maintainer would publish, rather than just the build-directory signature.
 
-For a manually downloaded candidate, import the maintainer public key from a trusted source and supply its full independently verified fingerprint to `verify-release.py`. The verifier disables automatic key retrieval and rejects missing, invalid or wrong-key signatures before launching Terraform.
+For a manually downloaded candidate, import the maintainer public key from a trusted source and supply its full independently verified fingerprint to `provider-tools verify-release`. The verifier disables automatic key retrieval and rejects missing, invalid or wrong-key signatures before launching Terraform.
 
 After the public repository, maintainer signing identity and Registry registration are ready, run:
 
 ```sh
-python3 scripts/verify-registry.py 0.1.0-alpha.1
+go run ./internal/cmd/provider-tools verify-registry 0.1.0-alpha.1
 ```
 
 Use the actual published version. This creates a fresh temporary Terraform directory with only direct Registry installation, strips inherited Terraform overrides/caches and Catalyst credentials, initializes the exact version, checks the lock file and validates the expected schema. It creates no cloud resources. No successful public installation is claimed until that check runs against a real release.
 
-Optional read-only account preflight is available as `python3 scripts/release-readiness.py`. It reports local changes, repository visibility, signing-secret names, private reporting and exact-HEAD hosted tests. Do not run it when intentionally deferring hosted checks. It cannot prove secret contents, signing-key ownership, Registry publication, or service coverage.
+Optional read-only account preflight is available as `go run ./internal/cmd/provider-tools release-readiness`. It reports local changes, repository visibility, signing-secret names, private reporting and exact-HEAD hosted tests. Do not run it when intentionally deferring hosted checks. It cannot prove secret contents, signing-key ownership, Registry publication, or service coverage.
 
 No new production signing key has been created in this task. Do not use the disposable local test key for a real release. Production key ownership, backups/revocation and Registry registration are maintainer-controlled steps.

@@ -10,6 +10,8 @@ This community provider is under development. Public availability and broad serv
 | `data.catalyst_projects` | List projects visible in the selected organization | Offline protocol/client tests; live India listing and stable Terraform plan |
 | `data.catalyst_job_pools` | List a project's existing scheduling pools | Offline populated/empty/error cases; live India empty and populated listings with stable plans |
 | `catalyst_webhook_cron` | Manage pre-defined CronExpression schedules with Webhook targets | Offline lifecycle/import/drift/error tests; live India create, import, update, clear, stable plan and verified destroy |
+| `catalyst_api_gateway` | Enable/disable project Gateway routing | Offline Terraform lifecycle and recovery tests; live India Development enable/import/destroy |
+| `catalyst_api_gateway_ruleset` | Complete Basic I/O ruleset replacement, OAuth/no-auth, import and drift | Offline lifecycle/policy preservation; live India Development create/import/replace/clear/stable plan/destroy |
 | `catalyst_appsail` | Manage Node.js 22 ZIP deployment, memory, command, port, authentication and environment maps; import and artifact drift | Offline lifecycle, safety and recovery tests; live results recorded below |
 | `catalyst_function` | Manage Node.js 22 Basic I/O code, memory and environment variables; import and drift | Offline lifecycle/safety regressions; live India Development create/import/update/clear/stable plan/destroy with baseline cleanup; never invoked |
 | `data.catalyst_functions` | List serverless Function IDs and names | Offline contracts and populated live Terraform discovery in replacement India Development project; never invokes Functions |
@@ -19,7 +21,7 @@ This community provider is under development. Public availability and broad serv
 | `data.catalyst_stratus_buckets` | List existing Stratus bucket names and endpoints | Offline tests, live India empty listing and stable plan; populated live buckets untested |
 | `catalyst_filestore_file` | Upload, read, import and delete files; replace on changes | Offline binary upload, content drift, external deletion and recovery tests; live India tiny binary upload/import/rename replacement/stable plan/destroy with baseline cleanup |
 
-All data sources are read-only. Webhook crons, File Store files, Functions and AppSail services are the managed resources. Live tests are opt-in; credentials and account IDs are never included in repository fixtures.
+All data sources are read-only. Webhook crons, File Store files, Functions, AppSail services and API Gateway are the managed resource areas. Live tests are opt-in; credentials and account IDs are never included in repository fixtures.
 
 ## API findings
 
@@ -73,7 +75,7 @@ This is a capability inventory, not a claim of 100% coverage. A read-only data s
 | Stratus | Bucket discovery | Bucket provisioning API not established; object lifecycle and bucket-policy/versioning management remain unimplemented |
 | NoSQL | None | Public reference documents item operations; table/index provisioning must be verified separately |
 | Functions / AppSail / Circuits | Node.js 22 Basic I/O Function management; Node.js 22 AppSail management; Function discovery | Other Function runtimes/types and Circuit deployment/configuration remain unimplemented; AppSail currently supports Node.js 22 only |
-| API Gateway / Authentication / Connections | None | Management lifecycle and identity/security boundaries need service-specific review |
+| API Gateway / Authentication / Connections | Gateway enabled setting and complete Basic I/O rulesets; OAuth/default and explicit no-auth | Other Gateway targets/authentication/throttling, Authentication and Connections management remain unimplemented |
 | Web Client / Domain Mappings / Slate / Pipelines | None | Deployment and domain/configuration lifecycles remain unimplemented |
 | Mail / Notifications / Search / ZCQL / Zia / SmartBrowz / ConvoKraft / QuickML / Signals / Data Streams | None | Separate persistent configuration from send/execute/query operations; verify supported management APIs before defining Terraform resources |
 
@@ -126,3 +128,19 @@ Offline real-Terraform tests cover create/import/code and configuration updates/
 The full AppSail Terraform lifecycle passed live in India Development: create, import, code/memory/environment update, variable clearing, stable plan and destroy, with baseline cleanup. An initial immediate-read implementation failed the live test because fresh and stale configuration observations alternated after upsert. Deployment verification now requires three consecutive matching configuration and artifact observations within two minutes; a focused regression exercises a match followed by stale data. No mutation is replayed by this verification loop.
 
 A follow-up live run also verified startup-command and application-port updates and their restoration. The full offline checks, race tests, static analysis, generated documentation and example validation passed locally. Hosted CI remains outside scope.
+
+## API Gateway milestone (2026-10-23)
+
+The provider now registers six resources and eight data sources. `catalyst_api_gateway` controls enabled status. `catalyst_api_gateway_ruleset` owns the complete user ruleset for an enabled Gateway, currently limited to Basic I/O Function targets with OAuth or explicitly unauthenticated routes and unconfigured throttling. Other target/authentication modes and configured throttling are still gaps. This is partial service coverage, not a 10/10 claim.
+
+Live API probes verified that disabled Gateways reject rule reads with 403 INVALID_OPERATION, deployments are asynchronous and can block further changes with MIGRATION_SCHEDULED, and a terminal state of completed can still include per-rule failures. A first fixture targeting a nonexistent client was rejected asynchronously. The subsequent Go probes used an existing generated Basic I/O Function and passed create/read/replace/delete for OAuth and no-auth. Complete ruleset replacement deleted omitted rules. No route or Function was invoked. The disabled/empty Gateway baseline and generated Function cleanup were confirmed.
+
+The full live Terraform lifecycle passed in isolated India Development: Gateway creation, ruleset creation, both imports, replacement of two rules with one, clearing to an empty map, a stable second plan and destroy. Gateway disabled status and the Function baseline matched after cleanup. Offline tests cover drift repair, partial-write recovery identity, refusal to adopt existing rules, policy preservation, paginated listings, large IDs, permission failures, asynchronous per-rule failures and cancellation. Unknown policy fields fail safely. Writes are serialized per client; independent states/external tools must not share project ruleset ownership.
+
+Reference: [official Gateway concepts](https://docs.catalyst.zoho.com/en/cloud-scale/help/api-gateway/key-concepts/) and [official CLI JSON example](https://docs.catalyst.zoho.com/en/catalyst-extensions/vs-code-extension/catalyst-tools-explorer/). The ruleset resource must be removed before disabling Gateway because its read API is unavailable while disabled. Dependency ordering through the Gateway resource ID handles destruction.
+
+### Go-only repository utilities
+
+The Python release, Registry, readiness and coverage helpers have been replaced with Go under `internal/releasetools` and `internal/cmd/provider-tools`. Local checks no longer need Python. Existing rejection, signature-identity, environment-isolation, exact-version and stale-evidence tests were ported; archive validation additionally rejects unsafe/duplicate entries and ambiguous provider executables. Hosted readiness reads remain optional and were not run.
+
+The Go-only local checks, race tests, static analysis, generated references and all examples passed. All 14 unsigned platform snapshots built locally, and the Go verifier checked hashes/layout/manifest/version before a native filesystem-mirror install and schema handshake. Foreign binaries were inspected, not executed. No hosted CI, public Registry installation or publication was performed.

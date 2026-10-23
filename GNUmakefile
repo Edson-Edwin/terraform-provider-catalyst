@@ -10,6 +10,8 @@ dev: build
 	sh scripts/setup-dev.sh
 
 verify: dev
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_api_gateway validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_api_gateway_ruleset validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_appsail validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_function validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/data-sources/catalyst_functions validate
@@ -65,12 +67,12 @@ check: deps-check test-release-tools
 release-check: deps-check test-release-tools
 	goreleaser check
 	goreleaser release --snapshot --clean --skip=sign --parallelism 2
-	python3 scripts/verify-release.py dist --snapshot
+	go run ./internal/cmd/provider-tools verify-release -snapshot dist
 
 .PHONY: deps-check check release-check
 
 test-release-tools:
-	python3 -B -m unittest discover -s scripts -p 'test_*.py'
+	go test -race -count=1 ./internal/releasetools
 
 .PHONY: test-release-tools
 
@@ -84,7 +86,7 @@ testacc-file:
 .PHONY: testacc-inventory testacc-file
 
 coverage-status:
-	python3 scripts/coverage-status.py
+	go run ./internal/cmd/provider-tools coverage-status
 
 .PHONY: coverage-status
 
@@ -97,3 +99,8 @@ testacc-appsail:
 	TF_ACC=1 go test -race -count=1 -timeout=5m -run '^TestAccAppSail$$' ./internal/provider
 
 .PHONY: testacc-appsail
+
+testacc-gateway:
+	TF_ACC=1 go test -race -count=1 -timeout=15m -run '^TestAccGatewayResources$$' ./internal/provider
+
+.PHONY: testacc-gateway

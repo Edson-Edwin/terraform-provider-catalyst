@@ -1,7 +1,7 @@
 {
   "updated": "2026-10-23",
   "objective_complete": false,
-  "current_phase": "2: Function and AppSail managed compute lifecycles",
+  "current_phase": "API Gateway lifecycle and Go tooling milestone",
   "completed": [
     "draft inventory of 43 capability areas",
     "registered type/docs/examples consistency test",
@@ -22,7 +22,13 @@
     "AppSail offline Terraform lifecycle and state-recovery tests passed",
     "live Terraform AppSail create/import/code-memory-command-port-env updates/clear/stable-plan/destroy passed; baseline cleanup confirmed",
     "AppSail stale-read regression requires three consecutive artifact/configuration matches",
-    "make check and configured static analysis passed for AppSail milestone"
+    "make check and configured static analysis passed for AppSail milestone",
+    "Go Gateway API lifecycle probes passed for OAuth and explicit no-auth Basic I/O routes; no invocation; baselines restored",
+    "catalyst_api_gateway and catalyst_api_gateway_ruleset implemented with complete ruleset ownership and asynchronous failure checks",
+    "live Terraform Gateway create/import/replace/clear/stable-plan/destroy passed in isolated India Development; baselines restored",
+    "Python repository helpers and their regression tests ported to Go",
+    "Go-only make check, static analysis and generated references passed",
+    "14 unsigned platform packages built locally; Go verifier and native Terraform mirror installation passed"
   ],
   "pending": [
     "complete per-field management API inventory",
@@ -31,7 +37,8 @@
     "establish meaning of is_deployed and function_output in Development",
     "establish safe ownership for name-keyed upsert",
     "extend Function runtime/type support after verifying fixtures",
-    "API Gateway and remaining service lifecycle phases"
+    "Other Gateway targets, authentication modes, system routes and configured throttling",
+    "Remaining service lifecycle phases; draft service/field inventory is still incomplete"
   ],
   "live_prerequisite": "Replacement isolated Development project verified in console and API.",
   "hosted_ci": "deferred by maintainer; billing outside scope",

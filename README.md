@@ -2,7 +2,7 @@
 
 A community Terraform provider intended for public use, built with the Terraform Plugin Framework. Each user supplies their own Zoho credentials and selects their account's data center. No personal account credentials or organization settings are built into the provider.
 
-**Current status:** Four managed resources (`catalyst_webhook_cron`, `catalyst_filestore_file`, `catalyst_function`, `catalyst_appsail`) and eight read-only data sources are implemented. Discovery covers projects, job pools, Data Store tables, File Store folders, Cache segments, Stratus buckets and Functions. Registry releases are not available yet. This is a community provider, not an official Zoho provider. Discovery does not imply create/update/delete support for those services. See [API_COVERAGE.md](API_COVERAGE.md) for exact support and evidence.
+**Current status:** Six managed resources (`catalyst_webhook_cron`, `catalyst_filestore_file`, `catalyst_function`, `catalyst_appsail`, `catalyst_api_gateway`, `catalyst_api_gateway_ruleset`) and eight read-only data sources are implemented. Discovery covers projects, job pools, Data Store tables, File Store folders, Cache segments, Stratus buckets and Functions. Registry releases are not available yet. This is a community provider, not an official Zoho provider. Discovery does not imply create/update/delete support for those services. See [API_COVERAGE.md](API_COVERAGE.md) for exact support and evidence.
 
 ## Requirements
 
@@ -257,7 +257,7 @@ The four new data sources and file upload/import/replacement/destroy passed live
 
 ## Local release preparation
 
-`make check`, `make lint`, `make generate`, and `make release-check` validate local code and packages without hosted CI. The new signed-download check validates the expected GPG fingerprint before executing a package. After publication, `python3 scripts/verify-registry.py VERSION` checks a fresh public installation with no development override or mirror. This command is for a published release, not an unpublished snapshot. See [RELEASING.md](RELEASING.md).
+`make check`, `make lint`, `make generate`, and `make release-check` validate local code and packages without hosted CI. The new signed-download check validates the expected GPG fingerprint before executing a package. After publication, `go run ./internal/cmd/provider-tools verify-registry VERSION` checks a fresh public installation with no development override or mirror. This command is for a published release, not an unpublished snapshot. See [RELEASING.md](RELEASING.md).
 
 ## Implementation-plan progress
 
@@ -282,3 +282,13 @@ Run `make testacc-function` with `CATALYST_TEST_ALLOW_FUNCTION_CREATE=1`, an iso
 Build application dependencies into the ZIP before applying. Include `package.json` at its root and bind the application to its configured port or `X_ZOHO_CATALYST_LISTEN_PORT`. No build or application invocation happens in the provider. Configuration/artifact persistence does not prove runtime health. Existing names require explicit import, and project/name ownership must remain exclusive across states and external deployment tools because Catalyst's upsert is name-based.
 
 Run `make testacc-appsail` with `TF_ACC=1`, `CATALYST_TEST_ALLOW_APPSAIL_CREATE=1`, an isolated `CATALYST_TEST_PROJECT_ID`, `CATALYST_ENVIRONMENT=Development`, data center, organization and access token. Fixtures are generated locally; default tests remain offline.
+
+## Managed API Gateway
+
+`catalyst_api_gateway` controls Gateway routing. `catalyst_api_gateway_ruleset` owns the complete ruleset for an enabled project, with Basic I/O Function targets and OAuth authentication by default. An explicit empty authentication set creates an unauthenticated route. Omitted rules are deleted. The resource refuses unsupported targets, authentication modes, configured throttling and unknown policy fields instead of silently discarding them.
+
+Use `project_id = catalyst_api_gateway.example.id` on the ruleset to order creation and destruction. Enabling Gateway changes routing for existing Function/Web Client endpoints; matching routes are required. Remove the ruleset resource before disabling Gateway, because disabled Gateways reject ruleset reads. Import existing supported rules explicitly using the project ID. Only one state/deployment tool may own a project’s ruleset. See [Gateway examples](examples/resources/catalyst_api_gateway_ruleset/) and [reference](docs/resources/api_gateway_ruleset.md).
+
+The live India Development Terraform test covered create, both imports, replacement, clearing, stable plan and destroy, with Gateway and Function baseline cleanup. No route or Function was invoked. Run `make testacc-gateway` only with `CATALYST_TEST_ALLOW_GATEWAY_CREATE=1` and an isolated Development project. Other targets/authentication modes and configured throttling remain unimplemented.
+
+Repository release and coverage utilities now use Go (`go run ./internal/cmd/provider-tools ...`). Python is not required for local checks or provider installation. The optional `release-readiness` subcommand performs hosted reads only when explicitly invoked; do not run it while hosted CI is deferred.

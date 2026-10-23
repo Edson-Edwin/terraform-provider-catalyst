@@ -1,0 +1,1 @@
+terraform import catalyst_api_gateway_ruleset.example 1234567890123456789
