@@ -37,7 +37,7 @@ func TestInventoryLists(t *testing.T) {
 				{"failure", `{"status":"failure","data":[]}`, 200, -1},
 			} {
 				t.Run(scenario.name, func(t *testing.T) {
-					c := testClient(t, Config{AccessToken: "secret", Environment: "Production", OrganizationID: "789"}, func(w http.ResponseWriter, r *http.Request) {
+					c := testClient(t, Config{AccessToken: "secret", Environment: "Production", OrganizationID: "789", DataCenter: "us"}, func(w http.ResponseWriter, r *http.Request) {
 						if r.Method != "GET" || r.URL.Path != "/baas/v1/project/456/"+tc.endpoint || r.URL.RawQuery != "" {
 							t.Errorf("unexpected request: %s %s", r.Method, r.URL)
 						}

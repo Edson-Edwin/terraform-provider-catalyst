@@ -2,6 +2,12 @@
 
 FEATURES:
 
+- Add regional project/Stratus checks across both environments and authentication modes, SHA-256 validation of signed downloads, and disposable-object lifecycle checks with exact-key cleanup. Add a protected-environment CI matrix and offline verification of fixture isolation and cleanup failures. Authenticated live coverage remains pending regional fixtures.
+
+- Add `allowed_data_centers` and `allowed_environments` configuration policies with environment fallbacks. Nonempty policies require explicit destinations and fail before authentication or access preflight when a selection is not approved.
+
+- Add optional `allowed_organization_ids` and `forbidden_organization_ids` routing guardrails and a read-only `validation_project_id` preflight. Guardrails require an explicit organization; they do not attest caller identity.
+
 - Configure Catalyst data center, environment and organization independently for each provider instance.
 - Authenticate using an access token or OAuth refresh credentials, with shared in-memory token caching.
 - Read project metadata with `catalyst_project`, discover projects with `catalyst_projects`, and list existing job pools with `catalyst_job_pools`.
@@ -11,6 +17,17 @@ FEATURES:
 - Manage existing File Store workloads with `catalyst_filestore_file`: binary upload, SHA-256 verification, import, replacement, drift detection and confirmed deletion without storing contents in state.
 
 FIXES AND RELIABILITY:
+
+- Clone standard HTTP transports, require certificate verification and TLS 1.2 or newer, preserve stronger TLS minimums and reject incompatible TLS limits without mutating shared clients.
+- Test forged Stratus origins and redirect credential isolation across every supported data center and both environments, including HTTP downgrade, cross-region/environment responses, lookalike hosts, userinfo, ports, paths and query strings.
+
+- Preserve per-client OAuth cooldown deadlines across failed, cancelled and expired refresh sequences, including long `Retry-After` responses. Concurrent new callers fail fast during cooldown; successful refresh clears it and stale responses cannot affect a newer refresh.
+- Separate OAuth validation, token refresh and typed attempt results into `oauth.go`; consolidate API, OAuth and Stratus routing metadata in `regions.go`.
+- Add a strict all-region, both-authentication-mode live read gate. Missing fixtures fail before any API request; mock coverage remains separate from live evidence.
+
+- Require an explicit data center for Production. Existing Production configurations relying on the implicit US default must set `data_center = "us"` or `CATALYST_DATA_CENTER=us`.
+- Retry explicit transient OAuth HTTP responses with bounded exponential backoff, jitter, `Retry-After` handling and a shared deadline. Ambiguous transport failures and credential rejection are not replayed.
+- Verify OAuth/API routing for all seven data centers in both environments, concurrent provider-instance isolation, organization guardrails and access-preflight errors offline. Add opt-in read-only regional smoke tests; cross-region live evidence remains pending.
 
 - Make shared OAuth refresh cancellation independent for each caller; cancel abandoned refreshes and prevent stale results from overwriting newer tokens.
 

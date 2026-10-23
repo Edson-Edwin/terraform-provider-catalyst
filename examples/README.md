@@ -2,6 +2,12 @@
 
 This directory contains examples that are mostly used for documentation, but can also be run/tested manually via the Terraform CLI.
 
+For one configuration containing every currently registered resource and data
+source, see [all_services/main.tf](all_services/main.tf) and its
+[setup instructions](all_services/README.md). Optional inputs control which
+resources are deployed; experimental and deprecated features require separate
+opt-ins. This is a catalog of implemented subsets, not complete service coverage.
+
 The document generation tool looks for files in the following locations by default. All other *.tf files besides the ones mentioned below are ignored by the documentation tool. This is useful for creating examples that can run and/or are testable even if some parts are not relevant for the documentation.
 
 * **provider/provider.tf** example file for the provider index page

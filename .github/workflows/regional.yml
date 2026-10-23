@@ -1,0 +1,74 @@
+# Credentialed checks run only from trusted default-branch code after dispatch.
+name: Regional verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Read existing fixtures, or also create and clean disposable objects
+        type: choice
+        required: true
+        default: read-only
+        options:
+          - read-only
+          - stratus-lifecycle
+
+permissions:
+  contents: read
+
+concurrency:
+  group: regional-verification
+  cancel-in-progress: false
+
+jobs:
+  source:
+    name: Require trusted default-branch source
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Reject dispatches from other branches
+        env:
+          SOURCE_REF: ${{ github.ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: test "$SOURCE_REF" = "refs/heads/$DEFAULT_BRANCH"
+
+  regional:
+    needs: source
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    name: '${{ matrix.region }} / ${{ matrix.environment }} / ${{ inputs.mode }}'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    # Configure required reviewers and deployment-branch restrictions on each
+    # environment before adding secrets. This workflow does not provision them.
+    environment: catalyst-regional-${{ matrix.region }}-${{ matrix.environment }}
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        region: [us, eu, in, au, ca, jp, sa]
+        environment: [Development, Production]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Verify isolated regional fixtures
+        env:
+          REGIONAL_REGION: ${{ matrix.region }}
+          REGIONAL_ENVIRONMENT: ${{ matrix.environment }}
+          REGIONAL_MODE: ${{ inputs.mode }}
+          CATALYST_FIXTURE_PROJECT_ID: ${{ secrets.CATALYST_PROJECT_ID }}
+          CATALYST_FIXTURE_ACCESS_TOKEN: ${{ secrets.CATALYST_ACCESS_TOKEN }}
+          CATALYST_FIXTURE_CLIENT_ID: ${{ secrets.CATALYST_CLIENT_ID }}
+          CATALYST_FIXTURE_CLIENT_SECRET: ${{ secrets.CATALYST_CLIENT_SECRET }}
+          CATALYST_FIXTURE_REFRESH_TOKEN: ${{ secrets.CATALYST_REFRESH_TOKEN }}
+          CATALYST_FIXTURE_REDIRECT_URI: ${{ secrets.CATALYST_REDIRECT_URI }}
+          CATALYST_FIXTURE_ORGANIZATION_ID: ${{ secrets.CATALYST_ORGANIZATION_ID }}
+          CATALYST_FIXTURE_STRATUS_BUCKET: ${{ secrets.CATALYST_STRATUS_BUCKET }}
+          CATALYST_FIXTURE_STRATUS_OBJECT_KEY: ${{ secrets.CATALYST_STRATUS_OBJECT_KEY }}
+          CATALYST_FIXTURE_STRATUS_SHA256: ${{ secrets.CATALYST_STRATUS_SHA256 }}
+          CATALYST_FIXTURE_ALLOW_STRATUS_WRITES: ${{ secrets.CATALYST_ALLOW_STRATUS_WRITES }}
+        run: python3 scripts/run-regional-check.py --region "$REGIONAL_REGION" --environment "$REGIONAL_ENVIRONMENT" --mode "$REGIONAL_MODE"

@@ -10,9 +10,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"regexp"
-	"strings"
+	"slices"
 	"sync"
 	"time"
 )
@@ -21,21 +20,8 @@ import (
 type Config struct {
 	DataCenter, Environment, OrganizationID                        string
 	AccessToken, ClientID, ClientSecret, RefreshToken, RedirectURI string
-}
-
-type endpoints struct{ api, accounts string }
-
-// Regional Catalyst API hosts and canonical OAuth accounts hosts.
-// Sources: https://docs.catalyst.zoho.com/en/api/introduction/multi-dc-support/
-// and https://accounts.zoho.com/oauth/serverinfo (OAuth hostnames).
-var regions = map[string]endpoints{
-	"us": {"https://api.catalyst.zoho.com", "https://accounts.zoho.com"},
-	"eu": {"https://api.catalyst.zoho.eu", "https://accounts.zoho.eu"},
-	"in": {"https://api.catalyst.zoho.in", "https://accounts.zoho.in"},
-	"au": {"https://api.catalyst.zoho.com.au", "https://accounts.zoho.com.au"},
-	"ca": {"https://api.catalyst.zohocloud.ca", "https://accounts.zohocloud.ca"},
-	"jp": {"https://api.catalyst.zoho.jp", "https://accounts.zoho.jp"},
-	"sa": {"https://api.catalyst.zoho.sa", "https://accounts.zoho.sa"},
+	AllowedOrganizationIDs, ForbiddenOrganizationIDs               []string
+	AllowedDataCenters, AllowedEnvironments                        []string
 }
 
 var numericID = regexp.MustCompile(`^[1-9][0-9]*$`)
@@ -50,18 +36,28 @@ type Client struct {
 	stratusSigns        chan struct{}
 	stratusSignatures   map[string]stratusSignature
 	config              Config
+	region              regionalEndpoints
 	apiURL, accountsURL string
 	http                *http.Client
 	mu                  sync.Mutex
 	token               string
 	expiresAt           time.Time
 	refresh             *tokenRefresh
+	refreshGeneration   uint64
+	cooldown            oauthCooldown
+	now                 func() time.Time
 	wait                func(context.Context, time.Duration) error
 }
 
 // New validates configuration without making network requests.
 func New(config Config, httpClient *http.Client) (*Client, error) {
+	if err := validateRegionalPolicy(config); err != nil {
+		return nil, err
+	}
 	if config.DataCenter == "" {
+		if config.Environment == "Production" {
+			return nil, errors.New("Production requires an explicit data_center or CATALYST_DATA_CENTER; the US default is only available in Development")
+		}
 		config.DataCenter = "us"
 	}
 	if config.Environment == "" {
@@ -77,162 +73,44 @@ func New(config Config, httpClient *http.Client) (*Client, error) {
 	if config.OrganizationID != "" && !ValidID(config.OrganizationID) {
 		return nil, errors.New("organization_id must be a positive integer written as a string")
 	}
-	hasRefresh := config.ClientID != "" || config.ClientSecret != "" || config.RefreshToken != "" || config.RedirectURI != ""
-	if config.AccessToken != "" && hasRefresh {
-		return nil, errors.New("use access_token OR client_id, client_secret and refresh_token; unset the unused credentials, including their CATALYST_ environment variables")
+	if len(config.AllowedOrganizationIDs) > 0 && len(config.ForbiddenOrganizationIDs) > 0 {
+		return nil, errors.New("allowed_organization_ids and forbidden_organization_ids cannot be combined")
 	}
-	if config.AccessToken == "" && (config.ClientID == "" || config.ClientSecret == "" || config.RefreshToken == "") {
-		return nil, errors.New("set CATALYST_ACCESS_TOKEN, or all of CATALYST_CLIENT_ID, CATALYST_CLIENT_SECRET and CATALYST_REFRESH_TOKEN (equivalent provider attributes are also accepted)")
-	}
-	for _, value := range []string{config.AccessToken, config.ClientID, config.ClientSecret, config.RefreshToken} {
-		if strings.ContainsAny(value, "\r\n") {
-			return nil, errors.New("credentials must not contain line breaks")
+	for _, ids := range [][]string{config.AllowedOrganizationIDs, config.ForbiddenOrganizationIDs} {
+		for _, id := range ids {
+			if !ValidID(id) {
+				return nil, errors.New("organization guardrails require positive integer IDs written as strings")
+			}
+		}
+		if len(ids) > 0 && config.OrganizationID == "" {
+			return nil, errors.New("organization guardrails require an explicit organization_id; the account default cannot be verified locally")
 		}
 	}
-	if config.RedirectURI != "" {
-		uri, err := url.Parse(config.RedirectURI)
-		if err != nil || uri.Host == "" || (uri.Scheme != "https" && uri.Scheme != "http") {
-			return nil, errors.New("redirect_uri must be an absolute HTTP or HTTPS URL")
-		}
+	if len(config.AllowedOrganizationIDs) > 0 && !slices.Contains(config.AllowedOrganizationIDs, config.OrganizationID) {
+		return nil, errors.New("configured organization_id is not in allowed_organization_ids")
 	}
-	hc := http.Client{Timeout: 30 * time.Second}
-	if httpClient != nil {
-		hc = *httpClient
+	if slices.Contains(config.ForbiddenOrganizationIDs, config.OrganizationID) {
+		return nil, errors.New("configured organization_id is in forbidden_organization_ids")
 	}
-	if hc.Timeout == 0 {
-		hc.Timeout = 30 * time.Second
+	if err := validateCredentials(config); err != nil {
+		return nil, err
 	}
-	// Never forward OAuth form bodies or authorization headers through redirects.
-	hc.CheckRedirect = func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }
-	return &Client{deploymentWrites: make(chan struct{}, 1), gatewayWrites: make(chan struct{}, 1), stratusSigns: make(chan struct{}, 1), config: config, apiURL: hosts.api, accountsURL: hosts.accounts, http: &hc, wait: waitContext}, nil
-}
-
-// tokenRefresh is shared by callers but has a cancellation lifetime independent of any one caller.
-// Mutable fields are protected by Client.mu; results are read only after done closes.
-type tokenRefresh struct {
-	done    chan struct{}
-	cancel  context.CancelFunc
-	waiters int
-	token   string
-	err     error
-}
-
-func (c *Client) accessToken(ctx context.Context) (string, error) {
-	if err := ctx.Err(); err != nil {
-		return "", err
-	}
-	if c.config.AccessToken != "" {
-		return c.config.AccessToken, nil
-	}
-	c.mu.Lock()
-	if c.token != "" && time.Now().Before(c.expiresAt) {
-		token := c.token
-		c.mu.Unlock()
-		return token, nil
-	}
-	flight := c.refresh
-	if flight == nil {
-		// A single caller leaving must not cancel refresh for other active callers.
-		// The HTTP deadline bounds refresh even if all callers remain active.
-		refreshCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), c.http.Timeout)
-		flight = &tokenRefresh{done: make(chan struct{}), cancel: cancel}
-		c.refresh = flight
-		go c.runRefresh(refreshCtx, flight)
-	}
-	flight.waiters++
-	c.mu.Unlock()
-	defer func() {
-		c.mu.Lock()
-		defer c.mu.Unlock()
-		flight.waiters--
-		if flight.waiters == 0 && c.refresh == flight {
-			c.refresh = nil
-			flight.cancel()
-		}
-	}()
-	select {
-	case <-ctx.Done():
-		return "", ctx.Err()
-	case <-flight.done:
-		if err := ctx.Err(); err != nil {
-			return "", err
-		}
-		return flight.token, flight.err
-	}
-}
-
-func (c *Client) runRefresh(ctx context.Context, flight *tokenRefresh) {
-	defer flight.cancel()
-	token, expiresAt, err := c.fetchToken(ctx)
-	if ctx.Err() != nil {
-		err = ctx.Err()
-	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	// An abandoned request must not overwrite a newer refresh or populate the cache.
-	if c.refresh == flight {
-		if err == nil {
-			c.token, c.expiresAt = token, expiresAt
-		}
-		c.refresh = nil
-	}
-	flight.token, flight.err = token, err
-	close(flight.done)
-}
-
-func (c *Client) fetchToken(ctx context.Context) (string, time.Time, error) {
-	form := url.Values{
-		"grant_type": {"refresh_token"}, "client_id": {c.config.ClientID},
-		"client_secret": {c.config.ClientSecret}, "refresh_token": {c.config.RefreshToken},
-	}
-	if c.config.RedirectURI != "" {
-		form.Set("redirect_uri", c.config.RedirectURI)
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.accountsURL+"/oauth/v2/token", strings.NewReader(form.Encode()))
+	hc, err := secureHTTPClient(httpClient)
 	if err != nil {
-		return "", time.Time{}, errors.New("could not construct OAuth request")
+		return nil, err
 	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Accept", "application/json")
-	res, err := c.http.Do(req)
-	if err != nil {
-		return "", time.Time{}, requestError(ctx, "OAuth token request")
-	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		return "", time.Time{}, statusError("OAuth token request", res.StatusCode)
-	}
-	var token struct {
-		AccessToken string `json:"access_token"`
-		ExpiresIn   int64  `json:"expires_in"`
-		Error       string `json:"error"`
-	}
-	if err := decode(res.Body, &token); err != nil {
-		return "", time.Time{}, errors.New("OAuth server returned an invalid JSON response")
-	}
-	if token.Error != "" {
-		switch token.Error {
-		case "invalid_client", "invalid_client_secret", "invalid_code", "invalid_grant":
-			return "", time.Time{}, fmt.Errorf("OAuth refresh failed (%s); check the credentials and data center", token.Error)
-		default:
-			return "", time.Time{}, errors.New("OAuth refresh was rejected; check credentials, data center and token limits")
-		}
-	}
-	if token.AccessToken == "" || strings.ContainsAny(token.AccessToken, "\r\n") || token.ExpiresIn <= 0 || token.ExpiresIn > 86400 {
-		return "", time.Time{}, errors.New("OAuth response is missing a valid access_token or expires_in")
-	}
-	lifetime := time.Duration(token.ExpiresIn) * time.Second
-	margin := min(30*time.Second, lifetime/10)
-	return token.AccessToken, time.Now().Add(lifetime - margin), nil
-}
-
-func (c *Client) invalidate(token string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	// A parallel request may already have refreshed the rejected token.
-	if c.token == token {
-		c.expiresAt = time.Time{}
-	}
+	return &Client{
+		deploymentWrites: make(chan struct{}, 1),
+		gatewayWrites:    make(chan struct{}, 1),
+		stratusSigns:     make(chan struct{}, 1),
+		config:           config,
+		region:           hosts,
+		apiURL:           hosts.api,
+		accountsURL:      hosts.accounts,
+		http:             hc,
+		now:              time.Now,
+		wait:             waitContext,
+	}, nil
 }
 
 // ID accepts either API representation without losing integer precision.

@@ -2,6 +2,125 @@
 
 This community provider is under development. Public availability and broad service coverage remain goals; implemented capabilities are listed below. API availability must be verified separately from the Terraform schema and mock tests.
 
+## Authentication and regional safeguards (2026-10-24)
+
+Regional security hardening adds optional `allowed_data_centers` and
+`allowed_environments` policies. Nonempty policies require explicit selections
+and reject unapproved destinations before OAuth, preflight or API requests.
+These are local deployment safeguards, not server-side authorization or identity
+attestation. The guarded Production example requires a nonempty independent
+regional allowlist as well as the organization allowlist.
+
+Standard HTTP transports now enforce verified TLS 1.2 or newer, preserve stronger
+minimum versions, and reject certificate bypasses or incompatible protocol limits.
+Shared transports and TLS settings are cloned. Offline tests use real local TLS
+handshakes to verify trusted certificates, untrusted certificates, hostname
+mismatches and obsolete protocol rejection. Additional adversarial tests cover forged bucket origins and
+redirect isolation for OAuth, API requests and signed transfers across all seven
+regions in both environments. These tests do not establish additional live
+regional compatibility or certify a numerical security rating.
+
+Live public transport checks passed on 2026-10-24 via
+`make testacc-regional-tls`: all 14 API/OAuth hosts across `us`, `eu`, `in`, `au`,
+`ca`, `jp` and `sa` completed TLS 1.3 handshakes with verified certificate chains
+and hostnames. The probe made direct TCP/TLS connections using the system trust
+store. It sent no credentials or HTTP requests and did not exercise HTTP proxies,
+authenticated access, Stratus hosts or regional service lifecycles.
+
+OAuth refresh now retries explicit transient HTTP responses with exponential
+backoff, jitter, bounded `Retry-After` handling and the existing shared refresh
+deadline. Ambiguous transport failures, credential rejection and malformed token
+responses are not replayed. Resource mutation retry policies are unchanged.
+
+Transient response cooldowns now survive failed or cancelled refresh sequences and
+their deadlines. Long `Retry-After` values apply to subsequent callers, not just
+the current request. New callers fail fast until expiry; recovery is shared and
+successful refresh clears cooldown state. Late abandoned responses cannot throttle
+newer refreshes. Tests cover concurrency, exact expiry, cancellation, deadlines,
+long/date/overflow headers, retry exhaustion and isolation between clients.
+
+OAuth validation and refresh live in `internal/catalyst/oauth.go`, using named
+token and attempt result types. `internal/catalyst/regions.go` is the single
+production definition of API/OAuth hosts and Stratus suffixes. Independent offline
+expectations verify all three routes across all seven data centers and both
+environments.
+
+Production requires an explicit data center. Optional organization allow/deny
+lists reject unintended configured routing headers before any network call;
+`validation_project_id` optionally checks access to an existing project during
+provider configuration. These features do not attest caller identity or prove
+permissions for other services.
+
+Offline tests exercise OAuth/API request routing, 401 renewal and cached reads
+for all seven regions in Development and Production, plus concurrent alias
+isolation, retry limits/cancellation, guardrail precedence and preflight failures.
+The read-only `testacc-regional-auth` target uses independent per-region
+credentials. It has not established additional authenticated regional evidence:
+the recorded live lifecycle coverage below remains India-only. AWS IAM role/SSO/OIDC
+credential-chain support is not implemented by this change.
+
+The strict `testacc-regional-auth-all` gate derives every region from routing
+metadata and requires both supported authentication modes for each region before
+making any API request. Missing fixtures fail instead of silently reducing
+coverage. This gate is ready for credentials; it has not supplied new live evidence.
+
+Local verification passed: race-enabled client, provider lifecycle and release-tool
+tests; `go vet ./...`; all Terraform example validations including the new guarded
+Production example; schema-based documentation validation; and deterministic
+regeneration of all 28 Markdown reference pages. Public regional TLS checks passed
+as recorded above; no additional authenticated regional smoke tests or cloud
+mutations were performed for this change.
+
+### Regional verification execution readiness (2026-10-24)
+
+The regional harness now supports independent Development and Production fixtures
+for each of the seven data centers, with both access-token and OAuth-refresh
+authentication: 28 combinations per check. Authentication reads assert the returned
+project ID. Stratus checks validate authenticated bucket metadata, the expected
+regional/environment origin and signed-download content against an independently
+supplied SHA-256. The optional lifecycle check owns only a cryptographically random,
+previously absent object key, verifies stable binary content and confirms exact-key
+cleanup. The existing marker object is retained. Write opt-ins are required globally
+and for every selected fixture.
+
+Offline verification passed for all 28 combinations and failure cases covering
+incomplete fixtures, credential/environment isolation, missing authentication modes,
+incorrect hashes, permission rejection, existing-key collisions, ambiguous uploads,
+cancellation, late create conflicts and cleanup rejection. Cleanup verifies unique
+payload ownership before deletion and retains unverifiable objects with an error.
+The full race-enabled client suite and
+`go vet ./...` passed. Four Python launcher tests passed; workflow YAML, the
+14-job matrix, pinned actions and security configuration were checked locally.
+These are harness checks, not authenticated regional results or hosted CI results.
+
+The maintainer reports that hosted CI is currently blocked by account billing.
+This infrastructure blocker is separate from the passing local checks and the
+missing regional live fixtures. Hosted checks remain pending; no CI requirement
+or security gate has been disabled to work around billing.
+
+An actual `make testacc-regional-auth-all` attempt stopped during fixture validation
+because `CATALYST_TEST_AU_PROJECT_ID` was absent. No request was sent. Presence-only
+inspection found no injected project IDs or either authentication mode for any of
+the seven regions; no local fixture environment file was found in this checkout.
+The new Stratus and mutation gates consequently have no additional live evidence.
+
+| Priority | Implementation | Execution evidence |
+| --- | --- | --- |
+| High: seven-region authentication | Strict all-region gate and both-mode validation ready | Pending regional credentials/projects; attempted gate failed configuration before requests |
+| High: regional Stratus reads | Metadata/origin checks and SHA-256 signed-download checks ready | Pending existing bucket/object fixtures and Stratus permissions |
+| Medium: disposable-object lifecycle | Both-environment matrix, collision protection and bounded cleanup ready | Pending dedicated buckets, fixtures and write opt-ins |
+| Medium: repeatable regional CI | Manual default-branch workflow and isolated secret launcher ready locally | Hosted CI blocked by billing (maintainer report); environment protections, secrets and execution remain unverified |
+| Low: claims and rating | Commands, fixture contracts and limits documented | A 9.5/10 operational-confidence claim remains unsupported by authenticated all-region evidence |
+
+Use `make testacc-regional-all` for complete project/Stratus read verification,
+then the separately opted-in `make testacc-regional-stratus-lifecycle-all` for
+disposable objects. See [CONTRIBUTING.md](CONTRIBUTING.md#both-environments-and-stratus)
+for injection names and the protected CI setup. Record actual date, commit, region,
+environment, mode and cleanup outcomes only after execution. Existing India service
+lifecycle evidence and the public TLS results above retain their original scope.
+
+## Service expansion evidence
+
 Latest service expansion (2026-10-23): **13 resources and 12 data sources**,
 with a draft inventory of **48 capability areas**: 16 partly managed,
 8 discovery-only and 24 unimplemented. Data Store configuration rows, opt-in

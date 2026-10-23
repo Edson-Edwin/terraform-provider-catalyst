@@ -240,7 +240,7 @@ func TestInvalidConfigurationAndIDs(t *testing.T) {
 }
 
 func TestRegionRouting(t *testing.T) {
-	for dc, hosts := range map[string]endpoints{
+	for dc, hosts := range map[string]struct{ api, accounts string }{
 		"us": {"https://api.catalyst.zoho.com", "https://accounts.zoho.com"},
 		"eu": {"https://api.catalyst.zoho.eu", "https://accounts.zoho.eu"},
 		"in": {"https://api.catalyst.zoho.in", "https://accounts.zoho.in"},

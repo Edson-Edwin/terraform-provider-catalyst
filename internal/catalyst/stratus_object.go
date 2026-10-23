@@ -91,12 +91,11 @@ func stratusData(res *http.Response, target any) error {
 	return nil
 }
 func (c *Client) stratusOrigin(bucket string) string {
-	suffix := map[string]string{"us": "com", "eu": "eu", "in": "in", "au": "com.au", "ca": "ca", "jp": "jp", "sa": "sa"}[c.config.DataCenter]
 	environment := ""
 	if c.config.Environment == "Development" {
 		environment = "-development"
 	}
-	return "https://" + bucket + environment + ".zohostratus." + suffix
+	return "https://" + bucket + environment + ".zohostratus." + c.region.stratusSuffix
 }
 func (c *Client) GetStratusBucket(ctx context.Context, project, bucket string) (*StratusBucket, error) {
 	base, err := stratusPath(project)

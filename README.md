@@ -1,433 +1,100 @@
 # Terraform Provider for Zoho Catalyst
 
-A community Terraform provider intended for public use, built with the Terraform Plugin Framework. Each user supplies their own Zoho credentials and selects their account's data center. No personal account credentials or organization settings are built into the provider.
+The Catalyst provider lets Terraform manage supported [Zoho Catalyst](https://catalyst.zoho.com/) application infrastructure. Each user supplies their own OAuth credentials and selects a data center and environment.
 
-**Current status:** Eleven resource types and eleven read-only data sources are implemented. The project resource is experimental: creation is blocked for the current live account. Support includes AppSail managed Node/Java SE/Python deployments, NoSQL configuration items, database metadata, Stratus objects/metadata, Functions, Gateway and scheduling. Registry releases are not available yet. This is a community provider, not an official Zoho provider. Table/schema and bucket provisioning remain manual prerequisites. See [API_COVERAGE.md](API_COVERAGE.md) for exact support, evidence and limitations.
+This is a community provider, not an official Zoho or HashiCorp product. It is under development and is **not yet available from the public Terraform Registry**. The current implementation registers **13 resource types and 12 data source types**; some capabilities are experimental or deprecated. These counts do not represent complete Catalyst service coverage.
 
-**File Store sunset:** Zoho has announced retirement on **31 October 2026** and says new projects/accounts do not receive File Store. The File Store resource and folder data source are deprecated. Use Stratus for new storage and plan existing file/permission migration separately. [Vendor announcement](https://docs.catalyst.zoho.com/en/announcements/2026/filestore-sunset/).
+- [Provider documentation and configuration](docs/index.md)
+- [Resources and data sources by service](docs/index.md#supported-services)
+- [All-services example](examples/all_services/) and [full-stack website example](examples/full_stack/)
+- [Implementation status and verification evidence](API_COVERAGE.md)
+- [Contributing](CONTRIBUTING.md), [release process](RELEASING.md) and [changelog](CHANGELOG.md)
+- [Support](.github/SUPPORT.md) and [security reporting](SECURITY.md)
 
-## Requirements
+## Getting started
 
-- Go 1.25.8 or newer (see `go.mod`).
-- Terraform 1.13 or newer for local development.
-- Make and a POSIX shell.
-- For live project reads: a Catalyst account, an existing project, and OAuth credentials with the `ZOHOCATALYST.projects.Read` scope.
+For local development, install Go 1.25.8 or newer, Terraform 1.13 or newer, Make and a POSIX shell. Application runtimes and build tools are needed only for the applications you deploy; the provider itself is written in Go.
 
-## Build and test without credentials
-
-From the repository root:
+Build the provider from this repository:
 
 ```sh
 go mod download
-make test
-make verify
+make dev
+export TF_CLI_CONFIG_FILE="$PWD/.terraformrc.local"
 ```
 
-`make test` runs the client and provider protocol tests against mock API responses, with Go's race detector. It does not contact Zoho. The cron lifecycle test runs a real Terraform binary against a local fake API, so Terraform must be on PATH. Tests cover token refresh and caching, concurrent reads, authorization retries, error handling, numeric ID precision, configuration precedence, Terraform state mapping, cron lifecycle/import, clearing optional fields, enable/disable changes, and recreation after external deletion.
+The local override points Terraform to `bin/terraform-provider-catalyst`. Skip `terraform init` for these standalone development examples: the provider is unpublished and initialization still attempts Registry version selection. This override applies only while `TF_CLI_CONFIG_FILE` selects it; unset that variable when finished.
 
-`make verify` builds `bin/terraform-provider-catalyst`, creates an ignored `.terraformrc.local`, reads the provider schema into `bin/provider-schema.json`, validates the provider, data source, and resource examples, and runs a no-op plan. This verifies local plugin loading without credentials or cloud resources. Expect a development override warning and **No changes**. It does not verify live authentication.
-
-The override only applies to commands that select it; your global Terraform configuration is unchanged. Skip `terraform init` for these standalone local examples: the provider is not published, and `init` still attempts Registry version selection despite the override.
-
-## Authentication
-
-Choose one of the following modes. Explicit provider attributes take precedence over their environment variables. A null or omitted attribute falls back to the environment; an explicit empty string suppresses that fallback. Unknown provider values are rejected at configuration time.
-
-### OAuth refresh credentials (recommended)
-
-Each user registers an OAuth client in the [Zoho API Console](https://api-console.zoho.com/) for their account's data center. A Self Client is suitable for personal/local use. Obtain a grant code with `ZOHOCATALYST.projects.Read`, exchange it for access and refresh tokens, and save the refresh token securely. Interactive/server applications must complete Zoho's consent flow with offline access. The provider consumes existing credentials; it does not run the browser consent or grant-code exchange flow.
-
-Follow Zoho's [client registration](https://docs.catalyst.zoho.com/en/api/oauth2/register-new-client/), [grant token](https://docs.catalyst.zoho.com/en/api/oauth2/generate-grant-token/) and [token exchange](https://docs.catalyst.zoho.com/en/api/oauth2/generate-access-and-refresh-token/) instructions.
-
-Set these values locally (the values below are placeholders):
+Configure your own credentials, using placeholders below:
 
 ```sh
-export CATALYST_DATA_CENTER="in" # example; choose your account's region
+export CATALYST_DATA_CENTER="in"
+export CATALYST_ENVIRONMENT="Development"
 export CATALYST_CLIENT_ID="your-client-id"
 export CATALYST_CLIENT_SECRET="your-client-secret"
 export CATALYST_REFRESH_TOKEN="your-refresh-token"
 unset CATALYST_ACCESS_TOKEN
 ```
 
-For an OAuth client that uses a registered redirect URI, also set `CATALYST_REDIRECT_URI` to that URI. Omit it for a Self Client. Zoho's generic [refresh-token API](https://www.zoho.com/developer/oauth/web-server-apps/refresh-access-token.html) does not require it; the provider sends it when configured.
-
-The provider exchanges refresh credentials only when an API request is needed, caches access tokens in memory for that provider instance, refreshes before expiry, and retries one HTTP 401 after refreshing. Independent Terraform processes have separate caches. It sends credentials in the token request body and does not follow redirects. Read requests retry temporary failures, including HTTP 429, with bounded backoff and Retry-After handling. Ambiguous writes are not retried. Separate Terraform processes have separate token caches; use an access token for repeated short-lived acceptance-test runs to avoid OAuth refresh-token rate limits.
-
-### Existing access token
-
-For a short-lived session, supply an access token instead:
+Start with a read-only project lookup:
 
 ```sh
-export CATALYST_DATA_CENTER="in" # example; choose your account's region
-export CATALYST_ACCESS_TOKEN="your-access-token"
-unset CATALYST_CLIENT_ID CATALYST_CLIENT_SECRET CATALYST_REFRESH_TOKEN CATALYST_REDIRECT_URI
-```
-
-Access-token mode does not refresh automatically. Replace the token when it expires. Mixed authentication modes or incomplete refresh credentials produce a configuration error. Keep credentials out of version control; `.env` and `.tfvars` files are ignored, but the provider does not automatically load `.env` files.
-
-## Regions, environments and organizations
-
-`CATALYST_DATA_CENTER` accepts `us`, `eu`, `in`, `au`, `ca`, `jp`, or `sa`, defaulting to `us`. Select the region where your Zoho account is hosted, not your current physical location. The provider uses the [regional Catalyst API endpoints](https://docs.catalyst.zoho.com/en/api/introduction/multi-dc-support/) and [canonical OAuth accounts hosts](https://accounts.zoho.com/oauth/serverinfo). In particular, the Australian OAuth host is `accounts.zoho.com.au`.
-
-`CATALYST_ENVIRONMENT` accepts `Development` (default) or `Production`. `CATALYST_ORGANIZATION_ID` optionally selects an organization through the `CATALYST-ORG` request header.
-
-Provider aliases allow multiple independent configurations:
-
-```hcl
-provider "catalyst" {
-  alias           = "development"
-  data_center     = "in"
-  environment     = "Development"
-  organization_id = "123456789"
-}
-```
-
-Credentials still come from the environment unless explicitly configured. Use sensitive Terraform input variables for aliases needing different credentials; the environment is shared by the Terraform process.
-
-## Read an existing project
-
-After setting credentials, run from the repository root:
-
-```sh
-make dev
-export TF_CLI_CONFIG_FILE="$PWD/.terraformrc.local"
 export TF_VAR_project_id="your-existing-numeric-project-id"
 terraform -chdir=examples/data-sources/catalyst_project validate
 terraform -chdir=examples/data-sources/catalyst_project plan
 ```
 
-The example performs a read-only request to the [Catalyst project API](https://docs.catalyst.zoho.com/en/api/code-reference/general/projects/get-specific-project/). It creates or changes no remote resources. A successful plan shows the project name and domain outputs. Live access-token and refresh-token project lookups have been verified in the India data center. Other accounts and regions should be verified using the opt-in acceptance test below. Default automated tests use mock responses.
+This requires an existing project and the `ZOHOCATALYST.projects.Read` scope. A Catalyst CLI login alone does not configure provider credentials. See [authentication and configuration](docs/index.md#authentication-and-configuration) for access-token mode, OAuth setup, environment-variable precedence and aliases.
 
-```hcl
-terraform {
-  required_providers {
-    catalyst = {
-      source = "Edson-Edwin/catalyst"
-    }
-  }
-}
+Production now requires an explicit `data_center` or `CATALYST_DATA_CENTER`; set
+`us` explicitly if you previously relied on the default. Optional organization
+allow/deny lists and `validation_project_id` provide routing guardrails and a
+read-only access preflight. OAuth refresh uses bounded backoff for transient HTTP
+responses. See [organization guardrails and access preflight](docs/index.md#organization-guardrails-and-access-preflight).
 
-provider "catalyst" {}
+Optional `allowed_data_centers` and `allowed_environments` policies restrict the
+selected destination before network access. The guarded Production example uses
+nonempty approved-region and organization inputs. Standard transports enforce
+verified TLS 1.2 or newer and block redirects; see [regional security policies](docs/index.md#regional-security-policies).
 
-data "catalyst_project" "example" {
-  id = "12345678901234567"
-}
+## Supported services
 
-output "project_name" {
-  value = data.catalyst_project.example.name
-}
-```
+| Service | Current Terraform support |
+| --- | --- |
+| AppSail | Managed Node, Java SE and Python ZIP deployments, code/configuration updates, import and artifact drift |
+| Functions | Node22/24 Basic I/O, Advanced I/O, Event, Cron and Job Function deployments |
+| Stratus | Objects/metadata in existing unversioned buckets, optional multipart transfers and bucket discovery |
+| NoSQL | Configuration items and existing table/index metadata |
+| Data Store | Configuration rows and existing table/column metadata |
+| API Gateway | Enable/disable and complete ruleset ownership; supported Function/client targets and authentication modes |
+| Job Scheduling | Webhook, Job Function and AppSail schedules; existing pool discovery |
+| Projects | Discovery; experimental project creation/deletion with deletion protection |
+| Authentication | User access metadata; experimental existing-user role assignment |
+| Cache | Existing segment discovery only |
+| File Store | Deprecated file management and folder discovery for legacy projects |
 
-The data source also exposes `project_type`, `domain`, `domain_name`, and `timezone`. IDs remain strings to preserve precision. Optional metadata absent from the API is null. A missing or inaccessible project reports an error.
+Existing tables, schemas, buckets, job pools, roles and permissions are prerequisites. Containers, custom domains, Production promotion, Authentication setup and Connections provisioning are not implemented. Project creation is account-dependent and has no successful live lifecycle verification; user-role assignment and Gateway client routes also retain verification limits. See the [service expansion guide](docs/guides/service_expansion.md) for the precise boundaries.
 
-Run `unset TF_CLI_CONFIG_FILE` when finished using the development override. The intended Registry address is `Edson-Edwin/catalyst`; it is not currently installable from the public Registry.
+File Store is deprecated. New storage examples use Stratus; legacy migrations and permission changes must be planned separately. See the [File Store resource](docs/resources/filestore_file.md) for the recorded vendor notice and limitations.
 
-## Discover projects and job pools
+## Examples
 
-`catalyst_projects` lists projects visible to your credentials and selected organization. It requires `ZOHOCATALYST.projects.Read`. `catalyst_job_pools` lists an existing project's scheduling pools and additionally requires `ZohoCatalyst.jobpool.READ`.
+The [all-services example](examples/all_services/main.tf) includes every registered resource and data source with optional inputs. Start with its [instructions](examples/all_services/README.md) and replace the active placeholders in `terraform.tfvars.example`. Schedules start disabled; experimental and deprecated features require separate opt-ins.
 
-```hcl
-data "catalyst_projects" "available" {}
+The [full-stack example](examples/full_stack/README.md) connects existing database/storage prerequisites to your own AppSail application. Terraform deploys built artifacts; application code must implement database/storage access and its own business logic. A successful apply alone does not establish application health.
 
-data "catalyst_job_pools" "available" {
-  project_id = "12345678901234567"
-}
+## Contributing and development
 
-output "projects" {
-  value = data.catalyst_projects.available.projects
-}
-
-output "job_pools" {
-  value = data.catalyst_job_pools.available.pools
-}
-```
-
-Both lists use a stable lexicographic ID order, preserve numeric IDs as strings, and return `[]` when no items exist. An API error or malformed response produces an error, not an empty list. Project results contain the same metadata as `catalyst_project`; pool results contain `id`, `name`, and `type`. No creator profiles, emails, or credentials are stored in these results.
-
-Standalone examples are in `examples/data-sources/catalyst_projects` and `examples/data-sources/catalyst_job_pools`. With the development override enabled, use `terraform -chdir=examples/data-sources/catalyst_projects plan` to discover IDs. The job-pool example takes `TF_VAR_project_id`.
-
-Project listing and both empty and populated pool listings have been verified live in India. See [API coverage and implementation plan](API_COVERAGE.md) for the management API restrictions found during validation.
-
-## Manage a webhook cron
-
-`catalyst_webhook_cron` manages **pre-defined expression, calendar, one-time and periodic schedules with Webhook targets**. Function and AppSail targets use their separate cron resources. Dynamic crons, Circuit targets and job-pool creation remain outside these resources. It requires an existing project and a Webhook job pool in the selected environment. Use the console to create these prerequisites, then use the discovery data sources to find their IDs.
-
-Obtain OAuth credentials with `ZohoCatalyst.cron.CREATE`, `ZohoCatalyst.cron.READ`, `ZohoCatalyst.cron.UPDATE`, and `ZohoCatalyst.cron.DELETE`. Also include `ZOHOCATALYST.projects.Read`: the provider checks parent access before treating a missing cron as deleted. Add `ZohoCatalyst.jobpool.READ` when using pool discovery.
-
-```hcl
-resource "catalyst_webhook_cron" "example" {
-  project_id  = var.project_id
-  job_pool_id = var.job_pool_id
-  name        = "terraform_example"
-  job_name    = "terraform_example"
-  expression  = "0 9 * * 1-5"
-  timezone    = "Asia/Kolkata"
-  end_time    = var.end_time # future Unix timestamp in seconds
-  enabled     = false
-  url         = "https://example.com/your-webhook"
-}
-```
-
-Crons default to **disabled**. Set `enabled = true` deliberately after configuring your real endpoint and schedule; enabled crons submit real HTTP jobs and consume Catalyst usage. The provider does not invoke a webhook itself. `job_name` is limited to 20 characters. With retries enabled, `retry_interval` must be 60–86400 seconds; with retries disabled it is omitted from requests and reported as zero in state.
-
-The [resource reference](docs/resources/webhook_cron.md) covers headers, parameters, body, retries, and import. These fields and the URL are sensitive in Terraform output, but their values remain in state. Secure your state backend and do not commit state files. Changing `project_id` replaces the cron; other supported fields update in place.
+Run offline checks without Catalyst credentials:
 
 ```sh
-terraform import catalyst_webhook_cron.example 'PROJECT_ID/CRON_ID'
+make check
+make lint
+make generate
 ```
 
-Import requires the matching data center, organization, and environment and a resource configuration that describes the existing cron. Import does not change the cron. An API access error preserves state; a confirmed missing cron is removed from state so Terraform can recreate it. If a create request succeeds remotely but its response is lost, inspect the console and import the cron before retrying. The client does not retry ambiguous transport or server failures for writes.
-
-GET requests retry temporary transport failures and HTTP 408, 429, 500, 502, 503 and 504 up to three times with increasing randomized delays. Server `Retry-After` delays up to 30 seconds are respected; longer delays return an error instead of retrying early. Authentication may refresh once on HTTP 401. Writes are not retried after ambiguous failures. Cancellation stops retries. OAuth refresh is shared across concurrent callers; each caller can cancel independently, and a refresh is cancelled when no callers still need it.
-
-Deletion has a two-minute deadline and checks repeatedly until absence and parent access are confirmed. If confirmation fails, Terraform keeps the resource in state. If a successful create response contains a valid ID but malformed metadata, the provider retains that ID and reports an error so the object can be recovered. A completely lost response still requires manual reconciliation before another create attempt.
-
-A complete disabled example is in `examples/resources/catalyst_webhook_cron`. Its `project_id`, `job_pool_id`, and `end_time` variables must be set before planning. `make verify` validates its syntax without applying it.
-
-Create, import, rename/update, clearing optional fields, a stable plan, and destroy with confirmed cleanup have been tested against the India API. Live tests keep all crons disabled; actual webhook delivery and other regions have not been tested.
-
-## Opt-in live acceptance test
-
-After configuring your own credentials and data center, run:
-
-```sh
-export CATALYST_TEST_PROJECT_ID="your-existing-numeric-project-id"
-make testacc
-```
-
-This test starts the provider through Terraform's protocol, reads the project into temporary local state, checks the exact ID and a non-empty name, then checks a second plan for stability. Its configuration contains only a data source: it does not create, update, or delete remote Catalyst resources. The test harness may run multiple reads and OAuth exchanges. Supply only one authentication mode and allow for Zoho's token/rate limits.
-
-For project and job-pool discovery, add the `ZohoCatalyst.jobpool.READ` scope to your credentials and run `make testacc-discovery` with the same `CATALYST_TEST_PROJECT_ID`. This read-only test checks that the selected project appears in the project list, checks that the pool list is known (empty is valid), and verifies a stable second plan.
-
-`make test` explicitly disables live acceptance testing. GitHub's default checks also remain offline. Live tests require credentials supplied by the person running them; no account IDs or credentials are included in the tests. A signed-in Catalyst CLI can supply credentials for local development, but automatic CLI credential discovery is not part of the provider's public authentication interface.
-
-## Opt-in live cron lifecycle test
-
-Use a dedicated Development project and an existing Webhook pool. With the OAuth scopes above and credentials configured locally:
-
-```sh
-export CATALYST_ENVIRONMENT="Development"
-export CATALYST_TEST_PROJECT_ID="your-test-project-id"
-export CATALYST_TEST_JOB_POOL_ID="your-test-webhook-pool-id"
-export CATALYST_TEST_ALLOW_CRON_CREATE="1"
-make testacc-cron
-```
-
-This test creates a uniquely named disabled cron, imports it, updates and clears fields, checks a stable plan, and destroys it. It verifies deletion through the API and never submits jobs. The explicit creation flag is required; `make test` disables live tests. Interrupted runs may leave a disabled cron with a `tfacc` prefix in the test project; inspect it before cleanup. The project and pool are reusable prerequisites and are not destroyed by this test.
-
-## Development and publication
-
-- `internal/catalyst/`: regional API client, token handling and HTTP tests.
-- `internal/provider/`: Terraform schema, configuration, discovery data sources, webhook cron lifecycle and protocol tests.
-- `examples/`: provider-only smoke test, discovery examples, and a disabled webhook cron example.
-- `make generate`: regenerates provider, data source and resource documentation.
-- `make check`: dependency, formatting, static, offline test and example checks.
-- `make lint`: pinned golangci-lint checks (see CONTRIBUTING.md).
-- `make release-check`: unsigned cross-platform package verification, local-mirror installation and a native Terraform handshake; no publication.
-
-Next milestones are broader cron target support, additional service coverage, and a public release. The [API coverage plan](API_COVERAGE.md) records verified lifecycle behavior and API restrictions. Each service needs an API capability review before promising Terraform lifecycle support.
-
-See [contributing](CONTRIBUTING.md), [release procedures](RELEASING.md), [security reporting](SECURITY.md) and [support](.github/SUPPORT.md).
-
-Public distribution requires a public source repository, a versioned release, signed provider checksums, and registration with the Terraform Registry. The release workflow requires `GPG_PRIVATE_KEY` and `PASSPHRASE` repository secrets before tagging a release. The release job depends on shared checks and creates a signed draft for verification. Repository setup alone does not publish the provider.
+The [contributor guide](CONTRIBUTING.md) explains documentation generation, resource lifecycle expectations and opt-in live tests. Local checks do not establish public release availability or feature parity with other providers. Recorded live evidence is limited to the regions and behaviors listed in [API_COVERAGE.md](API_COVERAGE.md). Hosted CI is currently blocked by account billing, as reported by the maintainer; local verification and pending live regional checks are recorded separately.
 
 ## License
 
-MPL-2.0. Based on HashiCorp's Terraform Provider Scaffolding Framework; original copyright notices are retained.
-
-## Storage and infrastructure discovery
-
-New data sources are `catalyst_datastore_tables`, `catalyst_filestore_folders`, `catalyst_cache_segments`, and `catalyst_stratus_buckets`. Each takes `project_id` and returns a sorted list of public metadata. They never read table rows, cached values or stored objects. See their generated documentation and `examples/data-sources/` for scopes and configuration.
-
-`catalyst_filestore_file` uploads a local file into an existing File Store folder:
-
-```hcl
-resource "catalyst_filestore_file" "settings" {
-  project_id    = var.project_id
-  folder_id     = var.folder_id
-  name          = "settings.json"
-  source        = "${path.module}/settings.json"
-  source_sha256 = filesha256("${path.module}/settings.json")
-}
-```
-
-Changing the source hash, name, folder or project replaces the file and changes its ID. Refresh downloads the contents to detect drift; consider the download cost for large files. File contents are not written to state, but file paths, names and hashes are. The API limit is 100 MB. The provider buffers uploads in memory; it is not a bulk data migration tool. Import with `project_id/folder_id/file_id`; configure the matching local source and hash afterward. A changed local source after planning fails before upload.
-
-Catalyst recommends Stratus for new storage and displays a File Store deprecation notice in its console. This resource supports existing File Store workloads; it does not create folders or migrate data to Stratus.
-
-The four new data sources and file upload/import/replacement/destroy passed live tests in India Development on 2026-10-23. File-test cleanup was verified against the baseline ID set. This does not establish other-region, production, large-file or comprehensive service coverage.
-
-## Local release preparation
-
-`make check`, `make lint`, `make generate`, and `make release-check` validate local code and packages without hosted CI. The new signed-download check validates the expected GPG fingerprint before executing a package. After publication, `go run ./internal/cmd/provider-tools verify-registry VERSION` checks a fresh public installation with no development override or mirror. This command is for a published release, not an unpublished snapshot. See [RELEASING.md](RELEASING.md).
-
-## Implementation-plan progress
-
-`make coverage-status` reports the draft capability inventory. A schema contract test checks registered types against inventory entries, documentation and examples. The inventory is deliberately incomplete pending service/field/API verification; it does not assign a numerical coverage score.
-
-Function discovery is available as `data.catalyst_functions`. It lists IDs and names without invoking or deploying code. Direct API tests in a replacement India Development project verified unique fixture upload, metadata reads, code update with a stable ID, exact artifact download and deletion. Populated discovery passed live Terraform checks. Function deployment is now available through `catalyst_function` for Node.js 22/24 Basic I/O, Advanced I/O, Event, Cron and Job. It verifies artifact/configuration persistence and documents the name-based upsert ownership constraint. The maintainer deleted the previous test project; old live evidence is historical and its old prerequisites must not be assumed present.
-
-## Managed Functions
-
-`catalyst_function` deploys prebuilt Node.js 22/24 Basic I/O, Advanced I/O, Event, Cron and Job ZIPs, updates their code, memory and environment variables, detects remote changes, supports import, and confirms deletion. See [the Function example](examples/resources/catalyst_function/) and [resource reference](docs/resources/function.md). The ZIP's `catalyst-config.json` deployment name/runtime/type and `package.json` name/entry point must match the Terraform settings. The provider validates source hashes, archive paths and archive integrity before deployment.
-
-Function names use Catalyst's upsert API. Creation rejects an existing name; import existing Functions explicitly. Keep project/name ownership exclusive across Terraform states and other tools: these local checks are not a server-side conditional-create guarantee. Code and environment updates happen in place; changing project/name/runtime/type requires replacement. The verified subset supports Node.js 22/24 Basic I/O, Advanced I/O, Event, Cron and Job Functions, supported memory values and complete environment-variable management. Other languages and runtime/type combinations remain future work.
-
-Verification reads back configuration and downloads the artifact. It does not invoke the Function or promote it to Production, and does not interpret `is_deployed` as a runtime-readiness signal. Environment values remain in sensitive Terraform state; source bytes do not. Refresh downloads add traffic. The provider limits compressed/expanded ZIPs to 100 MB. India Development acceptance passed create/import/code update/memory and environment update/clear/stable plan/destroy. Live execution and other regions are untested.
-
-Run `make testacc-function` with `CATALYST_TEST_ALLOW_FUNCTION_CREATE=1`, an isolated `CATALYST_TEST_PROJECT_ID`, `CATALYST_ENVIRONMENT=Development`, data center, organization and an access token. The live test uses harmless generated fixtures and never invokes the Function. Default `make test` remains offline.
-
-## Managed AppSail services
-
-`catalyst_appsail` deploys prebuilt managed Node 16/18/20/22/24, Java SE 8/11/17/21/25 and Python 3.9–3.13 ZIPs. It manages code, memory, startup command, port, Catalyst authentication, login redirects and complete environment-variable maps, and reports the application URL. Java requires `platform = "javase"`; Java/Python require explicit startup commands. WAR/custom runtimes are not implemented. It supports import and remote artifact drift detection. Authentication defaults to enabled. See the [AppSail example](examples/resources/catalyst_appsail/) and [resource reference](docs/resources/appsail.md).
-
-Build application dependencies into the ZIP before applying. Node ZIPs require `package.json` at their root; Java and Python use their own application files. Bind the application to its configured port or `X_ZOHO_CATALYST_LISTEN_PORT`. The provider does not build dependencies or invoke applications during apply. All 15 managed runtimes passed live deployment lifecycles; separate generated Node24, Python3.13 and Java25 fixtures also passed HTTP response checks before and after updates. This does not prove health for arbitrary user applications. `login_redirect` defaults to `/`; reset a custom redirect with `/` because the API ignores an empty reset. Existing names require explicit import, and project/name ownership must remain exclusive across states and external deployment tools because Catalyst's upsert is name-based.
-
-Run `make testacc-appsail` with `TF_ACC=1`, `CATALYST_TEST_ALLOW_APPSAIL_CREATE=1`, an isolated `CATALYST_TEST_PROJECT_ID`, `CATALYST_ENVIRONMENT=Development`, data center, organization and access token. Fixtures are generated locally; default tests remain offline.
-
-## Managed API Gateway
-
-`catalyst_api_gateway` controls Gateway routing. `catalyst_api_gateway_ruleset` owns the complete ruleset for an enabled project, with Basic I/O Function targets and OAuth authentication by default. An explicit empty authentication set creates an unauthenticated route. Omitted rules are deleted. The resource refuses unsupported targets, authentication modes, configured throttling and unknown policy fields instead of silently discarding them.
-
-Use `project_id = catalyst_api_gateway.example.id` on the ruleset to order creation and destruction. Enabling Gateway changes routing for existing Function/Web Client endpoints; matching routes are required. Remove the ruleset resource before disabling Gateway, because disabled Gateways reject ruleset reads. Import existing supported rules explicitly using the project ID. Only one state/deployment tool may own a project’s ruleset. See [Gateway examples](examples/resources/catalyst_api_gateway_ruleset/) and [reference](docs/resources/api_gateway_ruleset.md).
-
-The live India Development Terraform test covered create, both imports, replacement, clearing, stable plan and destroy, with Gateway and Function baseline cleanup. No route or Function was invoked. Run `make testacc-gateway` only with `CATALYST_TEST_ALLOW_GATEWAY_CREATE=1` and an isolated Development project. Other targets/authentication modes and configured throttling remain unimplemented.
-
-Repository release and coverage utilities now use Go (`go run ./internal/cmd/provider-tools ...`). Python is not required for local checks or provider installation. The optional `release-readiness` subcommand performs hosted reads only when explicitly invoked; do not run it while hosted CI is deferred.
-
-The [Advanced I/O example](examples/advancedio/) selects Node.js 24. Run `make testacc-function-variants` with the same Function acceptance opt-in to exercise all four supported runtime/type combinations. Deployment verification requires consecutive matching configuration/artifact reads; it does not execute the Function or establish runtime health.
-
-## Manage a Stratus object
-
-`catalyst_stratus_object` uploads a local file to an existing unversioned bucket, updates its bytes, content type and complete custom metadata map in place, imports nested keys and detects content drift using SHA-256. Creation refuses an existing key and uses Stratus overwrite protection. Deletion verifies absence through bucket access and complete object listings. Temporary transfer signatures remain in memory; OAuth credentials are never forwarded to the Stratus data host.
-
-See [resource documentation](docs/resources/stratus_object.md) and [example](examples/resources/catalyst_stratus_object/resource.tf). The current provider limit is 100 MB per file. Bucket creation, version history, multipart uploads and TTL are outside this resource's supported scope. Set `metadata = {}` to clear all custom metadata; removing map keys deletes them remotely through the dedicated metadata API. Own each key exclusively; do not use keys with version history.
-
-The real Terraform lifecycle passed in India Development, including import, content/type updates, same-size external drift repair, external deletion/recreation, stable plan and confirmed destroy. To repeat it with your own isolated existing bucket:
-
-```sh
-export CATALYST_TEST_PROJECT_ID="your-isolated-project-id"
-export CATALYST_TEST_BUCKET="your-existing-unversioned-test-bucket"
-export CATALYST_TEST_ALLOW_STRATUS_OBJECT_CREATE=1
-make testacc-stratus-object
-```
-
-The acceptance test only supports India Development and cleans up its unique key. It leaves the bucket in place. Live tests do not run with `make test`.
-
-`catalyst_function` additionally supports Node.js 22/24 Event, Cron and Job handlers through `type = "event"`, `"cron"` or `"job"`. All six background lifecycle combinations passed live in India Development without invocation. See [the example](examples/background_function/resource.tf). Handler deployment does not configure triggers, job pools or schedules. Integration and Browser Logic Functions and other languages remain pending.
-
-## Schedule a Job Function
-
-`catalyst_function_cron` manages pre-defined CronExpression, daily/monthly/yearly calendar, one-time and periodic schedules targeting an existing Job Function and Function Job Pool in the same project. It defaults to disabled and verifies pool/target identities before writes. Use a Terraform reference such as `function_id = catalyst_function.example.id` to order creation and destruction. The target must use `type = "job"`; legacy `type = "cron"` handlers use a separate trigger system.
-
-See the [resource reference](docs/resources/function_cron.md) and [example](examples/resources/catalyst_function_cron/resource.tf). Creation, import, updates, parameter clearing, external parameter drift repair, external deletion/recreation, stable plan and destroy passed live in India Development with scheduling disabled. No jobs were submitted. Other scheduling targets remain pending.
-
-To repeat the test using your isolated India Development Function Job Pool, set `CATALYST_TEST_FUNCTION_POOL_ID`, `CATALYST_TEST_PROJECT_ID`, `CATALYST_TEST_ALLOW_FUNCTION_CREATE=1` and `CATALYST_TEST_ALLOW_FUNCTION_CRON_CREATE=1`, then run `make testacc-function-cron`. The test removes its disabled cron and Job Function; the empty pool remains.
-
-Function calendars use `calendar_schedule` instead of `expression`; one-time schedules use `one_time_at` in Unix **seconds** and omit `end_time`. Choose exactly one mode. Monthly/yearly calendars use dates or a weeks/weekday pair; exactly one weekday is supported. Time and schedule-form changes were verified to update the same cron ID. See [calendar](examples/function_calendar/resource.tf) and [one-time](examples/function_onetime/resource.tf) examples. Repeat the live matrix with the Function cron opt-ins and `make testacc-function-cron-schedules`.
-
-Relative periodic Function schedules use `interval_seconds` instead of the other schedule inputs, require recurring `end_time`, and default to UTC. They measure elapsed time and do not send a wall-clock timezone to Catalyst. The interval is validated as positive and converted without overflow. See the [periodic example](examples/function_periodic/resource.tf). Direct creation, a six-hour to 2h1m3s update, import, stable plan, form transitions and destruction passed live without execution. Ten capability areas are now partially managed; that count is **not** a 10/10 coverage rating.
-
-Webhook schedules now support the same expression, calendar, one-time and periodic inputs as Function schedules. Set exactly one mode; both resources default timezone to UTC and enabled to false. Shared month/week/day and timestamp rules apply. The combined Function/Webhook live run passed 60 steps without executing any job or HTTP request. Use an existing Webhook pool with `CATALYST_TEST_ALLOW_CRON_CREATE=1` and `CATALYST_TEST_JOB_POOL_ID`, then run `make testacc-webhook-cron-schedules` for the Webhook matrix.
-
-### AppSail scheduling
-
-`catalyst_appsail_cron` manages disabled-by-default expression, calendar, one-time and periodic schedules targeting an existing AppSail and AppSail Job Pool in the same project. Reference `appsail_id = catalyst_appsail.example.id` for dependency ordering. The provider resolves `path` against the authenticated AppSail origin and rejects another origin during refresh/import. The default UTC timezone is encoded as GMT for the API and stays UTC in state.
-
-See the [resource reference](docs/resources/appsail_cron.md) and [example](examples/resources/catalyst_appsail_cron/resource.tf). Live India Development tests covered HTTP fields, retries, import, drift, external deletion/recreation, all seven calendar/one-time/periodic forms, stable plans and destroy. No endpoints or jobs were invoked. Circuit targets and other services still require implementation and eligible test environments.
-
-## NoSQL configuration and database schemas
-
-`catalyst_nosql_item` owns one persistent configuration/seed item in an existing ONLINE table. It supports typed JSON, exact primary keys, atomic duplicate protection, import, full item updates, attribute removal, consistent reads, drift repair and confirmed deletion. Values and encoded primary keys remain in sensitive Terraform state. Keep customer records and other changing application data outside Terraform. See [the example](examples/resources/catalyst_nosql_item/) and [reference](docs/resources/nosql_item.md).
-
-`data.catalyst_nosql_tables` lists table identities. `data.catalyst_nosql_table` exposes primary/additional keys, status, TTL settings and index identities/statuses through allowlisted `schema_json`. `data.catalyst_datastore_table` reads table/column metadata without row data, column defaults or creator profiles. These data sources passed live India Development Terraform reads/stable plans. They do not create tables, columns, indexes or database permissions.
-
-## Connect the website services
-
-The [full-stack example](examples/full_stack/) connects an existing project, Data Store table, NoSQL table and private unversioned bucket to an AppSail website ZIP. It manages a NoSQL configuration item and Stratus asset, passes database/storage identifiers to the application, and outputs its URL. Read its prerequisites and limits before applying. This does not provision a complete account or configure a public CDN, domains, database permissions, production promotion or application authentication.
-
-A generated Node24 full-stack smoke test passed in isolated India Development: frontend HTML, backend endpoint, NoSQL configuration read, private Stratus download and Data Store create/read/update/delete, followed by managed-resource and generated-row cleanup. The test uses existing schema/bucket prerequisites and does not establish full service provisioning. See the [example testing instructions](examples/full_stack/README.md).
-
-`make testacc-appsail-languages` exercises all 15 managed runtimes with the AppSail creation opt-in; generating its Java fixtures additionally requires a JDK with `javac --release 8`. `make testacc-appsail-health` additionally requires `CATALYST_TEST_ALLOW_APPSAIL_INVOKE=1` and invokes only generated constant-response applications. These optional fixture tools are not provider runtime dependencies.
-
-## Authentication, user roles and Connections
-
-`data.catalyst_auth_user` reads a specific user's role, account type and status,
-without storing their email or profile. Experimental `catalyst_auth_user_role`
-assigns an **existing application end-user** to an **existing role**. It supports
-in-place changes, import, drift detection and explicit fallback-role assignment
-on destroy. It never invites/deletes users or changes their names/status. Only
-one state/resource should own each project/user assignment. Requires
-`ZohoCatalyst.projects.users.READ` and `.UPDATE` (the data source needs `.READ`).
-
-Offline API and real Terraform lifecycle tests pass. No disposable application
-user was available, so live role-update compatibility is **not verified**. This
-does not establish complete Authentication service coverage. Login setup, custom
-role creation/defaults, table permissions and Connections provisioning remain
-unimplemented. The current vendor Connections SDK documents credential retrieval
-inside Catalyst Functions/AppSail; it does not establish a headless provisioning
-contract. See the [integration and API-boundary guide](docs/guides/authentication_connections.md),
-[role resource](docs/resources/auth_user_role.md) and
-[user access data source](docs/data-sources/auth_user.md).
-
-To run live assignment checks later, supply ordinary provider credentials with
-the scopes above, `TF_ACC=1`, `CATALYST_ENVIRONMENT=Development`, and:
-
-```sh
-export CATALYST_TEST_ALLOW_AUTH_USER_ROLE_UPDATE=1
-export CATALYST_TEST_PROJECT_ID="isolated-development-project-id"
-export CATALYST_TEST_AUTH_USER_ID="existing-disposable-app-user-id"
-export CATALYST_TEST_AUTH_ROLE_ID="existing-test-role-id"
-export CATALYST_TEST_AUTH_FALLBACK_ROLE_ID="initial-and-destroy-fallback-role-id"
-make testacc-auth-user-role
-```
-
-The test and fallback roles must differ. The user must initially belong to the
-fallback role. The test changes that user's role, imports, updates, checks a stable
-plan and verifies the fallback after destroy. It does not invite a user or send
-password-reset emails. If the process is terminated, inspect the supplied fixture
-user and restore its fallback role manually before reusing it.
-
-## Expanded Data Store, Stratus and Gateway management
-
-- `catalyst_datastore_row` owns configuration/seed columns in a generated or
-  imported row of an existing table. It supports updates, explicit null clearing
-  of removed fields, import, drift repair and confirmed deletion. Customer
-  transactions belong in the application, not Terraform. Values remain in
-  sensitive Terraform state; server-generated profiles are excluded.
-- `catalyst_stratus_object.multipart_part_size_mb` opts into multipart transfer
-  with 5–20 MiB parts. Default 0 retains single uploads. The source limit remains
-  100 MiB. Create/import/update/stable-plan/destroy passed live with a two-part
-  6 MiB object. Abort/resume is not implemented; failed sessions report their ID.
-- Gateway rules now accept `target = "advancedio"` and `target = "client"` in
-  addition to the default `basicio`. Function routes support combinations of
-  `OAuth`, `APIKey` and `CatalystUserManagement`. Advanced I/O and authentication
-  combinations passed live Terraform lifecycle checks. Web client routes require
-  GET, `authentication = []`, no `function_id`, and an existing hosted client;
-  they have documented/offline verification only. Throttling remains unsupported.
-
-Live tests used generated fixtures in isolated India Development, confirmed
-deletion, and restored the disabled Gateway and original Function inventory.
-No route or Function was invoked. The AppSail container audit accepted an OCI
-upload/callback, but still lacked usable configuration/artifact readback after
-waiting; its generated service was removed. This is not a complete container
-resource or proof that the image ran.
-
-The [six-area implementation matrix](docs/guides/service_expansion.md) records
-what was added and the remaining AppSail, bucket, schema, authentication and
-Gateway API/fixture requirements. Full service coverage is not established.
-
-For row acceptance tests, configure the normal provider credentials with
-`ZohoCatalyst.tables.READ`, `ZohoCatalyst.tables.columns.READ` and
-`ZohoCatalyst.tables.rows.CREATE/READ/UPDATE/DELETE` (request each scope
-individually). Set `CATALYST_ENVIRONMENT=Development`, an isolated
-`CATALYST_TEST_PROJECT_ID`, `CATALYST_TEST_DATASTORE_TABLE_ID` pointing to the
-dedicated `TerraformProviderDataStoreTests` fixture table with a nullable
-`message` text column, and `CATALYST_TEST_ALLOW_DATASTORE_ROW_CREATE=1`; run
-`make testacc-datastore-row`.
-
-For multipart tests, use the existing unversioned test bucket, ordinary Stratus
-object scopes, `CATALYST_TEST_BUCKET`, and
-`CATALYST_TEST_ALLOW_STRATUS_OBJECT_CREATE=1`; run
-`make testacc-stratus-multipart`. `make testacc-gateway` now exercises the expanded
-Function targets/authentication modes with the existing Gateway write opt-in.
+[MPL-2.0](LICENSE).

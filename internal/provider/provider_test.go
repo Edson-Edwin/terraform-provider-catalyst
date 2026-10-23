@@ -17,7 +17,7 @@ import (
 
 func clearEnvironment(t *testing.T) {
 	t.Helper()
-	for _, name := range []string{"DATA_CENTER", "ENVIRONMENT", "ORGANIZATION_ID", "ACCESS_TOKEN", "CLIENT_ID", "CLIENT_SECRET", "REFRESH_TOKEN", "REDIRECT_URI"} {
+	for _, name := range []string{"DATA_CENTER", "ENVIRONMENT", "ORGANIZATION_ID", "ACCESS_TOKEN", "CLIENT_ID", "CLIENT_SECRET", "REFRESH_TOKEN", "REDIRECT_URI", "ALLOWED_ORGANIZATION_IDS", "FORBIDDEN_ORGANIZATION_IDS", "VALIDATION_PROJECT_ID", "ALLOWED_DATA_CENTERS", "ALLOWED_ENVIRONMENTS"} {
 		t.Setenv("CATALYST_"+name, "")
 	}
 }
@@ -179,8 +179,12 @@ func TestUnknownConfigurationDoesNotUseEnvironment(t *testing.T) {
 		t.Fatal(err)
 	}
 	fields := map[string]tftypes.Value{}
+	objectType, ok := schemas.Provider.ValueType().(tftypes.Object)
+	if !ok {
+		t.Fatal("provider schema must be an object")
+	}
 	for _, attr := range schemas.Provider.Block.Attributes {
-		fields[attr.Name] = tftypes.NewValue(tftypes.String, nil)
+		fields[attr.Name] = tftypes.NewValue(objectType.AttributeTypes[attr.Name], nil)
 	}
 	fields["data_center"] = tftypes.NewValue(tftypes.String, tftypes.UnknownValue)
 	typ := schemas.Provider.ValueType()

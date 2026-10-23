@@ -10,6 +10,8 @@ dev: build
 	sh scripts/setup-dev.sh
 
 verify: dev
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/provider_guardrails validate
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/all_services validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_datastore_row validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/gateway_advanced validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/resources/catalyst_auth_user_role validate
@@ -65,6 +67,39 @@ testacc:
 
 testacc-discovery:
 	TF_ACC=1 go test -race -count=1 -v -timeout=5m -run '^TestAccDiscoveryDataSources$$' ./internal/provider
+
+# Read-only regional smoke tests; credentials are supplied independently per DC.
+testacc-regional-auth:
+	TF_ACC=1 go test -race -count=1 -v -timeout=5m -run '^TestAccRegionalAuthentication$$' ./internal/catalyst
+
+# A complete gate cannot silently pass with a subset of regions or auth modes.
+testacc-regional-auth-all:
+	CATALYST_TEST_REGIONS=all $(MAKE) testacc-regional-auth
+
+.PHONY: testacc-regional-auth testacc-regional-auth-all
+
+# Public TLS handshakes only: no credentials, HTTP API calls or cloud mutations.
+testacc-regional-tls:
+	TF_ACC=1 CATALYST_TEST_REGIONAL_TLS=1 go test -race -count=1 -v -timeout=1m -run '^TestAccRegionalTLS$$' ./internal/catalyst
+
+.PHONY: testacc-regional-tls
+
+# Read metadata and signed content from existing objects; no object writes.
+testacc-regional-stratus:
+	TF_ACC=1 go test -race -count=1 -v -timeout=20m -run '^TestAccRegionalStratusRead$$' ./internal/catalyst
+
+# Requires global and per-fixture write opt-ins; creates only disposable keys.
+testacc-regional-stratus-lifecycle:
+	TF_ACC=1 go test -race -count=1 -v -timeout=30m -run '^TestAccRegionalStratusLifecycle$$' ./internal/catalyst
+
+# Complete read gate: all DCs, both environments, both authentication modes.
+testacc-regional-all:
+	CATALYST_TEST_REGIONS=all CATALYST_TEST_ENVIRONMENTS=all TF_ACC=1 go test -race -count=1 -v -timeout=30m -run '^TestAccRegional(Authentication|StratusRead)$$' ./internal/catalyst
+
+testacc-regional-stratus-lifecycle-all:
+	CATALYST_TEST_REGIONS=all CATALYST_TEST_ENVIRONMENTS=all $(MAKE) testacc-regional-stratus-lifecycle
+
+.PHONY: testacc-regional-stratus testacc-regional-stratus-lifecycle testacc-regional-all testacc-regional-stratus-lifecycle-all
 
 testacc-cron:
 	TF_ACC=1 go test -race -count=1 -v -timeout=5m -run '^TestAccWebhookCronResource$$' ./internal/provider

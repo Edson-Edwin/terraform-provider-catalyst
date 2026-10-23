@@ -1,14 +1,14 @@
 ---
 page_title: "Service expansion: implemented features and remaining contracts"
-subcategory: ""
+subcategory: "Getting Started"
 description: "Current AppSail, Stratus, database, authentication and scheduling/Gateway implementation status and verification evidence."
 ---
 
 # Service expansion: implemented features and remaining contracts
 
-This milestone adds verified subsets of the requested services. It does not
-establish complete service coverage or a 10/10 rating. Counts in the draft
-capability inventory describe areas, not fully managed services.
+This guide describes the supported management subsets and remaining prerequisites.
+Counts in the draft capability inventory describe areas, not fully managed
+services. Use the resource references for configurable arguments and import IDs.
 
 ## Implemented and verified
 
@@ -106,6 +106,7 @@ Sources for the remaining platform/contract boundaries:
 - [Gateway targets, authentication and throttling](https://docs.catalyst.zoho.com/en/cloud-scale/help/api-gateway/key-concepts/)
 - [Gateway JSON contract](https://docs.catalyst.zoho.com/en/cli/v1/working-with-api-gateway/api-gateway-json-file/)
 
-The opt-in acceptance commands and prerequisites are in the repository README.
+The opt-in acceptance commands and prerequisites are in the repository's
+`CONTRIBUTING.md` Live tests section.
 The failed container contract probe is diagnostic evidence for a remaining gap,
 not a passing container resource test. Local offline checks skip live probes.

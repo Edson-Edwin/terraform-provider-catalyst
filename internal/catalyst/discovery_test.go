@@ -19,7 +19,7 @@ func TestDiscoveryLists(t *testing.T) {
 				first = `{"id":9007199254740993123,"name":"Large","type":"Webhook"}`
 				second = `{"id":"123","name":"Small","type":"Function"}`
 			}
-			c := testClient(t, Config{AccessToken: "secret", OrganizationID: "789", Environment: "Production"}, func(w http.ResponseWriter, r *http.Request) {
+			c := testClient(t, Config{AccessToken: "secret", OrganizationID: "789", Environment: "Production", DataCenter: "us"}, func(w http.ResponseWriter, r *http.Request) {
 				if r.Method != "GET" || r.URL.Path != route || r.URL.RawQuery != "" {
 					t.Errorf("unexpected route: %s", r.URL)
 				}

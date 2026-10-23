@@ -16,7 +16,7 @@ import (
 
 func TestFileUploadAndDownload(t *testing.T) {
 	content := []byte{0, 1, 2, 255, 13, 10}
-	c := testClient(t, Config{AccessToken: "secret", OrganizationID: "789", Environment: "Production"}, func(w http.ResponseWriter, r *http.Request) {
+	c := testClient(t, Config{AccessToken: "secret", OrganizationID: "789", Environment: "Production", DataCenter: "us"}, func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Zoho-oauthtoken secret" || r.Header.Get("Environment") != "Production" || r.Header.Get("CATALYST-ORG") != "789" {
 			t.Error("missing auth/routing")
 		}

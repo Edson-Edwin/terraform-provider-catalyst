@@ -12,6 +12,7 @@ import (
 )
 
 const maxReadRetries = 3
+const maxOAuthRetries = 3
 const maxRetryAfter = 30 * time.Second
 
 func retryableReadStatus(status int) bool {
@@ -29,25 +30,35 @@ func retryableReadStatus(status int) bool {
 func readRetryDelay(attempt int, retryAfter string, now time.Time) (time.Duration, bool) {
 	base := 500 * time.Millisecond * time.Duration(1<<attempt)
 	delay := base/2 + time.Duration(rand.Int64N(int64(base/2)))
-	value := strings.TrimSpace(retryAfter)
-	var serverDelay time.Duration
-	if value != "" {
-		if seconds, err := strconv.ParseUint(value, 10, 64); err == nil {
-			if seconds > uint64(maxRetryAfter/time.Second) {
-				return 0, false
-			}
-			serverDelay = time.Duration(seconds) * time.Second
-		} else if at, err := http.ParseTime(value); err == nil {
-			serverDelay = at.Sub(now)
-		} else if strings.Trim(value, "0123456789") == "" {
-			// A positive integer too large for uint64 must not fall back to an early retry.
-			return 0, false
-		}
-	}
+	serverDelay := retryAfterDelay(retryAfter, now)
 	if serverDelay > maxRetryAfter {
 		return 0, false
 	}
 	return max(delay, serverDelay), true
+}
+
+// retryAfterDelay preserves long server cooldowns independently of the maximum
+// time spent waiting inside one request. Oversized integers fail closed rather
+// than overflowing into an immediate retry; invalid values use normal backoff.
+func retryAfterDelay(value string, now time.Time) time.Duration {
+	const longestDelay = time.Duration(1<<63 - 1)
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return 0
+	}
+	if seconds, err := strconv.ParseUint(value, 10, 64); err == nil {
+		if seconds > uint64(longestDelay/time.Second) {
+			return longestDelay
+		}
+		return time.Duration(seconds) * time.Second
+	}
+	if at, err := http.ParseTime(value); err == nil {
+		return max(0, at.Sub(now))
+	}
+	if strings.Trim(value, "0123456789") == "" {
+		return longestDelay
+	}
+	return 0
 }
 
 func waitContext(ctx context.Context, delay time.Duration) error {

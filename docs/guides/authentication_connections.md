@@ -1,6 +1,6 @@
 ---
 page_title: "Authentication, roles, permissions and Connections"
-subcategory: ""
+subcategory: "Authentication"
 description: "Supported user-role assignment, integration prerequisites and remaining API requirements."
 ---
 
@@ -9,7 +9,7 @@ description: "Supported user-role assignment, integration prerequisites and rema
 The provider reads a specific application's user access metadata and has an
 experimental resource for assigning an existing end-user to an existing role.
 It does not configure authentication methods, create custom roles, edit table
-permissions or provision Connections. These service areas are not 10/10.
+permissions or provision Connections. Those configurations remain prerequisites.
 
 ## Available Terraform features
 
@@ -138,4 +138,5 @@ Sources:
 No disposable application user was available during this milestone. Offline tests
 do not prove live user-role assignment compatibility. The opt-in
 `make testacc-auth-user-role` target is ready for later verification; see the
-repository README for fixture IDs and required flags. No hosted CI was queried.
+repository's `CONTRIBUTING.md` Live tests section for fixture IDs and required
+flags. No hosted CI was queried.

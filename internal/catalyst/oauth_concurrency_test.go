@@ -163,7 +163,7 @@ func TestRefreshFailureSharedAndRecoverable(t *testing.T) {
 	c, err := New(refreshConfig(), &http.Client{Transport: retryTransport(func(r *http.Request) (*http.Response, error) {
 		if calls.Add(1) == 1 {
 			<-release
-			return &http.Response{StatusCode: 503, Header: make(http.Header), Body: io.NopCloser(strings.NewReader("secret-body"))}, nil
+			return &http.Response{StatusCode: 400, Header: make(http.Header), Body: io.NopCloser(strings.NewReader("secret-body"))}, nil
 		}
 		return tokenResponse("recovered"), nil
 	})})

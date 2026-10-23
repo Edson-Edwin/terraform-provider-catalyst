@@ -1,0 +1,86 @@
+# Copy to terraform.tfvars, replace ALL placeholders and remove any sections
+# you do not want to deploy. Omitted optional sections perform no writes.
+# Prerequisites must belong to the same existing India Development project.
+project_id = "YOUR_EXISTING_PROJECT_ID"
+
+appsail = {
+  name            = "terraformexamplewebsite"
+  source          = "/absolute/path/to/website.zip"
+  stack           = "node24"
+  startup_command = "node index.js"
+  catalyst_auth   = true
+}
+
+# Each ZIP's catalyst-config.json and package.json must match its map key,
+# selected stack/type and entry point. Include preinstalled dependencies.
+functions = {
+  terraform_example_api = {
+    source = "/absolute/path/to/terraform_example_api.zip"
+    type   = "basicio"
+  }
+  terraform_example_job = {
+    source = "/absolute/path/to/terraform_example_job.zip"
+    type   = "job"
+  }
+  # Other supported types: advancedio, event and cron. Their triggers are not
+  # created here. A Job Scheduling target must use job, not legacy cron.
+}
+
+application_environment = { APP_MODE = "example" }
+
+datastore = {
+  table_id = "YOUR_EXISTING_DATASTORE_TABLE_ID"
+  message  = "Website configuration managed by Terraform"
+}
+
+nosql_table_id = "YOUR_EXISTING_NOSQL_TABLE_ID"
+
+stratus = {
+  bucket_name  = "YOUR_EXISTING_PRIVATE_UNVERSIONED_BUCKET"
+  source       = "/absolute/path/to/site.json"
+  key          = "terraform-example/site.json"
+  content_type = "application/json"
+  # Optional: 5..20 MiB parts; overall file limit remains 100 MiB.
+  # multipart_part_size_mb = 5
+}
+
+# Exclusive ownership: applying this replaces the entire custom ruleset.
+gateway = { function_name = "terraform_example_api" }
+
+# Disabled schedules. Replace end_time with a fixed future Unix-seconds
+# timestamp if needed; 1893456000 is 2030-01-01 00:00:00 UTC.
+webhook_schedule = {
+  job_pool_id = "YOUR_EXISTING_WEBHOOK_POOL_ID"
+  url         = "https://YOUR_OWN_HOST/health"
+  end_time    = 1893456000
+}
+function_schedule = {
+  job_pool_id   = "YOUR_EXISTING_FUNCTION_POOL_ID"
+  function_name = "terraform_example_job"
+  end_time      = 1893456000
+}
+appsail_schedule = {
+  job_pool_id = "YOUR_EXISTING_APPSAIL_POOL_ID"
+  path        = "/health"
+  end_time    = 1893456000
+}
+
+# OPTIONAL user discovery; omit if no disposable application user exists.
+# authentication = {
+#   user_id = "YOUR_DISPOSABLE_APPLICATION_USER_ID"
+#   # EXPERIMENTAL role assignment: offline lifecycle only; no live proof.
+#   # assignment = {
+#   #   role_id         = "YOUR_EXISTING_TEST_ROLE_ID"
+#   #   destroy_role_id = "YOUR_EXISTING_LEAST_PRIVILEGE_FALLBACK_ROLE_ID"
+#   # }
+# }
+
+# DEPRECATED: opt in only for a legacy project with File Store access.
+# legacy_filestore = {
+#   folder_id = "YOUR_EXISTING_FILESTORE_FOLDER_ID"
+#   source    = "/absolute/path/to/settings.json"
+# }
+
+# EXPERIMENTAL: additional empty project; creation is account-dependent and
+# rejected by the current test account. The deletion guard stays enabled.
+# experimental_project = { name = "TerraformExtraTestProject" }
