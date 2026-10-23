@@ -1,7 +1,7 @@
 {
   "updated": "2026-10-23",
   "objective_complete": false,
-  "current_phase": "Function runtime/type expansion and Stratus object investigation",
+  "current_phase": "Stratus object lifecycle complete; remaining service management inventory",
   "completed": [
     "draft inventory of 43 capability areas",
     "registered type/docs/examples consistency test",
@@ -31,7 +31,11 @@
     "14 unsigned platform packages built locally; Go verifier and native Terraform mirror installation passed",
     "Node22/24 Basic I/O and Advanced I/O Terraform lifecycle combinations passed live in India Development",
     "Advanced I/O server API routing and applogic type normalization implemented",
-    "Function deployment stable-read and transient deletion-404 regressions passed; interrupted fixture recovered"
+    "Function deployment stable-read and transient deletion-404 regressions passed; interrupted fixture recovered",
+    "Authenticated unversioned Stratus test bucket prepared in isolated India Development; public access disabled",
+    "Go Stratus binary transfer probe passed; overwrite=false atomically rejected duplicate creation",
+    "catalyst_stratus_object implemented with strict regional transfers, in-memory signatures, exact-key ownership and SHA-256 drift detection",
+    "Live Terraform Stratus create/import/content and type update/same-size drift repair/external deletion and recreation/stable plan/destroy passed; exact key cleanup confirmed"
   ],
   "pending": [
     "complete per-field management API inventory",
@@ -41,7 +45,8 @@
     "establish safe ownership for name-keyed upsert",
     "Remaining Function languages/runtime versions/types beyond Node22/24 Basic I/O and Advanced I/O",
     "Other Gateway targets, authentication modes, system routes and configured throttling",
-    "Remaining service lifecycle phases; draft service/field inventory is still incomplete"
+    "Remaining service lifecycle phases; draft service/field inventory is still incomplete",
+    "Stratus bucket provisioning, policies, version history, multipart objects, TTL and custom metadata management"
   ],
   "live_prerequisite": "Replacement isolated Development project verified in console and API.",
   "hosted_ci": "deferred by maintainer; billing outside scope",

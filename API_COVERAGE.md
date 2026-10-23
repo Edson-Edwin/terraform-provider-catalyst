@@ -19,9 +19,10 @@ This community provider is under development. Public availability and broad serv
 | `data.catalyst_filestore_folders` | List existing File Store folder IDs and names | Offline API/protocol/real Terraform tests; live India populated listing and stable plan |
 | `data.catalyst_cache_segments` | List existing Cache segments | Official CLI read endpoint; offline tests and live India default segment with stable plan |
 | `data.catalyst_stratus_buckets` | List existing Stratus bucket names and endpoints | Offline tests, live India empty listing and stable plan; populated live buckets untested |
+| `catalyst_stratus_object` | Manage unversioned object bytes, content type, import and SHA-256 drift | Offline safety/protocol tests; live India Development full Terraform lifecycle with exact-key cleanup |
 | `catalyst_filestore_file` | Upload, read, import and delete files; replace on changes | Offline binary upload, content drift, external deletion and recovery tests; live India tiny binary upload/import/rename replacement/stable plan/destroy with baseline cleanup |
 
-All data sources are read-only. Webhook crons, File Store files, Functions, AppSail services and API Gateway are the managed resource areas. Live tests are opt-in; credentials and account IDs are never included in repository fixtures.
+All data sources are read-only. Webhook crons, File Store files, Functions, AppSail services API Gateway and unversioned Stratus objects are the managed resource areas. Live tests are opt-in; credentials and account IDs are never included in repository fixtures.
 
 ## API findings
 
@@ -72,7 +73,7 @@ This is a capability inventory, not a claim of 100% coverage. A read-only data s
 | Data Store | Table discovery | Table/column provisioning API not established; rows are data operations, not table provisioning |
 | File Store | Folder discovery; file upload/read/import/delete and replacement | Folder provisioning API not established; metadata updates have no documented endpoint; legacy service |
 | Cache | Segment discovery | Segment creation is explicitly console-only; cache entries expire within 48 hours and are not durable infrastructure |
-| Stratus | Bucket discovery | Bucket provisioning API not established; object lifecycle and bucket-policy/versioning management remain unimplemented |
+| Stratus | Bucket discovery; unversioned object upload/read/import/update/drift repair/delete | Bucket provisioning API not established; bucket-policy/versioning, multipart, TTL and custom metadata remain unimplemented |
 | NoSQL | None | Public reference documents item operations; table/index provisioning must be verified separately |
 | Functions / AppSail / Circuits | Node.js 22/24 Basic I/O and Advanced I/O Function management; Node.js 22 AppSail management; Function discovery | Other Function runtimes/types and Circuit deployment/configuration remain unimplemented; AppSail currently supports Node.js 22 only |
 | API Gateway / Authentication / Connections | Gateway enabled setting and complete Basic I/O rulesets; OAuth/default and explicit no-auth | Other Gateway targets/authentication/throttling, Authentication and Connections management remain unimplemented |
@@ -152,3 +153,13 @@ The Go-only local checks, race tests, static analysis, generated references and 
 Advanced I/O uses the official CLI’s distinct `/server/upsert` and `/server/{id}` deletion endpoints, with metadata/archive reads through the Function API. Legacy `applogic` metadata is normalized to `advancedio`. A regression checks routing and normalization. [Supported stacks](https://docs.catalyst.zoho.com/en/serverless/help/functions/stack/) and the installed official CLI were reviewed before extending the schema.
 
 The first matrix exposed stale configuration/artifact observations and transient deletion 404s. Verification now requires three consecutive matching observations within two minutes. A definitive deletion 404 is reconciled against verified project access and complete listings; a still-listed immutable ID may be retried idempotently. Ambiguous server/transport failures are not replayed. Errors retain managed state. A separate issue in the new acceptance checks used a cancelled testing context during cleanup; cleanup now uses its own bounded context and checks for stable baseline restoration. One leftover generated fixture from the failed run was identified and its deletion confirmed before rerunning. Focused regressions cover these cases.
+
+## Managed Stratus object milestone (2026-10-23)
+
+The official `zcatalyst-sdk-node` 3.4.0 Stratus implementation establishes the bucket metadata, object metadata/listing, temporary bucket-signature and exact-key deletion contracts. Signed PUT/GET transfers use the expected regional `zohostratus` origin, with `compress:false` and an atomic `overwrite:false` create guard. OAuth/organization headers go only to the Catalyst API; signed URLs and response bodies never enter diagnostics or Terraform state. The SDK is reference material, not a provider dependency.
+
+A private authenticated, unversioned test bucket was created in the isolated India Development project. A Go binary probe verified upload/download, duplicate-key HTTP 409, overwrite and deletion. The real Terraform resource then passed create, import, content/type updates, same-size drift repair, external deletion/recreation, stable plan and destroy. Exact-key absence was confirmed; the empty private bucket is retained as a reusable test prerequisite. No application was invoked.
+
+`catalyst_stratus_object` requires existing bucket ownership and supports canonical relative UTF-8 keys, including escaped spaces and URL delimiters. It downloads bytes during refresh to compute SHA-256 independently of ETag. Metadata/listing permission failures and malformed pagination retain state with errors. Three absence observations plus verified bucket access distinguish deletion from inconsistent replicas; bounded waits reconcile propagation. Confirmed upload identities are persisted before verification. Ambiguous writes are never replayed, and creation never adopts an existing key.
+
+The supported scope is existing **unversioned** buckets, no version history on the exclusively owned key, canonical content type and files up to the provider's 100 MB limit. Versioned buckets/keys and unrepresented metadata are rejected. Bucket provisioning, policies, versioning, multipart uploads, TTL and custom metadata are still pending. Other data centers and Production have not been live-tested. This adds one partially managed capability area; it does not complete the 43-area draft inventory.

@@ -2,7 +2,7 @@
 
 A community Terraform provider intended for public use, built with the Terraform Plugin Framework. Each user supplies their own Zoho credentials and selects their account's data center. No personal account credentials or organization settings are built into the provider.
 
-**Current status:** Six managed resources (`catalyst_webhook_cron`, `catalyst_filestore_file`, `catalyst_function`, `catalyst_appsail`, `catalyst_api_gateway`, `catalyst_api_gateway_ruleset`) and eight read-only data sources are implemented. Discovery covers projects, job pools, Data Store tables, File Store folders, Cache segments, Stratus buckets and Functions. Registry releases are not available yet. This is a community provider, not an official Zoho provider. Discovery does not imply create/update/delete support for those services. See [API_COVERAGE.md](API_COVERAGE.md) for exact support and evidence.
+**Current status:** Seven managed resources (`catalyst_webhook_cron`, `catalyst_filestore_file`, `catalyst_function`, `catalyst_appsail`, `catalyst_api_gateway`, `catalyst_api_gateway_ruleset`, `catalyst_stratus_object`) and eight read-only data sources are implemented. Discovery covers projects, job pools, Data Store tables, File Store folders, Cache segments, Stratus buckets and Functions. Registry releases are not available yet. This is a community provider, not an official Zoho provider. Discovery does not imply create/update/delete support for those services. See [API_COVERAGE.md](API_COVERAGE.md) for exact support and evidence.
 
 ## Requirements
 
@@ -294,3 +294,20 @@ The live India Development Terraform test covered create, both imports, replacem
 Repository release and coverage utilities now use Go (`go run ./internal/cmd/provider-tools ...`). Python is not required for local checks or provider installation. The optional `release-readiness` subcommand performs hosted reads only when explicitly invoked; do not run it while hosted CI is deferred.
 
 The [Advanced I/O example](examples/advancedio/) selects Node.js 24. Run `make testacc-function-variants` with the same Function acceptance opt-in to exercise all four supported runtime/type combinations. Deployment verification requires consecutive matching configuration/artifact reads; it does not execute the Function or establish runtime health.
+
+## Manage a Stratus object
+
+`catalyst_stratus_object` uploads a local file to an existing unversioned bucket, updates its bytes and content type in place, imports nested keys and detects content drift using SHA-256. Creation refuses an existing key and uses Stratus overwrite protection. Deletion verifies absence through bucket access and complete object listings. Temporary transfer signatures remain in memory; OAuth credentials are never forwarded to the Stratus data host.
+
+See [resource documentation](docs/resources/stratus_object.md) and [example](examples/resources/catalyst_stratus_object/resource.tf). The current provider limit is 100 MB per file. Bucket creation, version history, multipart uploads, TTL and custom metadata are outside this resource's supported scope. Own each key exclusively; do not use keys with version history.
+
+The real Terraform lifecycle passed in India Development, including import, content/type updates, same-size external drift repair, external deletion/recreation, stable plan and confirmed destroy. To repeat it with your own isolated existing bucket:
+
+```sh
+export CATALYST_TEST_PROJECT_ID="your-isolated-project-id"
+export CATALYST_TEST_BUCKET="your-existing-unversioned-test-bucket"
+export CATALYST_TEST_ALLOW_STRATUS_OBJECT_CREATE=1
+make testacc-stratus-object
+```
+
+The acceptance test only supports India Development and cleans up its unique key. It leaves the bucket in place. Live tests do not run with `make test`.

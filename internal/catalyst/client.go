@@ -47,6 +47,8 @@ func ValidID(id string) bool { return numericID.MatchString(id) }
 type Client struct {
 	deploymentWrites    chan struct{}
 	gatewayWrites       chan struct{}
+	stratusSigns        chan struct{}
+	stratusSignatures   map[string]stratusSignature
 	config              Config
 	apiURL, accountsURL string
 	http                *http.Client
@@ -102,7 +104,7 @@ func New(config Config, httpClient *http.Client) (*Client, error) {
 	}
 	// Never forward OAuth form bodies or authorization headers through redirects.
 	hc.CheckRedirect = func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }
-	return &Client{deploymentWrites: make(chan struct{}, 1), gatewayWrites: make(chan struct{}, 1), config: config, apiURL: hosts.api, accountsURL: hosts.accounts, http: &hc, wait: waitContext}, nil
+	return &Client{deploymentWrites: make(chan struct{}, 1), gatewayWrites: make(chan struct{}, 1), stratusSigns: make(chan struct{}, 1), config: config, apiURL: hosts.api, accountsURL: hosts.accounts, http: &hc, wait: waitContext}, nil
 }
 
 // tokenRefresh is shared by callers but has a cancellation lifetime independent of any one caller.

@@ -106,7 +106,7 @@ func (p *CatalystProvider) DataSources(_ context.Context) []func() datasource.Da
 }
 
 func (p *CatalystProvider) Resources(_ context.Context) []func() resource.Resource {
-	return []func() resource.Resource{NewWebhookCronResource, NewFilestoreFileResource, NewFunctionResource, NewAppSailResource, NewGatewayResource, NewGatewayRulesetResource}
+	return []func() resource.Resource{NewWebhookCronResource, NewFilestoreFileResource, NewFunctionResource, NewAppSailResource, NewGatewayResource, NewGatewayRulesetResource, NewStratusObjectResource}
 }
 
 // New constructs a provider factory for the plugin server and tests.

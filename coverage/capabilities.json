@@ -208,11 +208,13 @@
       "service": "stratus",
       "object": "object",
       "phase": 4,
-      "status": "unimplemented",
-      "api_evidence": "documented",
-      "resources": [],
+      "status": "managed",
+      "api_evidence": "live_india",
+      "resources": [
+        "catalyst_stratus_object"
+      ],
       "data_sources": [],
-      "note": "Management API and lifecycle verification required."
+      "note": "Unversioned existing bucket object management with binary upload, in-place content/type updates, SHA-256 drift detection, import and confirmed exact-key deletion. 100 MB provider limit; bucket provisioning, version history, TTL, custom metadata and multipart uploads remain unsupported. Live India Development Terraform create/import/update/same-size drift repair/external deletion and recreation/stable plan/destroy passed; exact test-key cleanup confirmed."
     },
     {
       "id": "stratus.versioning",
