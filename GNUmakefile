@@ -10,6 +10,7 @@ dev: build
 	sh scripts/setup-dev.sh
 
 verify: dev
+	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/webhook_calendar validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/function_periodic validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/function_calendar validate
 	TF_CLI_CONFIG_FILE="$(CURDIR)/.terraformrc.local" terraform -chdir=examples/function_onetime validate
@@ -136,3 +137,8 @@ testacc-function-cron-schedules:
 	TF_ACC=1 go test -race -count=1 -timeout=15m -run '^TestAccFunctionCronSchedules$$' ./internal/provider
 
 .PHONY: testacc-function-cron-schedules
+
+testacc-webhook-cron-schedules:
+	TF_ACC=1 go test -race -count=1 -timeout=15m -run '^TestAccWebhookCronSchedules$$' ./internal/provider
+
+.PHONY: testacc-webhook-cron-schedules

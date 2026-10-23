@@ -43,14 +43,14 @@ resource "catalyst_function_cron" "example" {
 - `calendar_schedule` (Attributes) Daily, monthly or yearly calendar schedule, using the resource timezone. Choose dates or weeks/weekdays for monthly/yearly schedules. Mutually exclusive with expression, one_time_at and interval_seconds. (see [below for nested schema](#nestedatt--calendar_schedule))
 - `description` (String) Cron description. Defaults to an empty string.
 - `enabled` (Boolean) Whether the cron submits jobs. Defaults to false; set true deliberately to activate the schedule.
-- `end_time` (Number) Required positive end timestamp in Unix seconds for recurring schedules. Omit for one-time schedules; the API's end sentinel is then computed.
+- `end_time` (Number) Required positive end timestamp in Unix seconds for recurring schedules. Omit for one-time schedules; the API end sentinel is computed.
 - `expression` (String) Five-field cron expression. Set exactly one of expression, calendar_schedule, one_time_at or interval_seconds.
-- `interval_seconds` (Number) Positive relative repetition interval in seconds. Use timezone = UTC; relative intervals have no wall-clock timezone. Recurring end_time is required. Select exactly one schedule mode.
-- `one_time_at` (Number) One-time execution Unix timestamp in seconds. Omit end_time for this mode. Disabled by default; use a future timestamp when enabling. Set exactly one schedule mode.
+- `interval_seconds` (Number) Positive relative repetition interval in seconds. Recurring end_time is required. Relative intervals use the default UTC and omit the wall-clock timezone from API requests. Select exactly one schedule mode.
+- `one_time_at` (Number) One-time execution Unix timestamp in seconds. Omit end_time for this mode; use a future timestamp when enabling. Select exactly one schedule mode.
 - `params` (Map of String, Sensitive) Complete string parameter map passed to the Job Function. Defaults to an empty map.
 - `retry_count` (Number) Number of retries for failed jobs. Defaults to zero; Catalyst validates its service limits.
 - `retry_interval` (Number) Retry interval in seconds. Use 60 to 86400 seconds with retry_count greater than zero; otherwise leave zero.
-- `timezone` (String) IANA wall-clock timezone for expression/calendar/one-time schedules; defaults to UTC. Periodic intervals use the default UTC because they measure elapsed time.
+- `timezone` (String) IANA wall-clock timezone for expression/calendar/one-time schedules; defaults to UTC. Periodic intervals use UTC because they measure elapsed time.
 
 ### Read-Only
 

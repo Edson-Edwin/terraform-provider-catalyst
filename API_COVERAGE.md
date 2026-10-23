@@ -10,7 +10,7 @@ This community provider is under development. Public availability and broad serv
 | `data.catalyst_projects` | List projects visible in the selected organization | Offline protocol/client tests; live India listing and stable Terraform plan |
 | `data.catalyst_job_pools` | List a project's existing scheduling pools | Offline populated/empty/error cases; live India empty and populated listings with stable plans |
 | `catalyst_function_cron` | Manage CronExpression, calendar, one-time and periodic schedules targeting existing Job Functions/Function pools | Offline lifecycle/ownership/recovery tests; live disabled India Development create/import/update/clear/stable plan/destroy |
-| `catalyst_webhook_cron` | Manage pre-defined CronExpression schedules with Webhook targets | Offline lifecycle/import/drift/error tests; live India create, import, update, clear, stable plan and verified destroy |
+| `catalyst_webhook_cron` | Manage expression, calendar, one-time and periodic schedules with Webhook targets | Offline lifecycle/import/drift/error tests; live India create, import, update, clear, stable plan and verified destroy |
 | `catalyst_api_gateway` | Enable/disable project Gateway routing | Offline Terraform lifecycle and recovery tests; live India Development enable/import/destroy |
 | `catalyst_api_gateway_ruleset` | Complete Basic I/O ruleset replacement, OAuth/no-auth, import and drift | Offline lifecycle/policy preservation; live India Development create/import/replace/clear/stable plan/destroy |
 | `catalyst_appsail` | Manage Node.js 22 ZIP deployment, memory, command, port, authentication and environment maps; import and artifact drift | Offline lifecycle, safety and recovery tests; live results recorded below |
@@ -23,7 +23,7 @@ This community provider is under development. Public availability and broad serv
 | `catalyst_stratus_object` | Manage unversioned object bytes, content type, import and SHA-256 drift | Offline safety/protocol tests; live India Development full Terraform lifecycle with exact-key cleanup |
 | `catalyst_filestore_file` | Upload, read, import and delete files; replace on changes | Offline binary upload, content drift, external deletion and recovery tests; live India tiny binary upload/import/rename replacement/stable plan/destroy with baseline cleanup |
 
-All data sources are read-only. Webhook and Function crons, File Store files, Functions, AppSail services API Gateway and unversioned Stratus objects are the managed resource areas. Live tests are opt-in; credentials and account IDs are never included in repository fixtures.
+All data sources are read-only. Webhook and Function crons, File Store files, Functions, AppSail services, API Gateway and unversioned Stratus objects are the managed resource areas. Live tests are opt-in; credentials and account IDs are never included in repository fixtures.
 
 ## API findings
 
@@ -31,7 +31,7 @@ Reviewed on 2026-10-23 against the [official Catalyst REST reference](https://do
 
 - **Projects:** the reference documents create, read, list and delete. A request to create a uniquely named temporary project returned HTTP 400 with `PROJECT_CREATION_NOT_ALLOWED` in the test account. That API request created no project. This establishes a restriction for that account/authentication context, not a universal conclusion for all accounts. The console explicitly states that project names cannot be edited. A dedicated development project was successfully created through the signed-in console for lifecycle tests. Keep project creation out of the provider until supported OAuth access and full cleanup can be demonstrated.
 - **Job pools:** the published reference documents list and get endpoints, with `ZohoCatalyst.jobpool.READ`. Create/update/delete pool endpoints were not found in the reviewed reference. Pool management is therefore not implemented. A reusable Webhook pool was successfully created through the console in the isolated development test project. No jobs were submitted.
-- **Crons:** the reference documents create, read, update and delete under `/baas/v1/project/{project_id}/job_scheduling/cron`, plus enabled/disabled status. The `catalyst_webhook_cron` resource now implements pre-defined CronExpression schedules targeting Webhook. Create, import, rename/update, clearing optional fields, stable plans and deletion were verified live. Test crons stayed disabled and were removed. The dedicated development project and empty pool remain as reusable test prerequisites. Live validation also established a 20-character job-name limit and a 60–86400 second retry interval when retries are enabled. The provider distinguishes `404 INVALID_ID` from permission errors by checking parent-project access before removing state.
+- **Crons:** the reference documents create, read, update and delete under `/baas/v1/project/{project_id}/job_scheduling/cron`, plus enabled/disabled status. The cron resources now implement pre-defined expression, calendar, one-time and periodic schedules targeting Webhooks and Job Functions. Create, import, rename/update, clearing optional fields, stable plans and deletion were verified live. Test crons stayed disabled and were removed. The dedicated development project and empty pool remain as reusable test prerequisites. Live validation also established a 20-character job-name limit and a 60–86400 second retry interval when retries are enabled. The provider distinguishes `404 INVALID_ID` from permission errors by checking parent-project access before removing state.
 - **Other services:** File Store folders, Data Store table schemas and other infrastructure require a separate management API review. A data-operation API (for example inserting rows or executing a function) does not by itself establish a supported infrastructure lifecycle.
 
 ## Next implementation gates
@@ -70,7 +70,7 @@ This is a capability inventory, not a claim of 100% coverage. A read-only data s
 | Area | Implemented | Remaining or blocked |
 | --- | --- | --- |
 | Projects | Single and list discovery | Create/delete API exists, but create was rejected in this account; no managed project resource |
-| Job Scheduling | Pool discovery; pre-defined Webhook and Job Function CronExpression lifecycles | Circuit/AppSail targets, other schedule types and legacy Cron Function triggers; pool creation API not established |
+| Job Scheduling | Pool discovery; Webhook and Job Function expression/calendar/one-time/periodic lifecycles | Circuit/AppSail targets and legacy Cron Function triggers; pool creation API not established |
 | Data Store | Table discovery | Table/column provisioning API not established; rows are data operations, not table provisioning |
 | File Store | Folder discovery; file upload/read/import/delete and replacement | Folder provisioning API not established; metadata updates have no documented endpoint; legacy service |
 | Cache | Segment discovery | Segment creation is explicitly console-only; cache entries expire within 48 hours and are not durable infrastructure |
@@ -177,7 +177,7 @@ Deploying a Cron Function is different from configuring a scheduled Job Function
 
 A reusable 128 MB Function pool was prepared in the isolated India Development project. A hyphenated job name was rejected with HTTP 400; changing only the name to use underscores succeeded. New Function cron configuration accepts 1–20 ASCII letters, digits and underscores. This documents a verified supported subset, not an exhaustive vendor naming specification. A temporary Node.js 24 Job Function and disabled cron passed real Terraform create/import/update/parameter clearing/drift repair/external deletion and recreation/stable plan/destroy. The Function fixture baseline was restored, no jobs were submitted, and the empty pool remains as a test prerequisite.
 
-Offline tests cover target changes, parameter drift repair, external deletion/recreation, import, deletion, malformed-create identity recovery, permission errors and refusing foreign target ownership. Shared Webhook scheduling regression tests passed. Calendar, periodic, one-time and legacy Cron Function triggers remain pending; managing a handler alone does not provide these schedule types.
+Offline tests cover target changes, parameter drift repair, external deletion/recreation, import, deletion, malformed-create identity recovery, permission errors and refusing foreign target ownership. Shared Webhook scheduling regression tests passed. At this milestone, additional schedule types were still pending. The calendar, one-time and periodic sections below record their later implementation; legacy Cron Function triggers remain pending.
 
 ## Calendar and one-time scheduling milestone (2026-10-23)
 
@@ -196,3 +196,11 @@ Calendar numbering was additionally verified against DOM-backed console options:
 `interval_seconds` selects a relative Periodic/every schedule in `catalyst_function_cron`. It is mutually exclusive with expression, calendar_schedule and one_time_at, requires positive end_time, and defaults timezone to UTC. The request omits the wall-clock timezone; read normalizes its absence to UTC. Hours/minutes/seconds preserve the exact requested duration and reject malformed/overflowing responses. Catalyst validates any additional service limits.
 
 Live India Development tests passed direct six-hour creation, update to 2h1m3s, import, stable plan, transition to CronExpression and destroy. The combined 30-step matrix then passed all seven calendar/one-time/periodic forms, same-ID form/time updates, all imports and final cleanup. All schedules stayed disabled and no jobs were submitted. Ten of the 44 draft capability areas are now partially managed, six are discovery-only and 28 unimplemented. Ten managed areas does not mean 10/10 service coverage; whole services, fields, target types and regional/Production evidence are still missing.
+
+## Complete schedule-form support for Webhooks (2026-10-23)
+
+`catalyst_webhook_cron` now uses the same schedule engine as `catalyst_function_cron`: CronExpression, daily calendars, monthly date/week calendars, yearly date/week calendars, one-time and Periodic/every. Both resources share typed schemas, mode/clock/date validation, January/December conversion, Unix-second timestamps, interval handling and state normalization. Target-specific fields and read ownership stay separate.
+
+A minimal empty Webhook pool was created in the isolated India Development project. The 30-step Webhook lifecycle passed, then both Function and Webhook matrices passed together after the refactor (60 steps). All schedules were disabled; no HTTP requests or jobs executed. All test crons and the temporary Job Function were destroyed; empty pools remain as prerequisites. Webhook update/delete now pre-read the target kind, and failed post-delete authorization retains state. Regressions verify a foreign Function cron cannot be mutated using stale Webhook state.
+
+This broadens the fields and targets of existing capability areas. It adds no Terraform resource types and does not imply complete Catalyst service coverage. AppSail/Circuit scheduling and other services remain pending.

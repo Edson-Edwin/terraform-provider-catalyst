@@ -118,12 +118,13 @@ func testAccFunctionCron(t *testing.T, schedules bool, only ...string) {
 		{Config: initial, PlanOnly: true},
 	}}
 	if schedules {
-		testCase.Steps = functionCronScheduleSteps(initial, rememberCron, project, only...)
+		testCase.Steps = cronScheduleTestSteps(initial, rememberCron, project, "catalyst_function_cron", only...)
 	}
 	resource.Test(t, testCase)
 }
 
-func functionCronScheduleSteps(initial string, remember resource.TestCheckFunc, project string, only ...string) []resource.TestStep {
+func cronScheduleTestSteps(initial string, remember resource.TestCheckFunc, project, resourceType string, only ...string) []resource.TestStep {
+	address := resourceType + ".test"
 	variants := []struct{ name, calendar string }{
 		{"daily", `{ repetition = "daily", hour = 1, minute = 5, second = 0 }`},
 		{"monthly_dates", `{ repetition = "monthly", hour = 2, minute = 10, second = 5, days = [1, 15] }`},
@@ -144,14 +145,14 @@ func functionCronScheduleSteps(initial string, remember resource.TestCheckFunc, 
 		case "one_time":
 			config = strings.Replace(initial, `expression = "0 0 * * *"`, "one_time_at = 1893456000", 1)
 			config = strings.Replace(config, "end_time = 1893456000", "", 1)
-			check = resource.TestCheckResourceAttr("catalyst_function_cron.test", "one_time_at", "1893456000")
+			check = resource.TestCheckResourceAttr(address, "one_time_at", "1893456000")
 		case "periodic":
 			config = strings.Replace(initial, `expression = "0 0 * * *"`, "interval_seconds = 21600", 1)
 			config = strings.Replace(config, `timezone = "Asia/Kolkata"`, "", 1)
-			check = resource.TestCheckResourceAttr("catalyst_function_cron.test", "interval_seconds", "21600")
+			check = resource.TestCheckResourceAttr(address, "interval_seconds", "21600")
 		default:
 			repetition := strings.Split(variant.name, "_")[0]
-			check = resource.TestCheckResourceAttr("catalyst_function_cron.test", "calendar_schedule.repetition", repetition)
+			check = resource.TestCheckResourceAttr(address, "calendar_schedule.repetition", repetition)
 		}
 		updated := regexp.MustCompile(`second = [0-9]+`).ReplaceAllString(config, "second = 30")
 		if variant.name == "periodic" {
@@ -160,15 +161,15 @@ func functionCronScheduleSteps(initial string, remember resource.TestCheckFunc, 
 		if variant.name == "one_time" {
 			updated = strings.Replace(config, "one_time_at = 1893456000", "one_time_at = 1893542400", 1)
 		}
-		steps = append(steps, resource.TestStep{Config: config, Check: resource.ComposeTestCheckFunc(check, remember)}, resource.TestStep{Config: updated, Check: remember}, resource.TestStep{ResourceName: "catalyst_function_cron.test", ImportState: true, ImportStateVerify: true, ImportStateIdFunc: func(state *terraform.State) (string, error) {
-			r := state.RootModule().Resources["catalyst_function_cron.test"]
+		steps = append(steps, resource.TestStep{Config: config, Check: resource.ComposeTestCheckFunc(check, remember)}, resource.TestStep{Config: updated, Check: remember}, resource.TestStep{ResourceName: address, ImportState: true, ImportStateVerify: true, ImportStateIdFunc: func(state *terraform.State) (string, error) {
+			r := state.RootModule().Resources[address]
 			if r == nil {
 				return "", errors.New("cron missing from state")
 			}
 			return project + "/" + r.Primary.ID, nil
 		}}, resource.TestStep{Config: updated, PlanOnly: true})
 	}
-	return append(steps, resource.TestStep{Config: initial, Check: resource.TestCheckResourceAttr("catalyst_function_cron.test", "expression", "0 0 * * *")}, resource.TestStep{Config: initial, PlanOnly: true})
+	return append(steps, resource.TestStep{Config: initial, Check: resource.TestCheckResourceAttr(address, "expression", "0 0 * * *")}, resource.TestStep{Config: initial, PlanOnly: true})
 }
 
 // Test diagnostics expose only fixed-format error codes, never response bodies,

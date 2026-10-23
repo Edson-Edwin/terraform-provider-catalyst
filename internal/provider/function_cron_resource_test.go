@@ -134,7 +134,7 @@ func testFunctionCronLifecycle(t *testing.T, schedules bool) {
 		{Config: initial, PlanOnly: true},
 	}}
 	if schedules {
-		testCase.Steps = functionCronScheduleSteps(initial, func(_ *terraform.State) error { return nil }, "123")
+		testCase.Steps = cronScheduleTestSteps(initial, func(_ *terraform.State) error { return nil }, "123", "catalyst_function_cron")
 	}
 	resource.UnitTest(t, testCase)
 	if schedules {

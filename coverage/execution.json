@@ -1,7 +1,7 @@
 {
   "updated": "2026-10-23",
   "objective_complete": false,
-  "current_phase": "Function scheduling forms complete; other scheduling targets and remaining service lifecycles",
+  "current_phase": "Function and Webhook scheduling forms complete; remaining targets and service lifecycles",
   "completed": [
     "draft inventory of 43 capability areas",
     "registered type/docs/examples consistency test",
@@ -47,7 +47,11 @@
     "One-time timestamps verified as Unix seconds; job_detail response normalization and computed end sentinel tested",
     "Shared resource types are deduplicated in coverage/package checks; capability counts do not inflate Terraform resource counts",
     "Periodic interval_seconds implemented with exact hours/minutes/seconds conversion, overflow-safe reads, omitted wall-clock timezone and UTC state normalization",
-    "Live direct periodic create/update/import/stable-plan/transition/destroy passed; combined 30-step seven-form scheduling matrix passed with no jobs executed"
+    "Live direct periodic create/update/import/stable-plan/transition/destroy passed; combined 30-step seven-form scheduling matrix passed with no jobs executed",
+    "Shared Go schedule schemas/validation/request/state conversion extracted for Webhook and Function resources",
+    "Empty Webhook test pool prepared with concurrency one; no jobs submitted",
+    "Both 30-step Function and Webhook live matrices passed after refactor: 60 steps, all seven forms, updates/import/stable plans/destroy",
+    "Webhook updates/deletion now verify target kind and retain state on denied deletion confirmation; foreign Function cron mutation regressions passed"
   ],
   "pending": [
     "complete per-field management API inventory",

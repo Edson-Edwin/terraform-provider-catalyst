@@ -35,7 +35,7 @@
         "catalyst_webhook_cron"
       ],
       "data_sources": [],
-      "note": "Existing lifecycle evidence covers disabled pre-defined Webhook CronExpression schedules only."
+      "note": "Webhook CronExpression, daily/monthly/yearly date/week calendars, one-time and periodic schedules. Combined 30-step live India Development lifecycle passed while disabled; no HTTP requests were delivered. Existing resource name retained for compatibility."
     },
     {
       "id": "scheduling.pool",
@@ -93,7 +93,8 @@
       "status": "managed",
       "api_evidence": "live_india",
       "resources": [
-        "catalyst_function_cron"
+        "catalyst_function_cron",
+        "catalyst_webhook_cron"
       ],
       "data_sources": [],
       "note": "Daily, monthly date/week and yearly date/week schedules targeting Job Functions. Live India Development Terraform create/in-place time and form changes/import/stable-plan/destroy passed while disabled. Week-based schedules accept exactly one weekday; other target types remain pending."
@@ -106,10 +107,11 @@
       "status": "managed",
       "api_evidence": "live_india",
       "resources": [
-        "catalyst_function_cron"
+        "catalyst_function_cron",
+        "catalyst_webhook_cron"
       ],
       "data_sources": [],
-      "note": "One-time Job Function schedules with Unix-second timestamps and computed end sentinel. Live India Development Terraform create/time updates/import/transition/stable-plan/destroy passed while disabled. Other target types remain pending; no execution was tested."
+      "note": "One-time Job Function schedules with Unix-second timestamps and computed end sentinel. Live India Development Terraform create/time updates/import/transition/stable-plan/destroy passed while disabled. Webhook targets also passed the combined live lifecycle; AppSail/Circuit targets remain pending; no execution was tested."
     },
     {
       "id": "scheduling.periodic_schedule",
@@ -119,10 +121,11 @@
       "status": "managed",
       "api_evidence": "live_india",
       "resources": [
-        "catalyst_function_cron"
+        "catalyst_function_cron",
+        "catalyst_webhook_cron"
       ],
       "data_sources": [],
-      "note": "Positive relative interval_seconds for Job Function schedules, with UTC normalization and recurring end_time. Live India Development direct create/six-hour to 2h1m3s update/import/stable plan/transition/destroy and the combined seven-form matrix passed while disabled. Other targets remain pending."
+      "note": "Positive relative interval_seconds for Job Function schedules, with UTC normalization and recurring end_time. Live India Development direct create/six-hour to 2h1m3s update/import/stable plan/transition/destroy and the combined seven-form matrix passed while disabled. Webhook targets also passed the combined live lifecycle; AppSail/Circuit targets remain pending."
     },
     {
       "id": "filestore.file",

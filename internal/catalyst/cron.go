@@ -269,7 +269,7 @@ func (c *Client) readCron(ctx context.Context, res *http.Response, projectID, id
 		}
 	}
 	// Return the valid ID alongside metadata errors so Create can retain it for recovery.
-	supported := cron.Type == "CronExpression" || (target == "Function" && (cron.Type == "Calendar" || cron.Type == "OneTime" || cron.Type == "Periodic"))
+	supported := cron.Type == "CronExpression" || cron.Type == "Calendar" || cron.Type == "OneTime" || cron.Type == "Periodic"
 	if !supported || cron.ExecutionType != "pre-defined" || cron.Job.TargetType != target {
 		return cron, errors.New("cron type or target does not match the managed resource")
 	}
@@ -279,20 +279,20 @@ func (c *Client) readCron(ctx context.Context, res *http.Response, projectID, id
 	if target == "Webhook" && (cron.Job.URL == "" || cron.Job.Method == "") {
 		return cron, errors.New("the Catalyst API returned incomplete webhook metadata")
 	}
+	if cron.Type == "Periodic" {
+		if _, err := PeriodicScheduleSeconds(cron.Detail); err != nil {
+			return cron, err
+		}
+	}
+	if cron.Type == "Calendar" {
+		if err := ValidCalendarSchedule(cron.Detail); err != nil {
+			return cron, err
+		}
+	}
+	if cron.Type == "OneTime" && (cron.Detail.TimeOfExecution == nil || *cron.Detail.TimeOfExecution <= 0) {
+		return cron, errors.New("incomplete one-time execution timestamp")
+	}
 	if target == "Function" {
-		if cron.Type == "Periodic" {
-			if _, err := PeriodicScheduleSeconds(cron.Detail); err != nil {
-				return cron, err
-			}
-		}
-		if cron.Type == "Calendar" {
-			if err := ValidCalendarSchedule(cron.Detail); err != nil {
-				return cron, err
-			}
-		}
-		if cron.Type == "OneTime" && (cron.Detail.TimeOfExecution == nil || *cron.Detail.TimeOfExecution <= 0) {
-			return cron, errors.New("incomplete one-time execution timestamp")
-		}
 		if cron.Job.TargetDetails != nil {
 			if cron.Job.TargetID != "" && cron.Job.TargetID != cron.Job.TargetDetails.ID {
 				return cron, errors.New("mismatched Function target identities")

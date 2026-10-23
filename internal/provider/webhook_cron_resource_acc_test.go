@@ -3,6 +3,7 @@
 package provider
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -63,4 +64,53 @@ func runLiveWebhookCron(t *testing.T) {
 			{Config: config, PlanOnly: true},
 		},
 	})
+}
+
+func TestAccWebhookCronSchedules(t *testing.T) {
+	if os.Getenv("TF_ACC") != "1" || os.Getenv("CATALYST_TEST_ALLOW_CRON_CREATE") != "1" {
+		t.Skip("requires explicit isolated disabled Webhook cron write opt-in")
+	}
+	project, pool := os.Getenv("CATALYST_TEST_PROJECT_ID"), os.Getenv("CATALYST_TEST_JOB_POOL_ID")
+	if !catalyst.ValidID(project) || !catalyst.ValidID(pool) || os.Getenv("CATALYST_DATA_CENTER") != "in" || os.Getenv("CATALYST_ENVIRONMENT") != "Development" {
+		t.Fatal("requires isolated India Development project and Webhook pool")
+	}
+	client, err := catalyst.New(catalyst.Config{AccessToken: os.Getenv("CATALYST_ACCESS_TOKEN"), DataCenter: "in", Environment: "Development", OrganizationID: os.Getenv("CATALYST_ORGANIZATION_ID")}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pools, err := client.ListJobPools(t.Context(), project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, p := range pools {
+		if string(p.ID) == pool && p.Type == "Webhook" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("test pool is not an existing Webhook pool in this project")
+	}
+	name := "tfacc" + strconv.FormatInt(time.Now().UnixNano(), 36)
+	initial := strings.Replace(webhookCronConfig(project, pool, name, false), `expression = "0 0 1 1 *"`, `expression = "0 0 * * *"`, 1)
+	remember := func(state *terraform.State) error {
+		r := state.RootModule().Resources["catalyst_webhook_cron.test"]
+		if r == nil {
+			return errors.New("Webhook cron missing from state")
+		}
+		return nil
+	}
+	resource.Test(t, resource.TestCase{ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){"catalyst": providerserver.NewProtocol6WithError(&CatalystProvider{version: "test", httpClient: liveCronDiagnosticClient(t)})}, CheckDestroy: func(state *terraform.State) error {
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), time.Minute)
+		defer cancel()
+		for _, r := range state.RootModule().Resources {
+			if r.Type == "catalyst_webhook_cron" {
+				_, err := client.GetCron(ctx, project, r.Primary.ID)
+				if !errors.Is(err, catalyst.ErrCronNotFound) {
+					return errors.New("Webhook cron absence unverified")
+				}
+			}
+		}
+		return nil
+	}, Steps: cronScheduleTestSteps(initial, remember, project, "catalyst_webhook_cron")})
 }

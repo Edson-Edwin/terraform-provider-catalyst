@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapdefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -60,16 +59,10 @@ func (r *FunctionCronResource) Schema(ctx context.Context, req resource.SchemaRe
 	resp.Schema.Attributes["job_pool_id"] = schema.StringAttribute{Required: true, MarkdownDescription: "Existing Function Job Pool ID in the same project."}
 	resp.Schema.Attributes["job_name"] = schema.StringAttribute{Required: true, MarkdownDescription: "Job name: 1–20 ASCII letters, digits or underscores. Hyphens were rejected by the live Function scheduling API."}
 	resp.Schema.Attributes["params"] = schema.MapAttribute{Optional: true, Computed: true, Sensitive: true, ElementType: types.StringType, MarkdownDescription: "Complete string parameter map passed to the Job Function. Defaults to an empty map.", Default: mapdefault.StaticValue(types.MapValueMust(types.StringType, map[string]attr.Value{}))}
-	resp.Schema.Attributes["expression"] = schema.StringAttribute{Optional: true, MarkdownDescription: "Five-field cron expression. Set exactly one of expression, calendar_schedule, one_time_at or interval_seconds."}
-	resp.Schema.Attributes["calendar_schedule"] = calendarScheduleSchema()
-	resp.Schema.Attributes["one_time_at"] = schema.Int64Attribute{Optional: true, MarkdownDescription: "One-time execution Unix timestamp in seconds. Omit end_time for this mode. Disabled by default; use a future timestamp when enabling. Set exactly one schedule mode."}
-	resp.Schema.Attributes["end_time"] = schema.Int64Attribute{Optional: true, Computed: true, MarkdownDescription: "Required positive end timestamp in Unix seconds for recurring schedules. Omit for one-time schedules; the API's end sentinel is then computed."}
-	resp.Schema.Attributes["interval_seconds"] = schema.Int64Attribute{Optional: true, MarkdownDescription: "Positive relative repetition interval in seconds. Use timezone = UTC; relative intervals have no wall-clock timezone. Recurring end_time is required. Select exactly one schedule mode."}
-	resp.Schema.Attributes["timezone"] = schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("UTC"), MarkdownDescription: "IANA wall-clock timezone for expression/calendar/one-time schedules; defaults to UTC. Periodic intervals use the default UTC because they measure elapsed time."}
 	resp.Schema.MarkdownDescription = "Manage a pre-defined CronExpression, daily/monthly/yearly calendar, one-time or relative periodic schedule targeting an existing Job Function and Function Job Pool. Validates target identities and project membership before writes. Defaults to disabled. Enabling submits real jobs and may incur Catalyst usage. The Function code and pool are separate resources/prerequisites. Supports updates, import as project_id/cron_id, drift and confirmed deletion. Requires cron create/read/update/delete, jobpool read, Function read and project read scopes. Parameter values are sensitive but remain in Terraform state; secure your state storage. Set exactly one schedule mode. Time and form changes update the same cron ID; date/week forms clear omitted fields. Week-based calendars require one weekday. One-time timestamps use Unix seconds and omit end_time. Relative interval_seconds schedules use UTC and recurring end_time; elapsed intervals omit the wall-clock timezone from API requests. Legacy Cron Function triggers are not managed here. Live validation is limited to India Development."
 }
 func (d functionCronModel) shared() webhookCronModel {
-	return webhookCronModel{ID: d.ID, ProjectID: d.ProjectID, Name: d.Name, Description: d.Description, Expression: d.Expression, Timezone: d.Timezone, Enabled: d.Enabled, EndTime: d.EndTime, JobPoolID: d.JobPoolID, JobName: d.JobName, Params: d.Params, RetryCount: d.RetryCount, RetryInterval: d.RetryInterval, Headers: types.MapValueMust(types.StringType, map[string]attr.Value{})}
+	return webhookCronModel{ID: d.ID, ProjectID: d.ProjectID, Name: d.Name, Description: d.Description, Expression: d.Expression, Calendar: d.Calendar, OneTimeAt: d.OneTimeAt, Interval: d.Interval, Timezone: d.Timezone, Enabled: d.Enabled, EndTime: d.EndTime, JobPoolID: d.JobPoolID, JobName: d.JobName, Params: d.Params, RetryCount: d.RetryCount, RetryInterval: d.RetryInterval, Headers: types.MapValueMust(types.StringType, map[string]attr.Value{})}
 }
 func (r *FunctionCronResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
 	var data functionCronModel
@@ -78,7 +71,7 @@ func (r *FunctionCronResource) ValidateConfig(ctx context.Context, req resource.
 		return
 	}
 	validateCronFields(data.shared(), resp)
-	validateFunctionCronSchedule(ctx, data, &resp.Diagnostics)
+	validateCronSchedule(ctx, data.shared().schedule(), &resp.Diagnostics)
 	if !data.JobName.IsNull() && !data.JobName.IsUnknown() && !functionCronJobName.MatchString(data.JobName.ValueString()) {
 		resp.Diagnostics.AddAttributeError(path.Root("job_name"), "Invalid Function job name", "Use 1–20 ASCII letters, digits or underscores.")
 	}
@@ -88,49 +81,8 @@ func (r *FunctionCronResource) ValidateConfig(ctx context.Context, req resource.
 }
 func (d functionCronModel) api(ctx context.Context) (catalyst.Cron, diag.Diagnostics) {
 	cron, diags := d.shared().api(ctx)
-	count := 0
-	for _, present := range []bool{!d.Expression.IsNull(), !d.Calendar.IsNull(), !d.OneTimeAt.IsNull(), !d.Interval.IsNull()} {
-		if present {
-			count++
-		}
-	}
-	if count != 1 || d.Expression.IsUnknown() || d.Calendar.IsUnknown() || d.OneTimeAt.IsUnknown() || d.Interval.IsUnknown() {
-		diags.AddError("Invalid Function schedule", "Exactly one schedule mode must be fully known before applying.")
-		return cron, diags
-	}
 	cron.Job.TargetType = "Function"
 	cron.Job.TargetID = catalyst.ID(d.FunctionID.ValueString())
-	if !d.Calendar.IsNull() {
-		calendar, more := calendarScheduleAPI(ctx, d.Calendar)
-		diags.Append(more...)
-		if !more.HasError() {
-			if err := catalyst.ValidCalendarSchedule(calendar); err != nil {
-				diags.AddError("Invalid calendar schedule", err.Error())
-			}
-		}
-		calendar.Timezone = d.Timezone.ValueString()
-		cron.Type, cron.Expression, cron.Schedule = "Calendar", "", calendar
-	}
-	if !d.OneTimeAt.IsNull() {
-		if d.OneTimeAt.ValueInt64() <= 0 {
-			diags.AddError("Invalid one-time schedule", "Use a positive Unix timestamp in seconds.")
-		}
-		at := catalyst.Integer(d.OneTimeAt.ValueInt64())
-		cron.Type, cron.Expression, cron.EndTime = "OneTime", "", 0
-		cron.Schedule = catalyst.CronSchedule{Timezone: d.Timezone.ValueString(), TimeOfExecution: &at}
-	}
-	if !d.Interval.IsNull() {
-		seconds := d.Interval.ValueInt64()
-		if seconds <= 0 || d.Timezone.ValueString() != "UTC" {
-			diags.AddError("Invalid periodic schedule", "Use a positive interval_seconds and timezone = UTC.")
-		}
-		hour, minute, second := catalyst.Integer(seconds/3600), catalyst.Integer((seconds%3600)/60), catalyst.Integer(seconds%60)
-		cron.Type, cron.Expression = "Periodic", ""
-		cron.Schedule = catalyst.CronSchedule{RepetitionType: "every", Hour: &hour, Minute: &minute, Second: &second}
-	}
-	if d.OneTimeAt.IsNull() && d.EndTime.ValueInt64() <= 0 {
-		diags.AddError("Missing recurring end time", "Use a positive end_time in Unix seconds.")
-	}
 	return cron, diags
 }
 func (d *functionCronModel) populate(ctx context.Context, value *catalyst.Cron) diag.Diagnostics {
@@ -140,29 +92,7 @@ func (d *functionCronModel) populate(ctx context.Context, value *catalyst.Cron) 
 	d.Enabled, d.EndTime, d.JobPoolID, d.JobName = shared.Enabled, shared.EndTime, shared.JobPoolID, shared.JobName
 	d.Params, d.RetryCount, d.RetryInterval = shared.Params, shared.RetryCount, shared.RetryInterval
 	d.FunctionID = types.StringValue(string(value.Job.TargetID))
-	d.Calendar = types.ObjectNull(calendarScheduleTypes())
-	d.OneTimeAt = types.Int64Null()
-	d.Interval = types.Int64Null()
-	if value.Type == "Calendar" {
-		d.Expression = types.StringNull()
-		calendar, more := calendarScheduleState(ctx, value.Detail)
-		diags.Append(more...)
-		d.Calendar = calendar
-	}
-	if value.Type == "OneTime" {
-		d.Expression = types.StringNull()
-		d.OneTimeAt = types.Int64Value(int64(*value.Detail.TimeOfExecution))
-	}
-	if value.Type == "Periodic" {
-		d.Expression = types.StringNull()
-		seconds, err := catalyst.PeriodicScheduleSeconds(value.Detail)
-		if err != nil {
-			diags.AddError("Invalid periodic schedule metadata", err.Error())
-		} else {
-			d.Interval = types.Int64Value(seconds)
-		}
-		d.Timezone = types.StringValue("UTC")
-	}
+	d.Calendar, d.OneTimeAt, d.Interval = shared.Calendar, shared.OneTimeAt, shared.Interval
 	return diags
 }
 func (r *FunctionCronResource) verifyTarget(ctx context.Context, data functionCronModel) error {

@@ -52,7 +52,12 @@ resource "catalyst_webhook_cron" "test" {
 }
 
 // This exercises real Terraform plan/apply/import/destroy with a local fake API.
-func TestWebhookCronLifecycle(t *testing.T) {
+func TestWebhookCronLifecycle(t *testing.T) { testWebhookCronLifecycle(t, false) }
+
+func TestWebhookCronSchedulesLifecycle(t *testing.T) { testWebhookCronLifecycle(t, true) }
+
+func testWebhookCronLifecycle(t *testing.T, schedules bool) {
+	t.Helper()
 	clearEnvironment(t)
 	t.Setenv("CATALYST_ACCESS_TOKEN", "offline-test")
 	var mu sync.Mutex
@@ -105,7 +110,7 @@ func TestWebhookCronLifecycle(t *testing.T) {
 		return &http.Response{StatusCode: status, Body: io.NopCloser(strings.NewReader(string(body))), Header: make(http.Header)}, nil
 	})}}
 	config := webhookCronConfig("123", "456", "tf_test", false)
-	resource.UnitTest(t, resource.TestCase{
+	testCase := resource.TestCase{
 		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){"catalyst": providerserver.NewProtocol6WithError(p)},
 		CheckDestroy: func(_ *terraform.State) error {
 			mu.Lock()
@@ -125,9 +130,20 @@ func TestWebhookCronLifecycle(t *testing.T) {
 			{Config: config},
 			{PreConfig: func() { mu.Lock(); stored = nil; mu.Unlock() }, Config: config, Check: resource.TestCheckResourceAttr("catalyst_webhook_cron.test", "id", id)},
 		},
-	})
+	}
+	if schedules {
+		initial := strings.Replace(webhookCronConfig("123", "456", "test", false), `expression = "0 0 1 1 *"`, `expression = "0 0 * * *"`, 1)
+		testCase.Steps = cronScheduleTestSteps(initial, func(_ *terraform.State) error { return nil }, "123", "catalyst_webhook_cron")
+	}
+	resource.UnitTest(t, testCase)
 	mu.Lock()
 	defer mu.Unlock()
+	if schedules {
+		if creates != 1 || updates != 14 || deletes != 1 {
+			t.Fatalf("unexpected schedule mutations: %d/%d/%d", creates, updates, deletes)
+		}
+		return
+	}
 	if creates != 2 || updates != 4 || deletes != 1 {
 		t.Fatalf("unexpected lifecycle requests: creates=%d updates=%d deletes=%d", creates, updates, deletes)
 	}
@@ -321,12 +337,17 @@ func TestWebhookCronReplacementAndUnknownPlan(t *testing.T) {
 func TestWebhookCronDeleteFailurePreservesState(t *testing.T) {
 	clearEnvironment(t)
 	calls := 0
+	deleted := false
 	p := &CatalystProvider{httpClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		calls++
 		status, body := 403, `{"status":"failure","data":{"error_code":"secret-code"}}`
 		if req.Method == http.MethodDelete {
+			deleted = true
 			status = 200
 			body = `{"status":"success","data":{"id":"789"}}`
+		} else if !deleted {
+			status = 200
+			body = `{"status":"success","data":{"id":"789","cron_name":"test","cron_type":"CronExpression","cron_execution_type":"pre-defined","cron_expression":"0 0 * * *","cron_status":false,"cron_detail":{"timezone":"UTC"},"job_meta":{"job_name":"job","jobpool_id":"456","target_type":"Webhook","url":"https://example.com","request_method":"get"}}}`
 		}
 		return &http.Response{StatusCode: status, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 	})}}
@@ -340,7 +361,7 @@ func TestWebhookCronDeleteFailurePreservesState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !hasError(applied.Diagnostics) || calls != 2 {
+	if !hasError(applied.Diagnostics) || calls != 3 || !deleted {
 		t.Fatal("failed deletion verification was accepted or retried")
 	}
 	if applied.NewState == nil {
@@ -356,5 +377,40 @@ func TestWebhookCronDeleteFailurePreservesState(t *testing.T) {
 	}
 	if state.IsNull() {
 		t.Fatal("unconfirmed deletion removed resource state")
+	}
+}
+
+func TestWebhookCronRefusesForeignTargetMutation(t *testing.T) {
+	for _, deleting := range []bool{false, true} {
+		t.Run(fmt.Sprint(deleting), func(t *testing.T) {
+			clearEnvironment(t)
+			writes := 0
+			p := &CatalystProvider{httpClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				if req.Method != "GET" {
+					writes++
+				}
+				body := `{"status":"success","data":{"id":"789","cron_name":"test","cron_type":"CronExpression","cron_execution_type":"pre-defined","cron_expression":"0 0 * * *","cron_status":false,"cron_detail":{"timezone":"UTC"},"job_meta":{"job_name":"job","jobpool_id":"456","target_type":"Function","target_id":"999"}}}`
+				return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
+			})}}
+			server := providerserver.NewProtocol6(p)()
+			configured, err := server.ConfigureProvider(t.Context(), &tfprotov6.ConfigureProviderRequest{Config: jsonConfig(t, map[string]any{"access_token": "test"})})
+			if err != nil {
+				t.Fatal(err)
+			}
+			checkDiagnostics(t, configured.Diagnostics)
+			values := map[string]any{"id": "789", "project_id": "123", "name": "test", "job_pool_id": "456", "job_name": "job", "expression": "0 0 * * *", "timezone": "UTC", "url": "https://example.com", "end_time": 1893456000}
+			prior := jsonConfig(t, values)
+			plan := prior
+			if deleting {
+				plan = jsonConfig(t, nil)
+			}
+			result, err := server.ApplyResourceChange(t.Context(), &tfprotov6.ApplyResourceChangeRequest{TypeName: "catalyst_webhook_cron", PriorState: prior, PlannedState: plan, Config: plan})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !hasError(result.Diagnostics) || writes != 0 || result.NewState == nil {
+				t.Fatal("foreign target was mutated or recovery state lost")
+			}
+		})
 	}
 }

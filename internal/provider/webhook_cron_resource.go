@@ -37,6 +37,9 @@ type webhookCronModel struct {
 	Name          types.String `tfsdk:"name"`
 	Description   types.String `tfsdk:"description"`
 	Expression    types.String `tfsdk:"expression"`
+	Calendar      types.Object `tfsdk:"calendar_schedule"`
+	OneTimeAt     types.Int64  `tfsdk:"one_time_at"`
+	Interval      types.Int64  `tfsdk:"interval_seconds"`
 	Timezone      types.String `tfsdk:"timezone"`
 	Enabled       types.Bool   `tfsdk:"enabled"`
 	EndTime       types.Int64  `tfsdk:"end_time"`
@@ -58,7 +61,7 @@ func (r *WebhookCronResource) Metadata(_ context.Context, req resource.MetadataR
 func (r *WebhookCronResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	emptyMap := types.MapValueMust(types.StringType, map[string]attr.Value{})
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manage a pre-defined Job Scheduling cron with a five-field cron expression and a Webhook target. Requires an existing Webhook job pool and the `ZohoCatalyst.cron.CREATE`, `.READ`, `.UPDATE`, and `.DELETE` scopes, plus `ZOHOCATALYST.projects.Read` to distinguish an absent cron from lost project access. Crons default to disabled. Enabling a cron schedules real HTTP requests and may incur Catalyst usage charges. Deletion waits up to two minutes for confirmed absence and respects cancellation; failures preserve state. Import using `project_id/cron_id`. Secret values are marked sensitive but remain in Terraform state; secure your state storage.",
+		MarkdownDescription: "Manage a pre-defined Webhook Job Scheduling cron using a five-field expression, daily/monthly/yearly calendar, one-time timestamp or relative periodic interval. Exactly one schedule mode is required; timezone defaults to UTC. Recurring schedules require end_time; one-time schedules omit it. Requires an existing Webhook job pool and the `ZohoCatalyst.cron.CREATE`, `.READ`, `.UPDATE`, and `.DELETE` scopes, plus `ZOHOCATALYST.projects.Read` to distinguish an absent cron from lost project access. Crons default to disabled. Enabling a cron schedules real HTTP requests and may incur Catalyst usage charges. Updates and deletion verify target ownership. Deletion waits up to two minutes for confirmed absence and respects cancellation; failures preserve state. Import using `project_id/cron_id`. Secret values are marked sensitive but remain in Terraform state; secure your state storage.",
 		Attributes: map[string]schema.Attribute{
 			"id":             schema.StringAttribute{Computed: true, MarkdownDescription: "Cron ID as an exact numeric string.", PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
 			"project_id":     schema.StringAttribute{Required: true, MarkdownDescription: "Existing project ID. Changing it replaces the cron.", PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()}},
@@ -79,6 +82,9 @@ func (r *WebhookCronResource) Schema(_ context.Context, _ resource.SchemaRequest
 			"retry_interval": schema.Int64Attribute{Optional: true, Computed: true, Default: int64default.StaticInt64(0), MarkdownDescription: "Retry interval in seconds. Use 60 to 86400 seconds with retry_count greater than zero; otherwise leave zero."},
 		},
 	}
+	for name, attribute := range cronScheduleAttributes() {
+		resp.Schema.Attributes[name] = attribute
+	}
 }
 func (r *WebhookCronResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
@@ -98,6 +104,7 @@ func (r *WebhookCronResource) ValidateConfig(ctx context.Context, req resource.V
 		return
 	}
 	validateCronFields(data, resp)
+	validateCronSchedule(ctx, data.schedule(), &resp.Diagnostics)
 }
 
 func validateCronFields(data webhookCronModel, resp *resource.ValidateConfigResponse) {
@@ -158,15 +165,19 @@ func (d webhookCronModel) api(ctx context.Context) (catalyst.Cron, diag.Diagnost
 	diags.Append(d.Headers.ElementsAs(ctx, &headers, false)...)
 	diags.Append(d.Params.ElementsAs(ctx, &params, false)...)
 	enabled := d.Enabled.ValueBool()
-	return catalyst.Cron{Name: d.Name.ValueString(), Description: d.Description.ValueString(), Type: "CronExpression", ExecutionType: "pre-defined", Expression: d.Expression.ValueString(), Enabled: &enabled, EndTime: catalyst.Integer(d.EndTime.ValueInt64()), Schedule: catalyst.CronSchedule{Timezone: d.Timezone.ValueString()}, Job: catalyst.CronJob{Name: d.JobName.ValueString(), PoolID: catalyst.ID(d.JobPoolID.ValueString()), TargetType: "Webhook", SourceType: "Cron", URL: d.URL.ValueString(), Method: d.Method.ValueString(), Headers: headers, Params: params, Body: d.Body.ValueString(), Retry: catalyst.CronRetry{Count: catalyst.Integer(d.RetryCount.ValueInt64()), Interval: catalyst.Integer(d.RetryInterval.ValueInt64())}}}, diags
+	cron := catalyst.Cron{Name: d.Name.ValueString(), Description: d.Description.ValueString(), Type: "CronExpression", ExecutionType: "pre-defined", Expression: d.Expression.ValueString(), Enabled: &enabled, EndTime: catalyst.Integer(d.EndTime.ValueInt64()), Schedule: catalyst.CronSchedule{Timezone: d.Timezone.ValueString()}, Job: catalyst.CronJob{Name: d.JobName.ValueString(), PoolID: catalyst.ID(d.JobPoolID.ValueString()), TargetType: "Webhook", SourceType: "Cron", URL: d.URL.ValueString(), Method: d.Method.ValueString(), Headers: headers, Params: params, Body: d.Body.ValueString(), Retry: catalyst.CronRetry{Count: catalyst.Integer(d.RetryCount.ValueInt64()), Interval: catalyst.Integer(d.RetryInterval.ValueInt64())}}}
+	scheduled, more := applyCronSchedule(ctx, cron, d.schedule())
+	diags.Append(more...)
+	return scheduled, diags
 }
 func (d *webhookCronModel) populate(ctx context.Context, c *catalyst.Cron) diag.Diagnostics {
 	var diags diag.Diagnostics
 	d.ID = types.StringValue(string(c.ID))
 	d.Name = types.StringValue(c.Name)
 	d.Description = types.StringValue(c.Description)
-	d.Expression = types.StringValue(c.Expression)
-	d.Timezone = types.StringValue(c.Detail.Timezone)
+	schedule, more := readCronSchedule(ctx, c)
+	diags.Append(more...)
+	d.Expression, d.Calendar, d.OneTimeAt, d.Interval, d.Timezone = schedule.Expression, schedule.Calendar, schedule.OneTimeAt, schedule.Interval, schedule.Timezone
 	d.Enabled = types.BoolValue(*c.Enabled)
 	d.EndTime = types.Int64Value(int64(c.EndTime))
 	d.JobPoolID = types.StringValue(string(c.Job.PoolID))
@@ -247,6 +258,10 @@ func (r *WebhookCronResource) Update(ctx context.Context, req resource.UpdateReq
 	if resp.Diagnostics.HasError() || !r.ready(&resp.Diagnostics) {
 		return
 	}
+	if _, err := r.client.GetCron(ctx, data.ProjectID.ValueString(), data.ID.ValueString()); err != nil {
+		resp.Diagnostics.AddError("Unable to verify current Webhook cron", err.Error())
+		return
+	}
 	cron, diags := data.api(ctx)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -268,7 +283,15 @@ func (r *WebhookCronResource) Delete(ctx context.Context, req resource.DeleteReq
 	}
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
-	err := r.client.DeleteCron(ctx, data.ProjectID.ValueString(), data.ID.ValueString())
+	_, err := r.client.GetCron(ctx, data.ProjectID.ValueString(), data.ID.ValueString())
+	if errors.Is(err, catalyst.ErrCronNotFound) {
+		return
+	}
+	if err != nil {
+		resp.Diagnostics.AddError("Unable to verify current Webhook cron", err.Error())
+		return
+	}
+	err = r.client.DeleteCron(ctx, data.ProjectID.ValueString(), data.ID.ValueString())
 	if errors.Is(err, catalyst.ErrCronNotFound) {
 		return
 	}
@@ -288,4 +311,8 @@ func (r *WebhookCronResource) ImportState(ctx context.Context, req resource.Impo
 	}
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("project_id"), ids[0])...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), ids[1])...)
+}
+
+func (d webhookCronModel) schedule() cronScheduleModel {
+	return cronScheduleModel{Expression: d.Expression, Calendar: d.Calendar, OneTimeAt: d.OneTimeAt, Interval: d.Interval, EndTime: d.EndTime, Timezone: d.Timezone}
 }

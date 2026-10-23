@@ -9,9 +9,25 @@ import (
 )
 
 func TestFunctionCronScheduleConfigValidation(t *testing.T) {
+	testCronScheduleConfigValidation(t, "catalyst_function_cron")
+}
+
+func TestWebhookCronScheduleConfigValidation(t *testing.T) {
+	testCronScheduleConfigValidation(t, "catalyst_webhook_cron")
+}
+
+func testCronScheduleConfigValidation(t *testing.T, resourceType string) {
+	t.Helper()
 	for _, mode := range []string{"expression", "daily", "one_time", "missing_mode", "mixed_modes", "one_time_end", "one_time_zero", "missing_recurring_end", "invalid_hour", "incomplete_month", "mixed_month_dates", "invalid_job_name", "periodic", "periodic_zero", "periodic_timezone", "periodic_missing_end"} {
+		if mode == "invalid_job_name" && resourceType == "catalyst_webhook_cron" {
+			continue
+		}
 		t.Run(mode, func(t *testing.T) {
 			values := map[string]any{"project_id": "123", "job_pool_id": "456", "function_id": "789", "name": "test", "expression": "0 0 * * *", "timezone": "UTC", "end_time": 1893456000, "job_name": "job"}
+			if resourceType == "catalyst_webhook_cron" {
+				delete(values, "function_id")
+				values["url"] = "https://example.com"
+			}
 			switch mode {
 			case "daily", "invalid_hour", "incomplete_month", "mixed_month_dates":
 				delete(values, "expression")
@@ -61,7 +77,7 @@ func TestFunctionCronScheduleConfigValidation(t *testing.T) {
 				values["job_name"] = "invalid-name"
 			}
 			server := providerserver.NewProtocol6(New("test")())()
-			response, err := server.ValidateResourceConfig(t.Context(), &tfprotov6.ValidateResourceConfigRequest{TypeName: "catalyst_function_cron", Config: jsonConfig(t, values)})
+			response, err := server.ValidateResourceConfig(t.Context(), &tfprotov6.ValidateResourceConfigRequest{TypeName: resourceType, Config: jsonConfig(t, values)})
 			if err != nil {
 				t.Fatal(err)
 			}
