@@ -36,6 +36,7 @@ data "catalyst_auth_user" "test" {
 
 func TestAuthUserRoleTerraformLifecycle(t *testing.T) {
 	clearEnvironment(t)
+	t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 	t.Setenv("CATALYST_ACCESS_TOKEN", "offline")
 	var mu sync.Mutex
 	role := "700"
@@ -98,6 +99,7 @@ func TestAuthUserRoleTerraformLifecycle(t *testing.T) {
 
 func TestAuthUserRoleRejectsMalformedConfiguration(t *testing.T) {
 	clearEnvironment(t)
+	t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 	t.Setenv("CATALYST_ACCESS_TOKEN", "offline")
 	resource.UnitTest(t, resource.TestCase{ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){"catalyst": providerserver.NewProtocol6WithError(New("test")())}, Steps: []resource.TestStep{
 		{Config: authRoleConfig("../701", "700"), ExpectError: regexp.MustCompile("Invalid Catalyst ID")},
@@ -109,6 +111,7 @@ func TestAuthUserRoleFailureRecovery(t *testing.T) {
 	for _, scenario := range []string{"administrator", "ambiguous_create", "denied_read", "missing_user", "missing_parent", "failed_destroy"} {
 		t.Run(scenario, func(t *testing.T) {
 			clearEnvironment(t)
+			t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 			writes := 0
 			p := &CatalystProvider{httpClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 				status := 200
@@ -149,7 +152,7 @@ func TestAuthUserRoleFailureRecovery(t *testing.T) {
 			}
 			checkDiagnostics(t, configured.Diagnostics)
 			values := map[string]any{"id": "123/42", "project_id": "123", "user_id": "42", "role_id": "701", "destroy_role_id": "700", "role_name": "Reader"}
-			prior := jsonConfig(t, values)
+			prior := boundResourceState(t, values)
 			switch scenario {
 			case "denied_read", "missing_user", "missing_parent":
 				got, err := server.ReadResource(t.Context(), &tfprotov6.ReadResourceRequest{TypeName: "catalyst_auth_user_role", CurrentState: prior})
@@ -167,7 +170,7 @@ func TestAuthUserRoleFailureRecovery(t *testing.T) {
 					}
 				}
 			default:
-				planned := jsonConfig(t, values)
+				planned := boundResourceState(t, values)
 				if scenario == "failed_destroy" {
 					planned = jsonConfig(t, nil)
 				} else {

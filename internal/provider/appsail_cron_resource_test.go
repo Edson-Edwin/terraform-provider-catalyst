@@ -57,6 +57,7 @@ func TestAppSailCronSchedulesLifecycle(t *testing.T) { testAppSailCronLifecycle(
 func testAppSailCronLifecycle(t *testing.T, schedules bool) {
 	t.Helper()
 	clearEnvironment(t)
+	t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 	t.Setenv("CATALYST_ACCESS_TOKEN", "offline-test")
 	var mu sync.Mutex
 	var stored *catalyst.Cron
@@ -197,6 +198,7 @@ func TestAppSailCronRecoveryState(t *testing.T) {
 	for _, mode := range []string{"partial_create", "foreign_read", "denied_read", "foreign_delete", "denied_delete", "denied_confirmation"} {
 		t.Run(mode, func(t *testing.T) {
 			clearEnvironment(t)
+			t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 			deleted := false
 			writes := 0
 			p := &CatalystProvider{httpClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -248,10 +250,10 @@ func TestAppSailCronRecoveryState(t *testing.T) {
 				}
 				state, diagnostics = read.NewState, read.Diagnostics
 			} else {
-				prior, planned := jsonConfig(t, nil), jsonConfig(t, values)
+				prior, planned := jsonConfig(t, nil), boundResourceState(t, values)
 				if mode != "partial_create" {
 					values["id"] = "901"
-					prior, planned = jsonConfig(t, values), jsonConfig(t, nil)
+					prior, planned = boundResourceState(t, values), jsonConfig(t, nil)
 				}
 				applied, err := server.ApplyResourceChange(t.Context(), &tfprotov6.ApplyResourceChangeRequest{TypeName: "catalyst_appsail_cron", PriorState: prior, PlannedState: planned, Config: planned})
 				if err != nil {

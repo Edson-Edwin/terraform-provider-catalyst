@@ -20,12 +20,13 @@ var _ resource.ResourceWithValidateConfig = &GatewayResource{}
 
 type GatewayResource struct{ client *catalyst.Client }
 type gatewayModel struct {
-	ID        types.String `tfsdk:"id"`
-	ProjectID types.String `tfsdk:"project_id"`
-	Enabled   types.Bool   `tfsdk:"enabled"`
+	RoutingScope types.Object `tfsdk:"routing_scope"`
+	ID           types.String `tfsdk:"id"`
+	ProjectID    types.String `tfsdk:"project_id"`
+	Enabled      types.Bool   `tfsdk:"enabled"`
 }
 
-func NewGatewayResource() resource.Resource { return &GatewayResource{} }
+func NewGatewayResource() resource.Resource { return withEnvironmentScope(&GatewayResource{}) }
 func (r *GatewayResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_api_gateway"
 }

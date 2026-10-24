@@ -5,27 +5,59 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"regexp"
+	"strings"
+	"sync"
+	"testing"
+
 	"github.com/Edson-Edwin/terraform-provider-catalyst/internal/catalyst"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
-	"io"
-	"net/http"
-	"strings"
-	"sync"
-	"testing"
 )
 
 func projectResourceConfig(name string, protected bool) string {
 	return fmt.Sprintf("provider \"catalyst\" {}\nresource \"catalyst_project\" \"test\" {\n name=%q\n deletion_protection=%t\n}\n", name, protected)
 }
+
+// Run the same Terraform contract against the offline server and an eligible
+// live account. The final automatic destroy uses explicitly unprotected state.
+func projectManagementLifecycleSteps(name, providerFields string) []resource.TestStep {
+	config := func(protected bool) string {
+		return strings.Replace(projectResourceConfig(name, protected), `provider "catalyst" {}`, `provider "catalyst" {`+providerFields+`}`, 1)
+	}
+	protected := config(true)
+	defaultProtected := strings.Replace(protected, " deletion_protection=true\n", "", 1)
+	unprotected := config(false)
+	return []resource.TestStep{
+		{Config: defaultProtected, Check: resource.TestCheckResourceAttr("catalyst_project.test", "deletion_protection", "true")},
+		{Config: defaultProtected, Destroy: true, ExpectError: regexp.MustCompile("Project deletion is protected")},
+		{Config: unprotected},
+		{ResourceName: "catalyst_project.test", ImportState: true, ImportStateVerify: true,
+			ImportStateVerifyIgnore: []string{"deletion_protection"}, ImportStateCheck: func(states []*terraform.InstanceState) error {
+				if len(states) != 1 || states[0].Attributes["deletion_protection"] != "true" {
+					return errors.New("import did not re-enable project deletion protection")
+				}
+				return nil
+			}},
+		{Config: protected},
+		{Config: protected, Destroy: true, ExpectError: regexp.MustCompile("Project deletion is protected")},
+		{RefreshState: true},
+		{Config: unprotected},
+		{Config: unprotected, PlanOnly: true},
+	}
+}
 func TestProjectResourceLifecycle(t *testing.T) {
 	clearEnvironment(t)
 	t.Setenv("CATALYST_ACCESS_TOKEN", "test")
+	t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 	var mu sync.Mutex
 	var current *catalyst.Project
+	var hidden *catalyst.Project
 	creates, deletes := 0, 0
 	p := &CatalystProvider{httpClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		mu.Lock()
@@ -76,6 +108,8 @@ func TestProjectResourceLifecycle(t *testing.T) {
 		return &http.Response{StatusCode: status, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(string(raw)))}, nil
 	})}}
 	initial := projectResourceConfig("fixture", false)
+	configuredTimeouts := strings.Replace(initial, `name="fixture"`, `name="fixture"
+ timeouts = { create="10m", read="3m", update="3m", delete="10m" }`, 1)
 	resource.UnitTest(t, resource.TestCase{ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){"catalyst": providerserver.NewProtocol6WithError(p)}, CheckDestroy: func(_ *terraform.State) error {
 		mu.Lock()
 		defer mu.Unlock()
@@ -83,16 +117,20 @@ func TestProjectResourceLifecycle(t *testing.T) {
 			return errors.New("project survived destroy")
 		}
 		return nil
-	}, Steps: []resource.TestStep{
+	}, Steps: append(projectManagementLifecycleSteps("fixture", ""), []resource.TestStep{
 		{Config: initial, Check: resource.TestCheckResourceAttr("catalyst_project.test", "id", "901")},
+		{Config: configuredTimeouts},
+		{Config: configuredTimeouts, PlanOnly: true},
+		{Config: initial},
 		{ResourceName: "catalyst_project.test", ImportState: true, ImportStateId: "901", ImportStateVerify: true, ImportStateVerifyIgnore: []string{"deletion_protection"}},
 		{Config: projectResourceConfig("fixture", true), Check: resource.TestCheckResourceAttr("catalyst_project.test", "deletion_protection", "true")},
 		{Config: initial},
 		{Config: projectResourceConfig("renamed", false), Check: resource.TestCheckResourceAttr("catalyst_project.test", "id", "902")},
-		{PreConfig: func() { mu.Lock(); current = nil; mu.Unlock() }, Config: projectResourceConfig("renamed", false), Check: resource.TestCheckResourceAttr("catalyst_project.test", "id", "903")},
+		{PreConfig: func() { mu.Lock(); hidden, current = current, nil; mu.Unlock() }, Config: projectResourceConfig("renamed", false), ExpectError: regexp.MustCompile("Project visibility lost")},
+		{PreConfig: func() { mu.Lock(); current = hidden; mu.Unlock() }, Config: projectResourceConfig("renamed", false), Check: resource.TestCheckResourceAttr("catalyst_project.test", "id", "902")},
 		{Config: projectResourceConfig("renamed", false), PlanOnly: true},
-	}})
-	if creates != 3 || deletes != 2 {
+	}...)})
+	if creates != 2 || deletes != 2 {
 		t.Fatalf("unexpected mutation counts %d/%d", creates, deletes)
 	}
 }
@@ -109,7 +147,7 @@ func TestProjectProtectionAndPartialState(t *testing.T) {
 				return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 			})}}
 			server := providerserver.NewProtocol6(p)()
-			configured, err := server.ConfigureProvider(t.Context(), &tfprotov6.ConfigureProviderRequest{Config: jsonConfig(t, map[string]any{"access_token": "test"})})
+			configured, err := server.ConfigureProvider(t.Context(), &tfprotov6.ConfigureProviderRequest{Config: jsonConfig(t, map[string]any{"access_token": "test", "organization_id": "123"})})
 			if err != nil {
 				t.Fatal(err)
 			}

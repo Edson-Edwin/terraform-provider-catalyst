@@ -23,6 +23,15 @@ CI also checks that generation produces no tracked or untracked documentation ch
 
 For a new resource, first establish supported create/read/update/delete APIs, scopes, regional behavior and import identity. A console feature or data-operation API alone is not enough. Use exact strings for IDs. Avoid API calls during provider configuration.
 
+Environment-scoped resource factories must use `withEnvironmentScope` and include
+the `routing_scope` object in their Terraform model. The shared guard covers plans,
+saved-plan applies, reads, mutations and imports. Project resources use their own
+cross-environment guard. Extend `TestEnvironmentScopeGuardsAllResources` when adding
+a resource; do not bypass its registration-count assertion. All managed-resource
+fixtures must configure an explicit organization. Legacy state must be refreshed
+with its original routing before mutation; see the
+[environment migration guide](docs/guides/environments.md).
+
 Test the lifecycle, stable plans, import, updates, clearing optional values, replacement, unknown values, external deletion, permission failures and partial failures. Preserve state on access errors. Retain a trusted ID when creation succeeds but response metadata is invalid. Do not repeat ambiguous write requests without an API-supported idempotency guarantee.
 
 Keep transport and authentication in `internal/catalyst`. The current `internal/provider` layout is appropriate for the small supported surface. Introduce service packages or shared helpers when several implementations actually need them.
@@ -76,6 +85,73 @@ make testacc-datastore-row
 ```
 
 The row test needs `ZohoCatalyst.tables.READ`, `ZohoCatalyst.tables.columns.READ`, and each of `ZohoCatalyst.tables.rows.CREATE`, `.READ`, `.UPDATE` and `.DELETE` as individual scopes. It creates configuration rows, not schema. Stratus tests create objects, not buckets. Scheduling tests create disabled schedules, not job pools. These tests do not constitute complete service provisioning.
+
+### Experimental project management
+
+`make testacc-project` exercises real Terraform creation, default deletion
+protection, a rejected protected destroy, import that re-enables protection,
+another rejected destroy, refresh, an explicit guard update, a stable plan and
+final deletion. It creates a new empty project with a random name and never
+uses an existing project as a disposable fixture. The same steps run against the
+offline test server on every normal test run. Use `make test-project` for the
+focused offline project suite.
+
+Prerequisites:
+
+1. An account and organization eligible to create projects through the REST API.
+   The previously tested India account returned `PROJECT_CREATION_NOT_ALLOWED`.
+   If eligibility is unknown, ask your Catalyst administrator or Catalyst support
+   to confirm API project creation for the intended organization. A console-created
+   project does not establish API creation eligibility.
+2. OAuth credentials with `ZOHOCATALYST.projects.CREATE`,
+   `ZOHOCATALYST.projects.Read` and `ZOHOCATALYST.projects.Delete`. Follow the
+   [official OAuth setup](https://docs.catalyst.zoho.com/en/api/oauth2/register-new-client/)
+   and the [project creation contract](https://docs.catalyst.zoho.com/en/api/code-reference/general/projects/create-new-project/).
+   Scopes alone do not prove account eligibility. Inject either `CATALYST_ACCESS_TOKEN`
+   or all three of `CATALYST_CLIENT_ID`, `CATALYST_CLIENT_SECRET` and
+   `CATALYST_REFRESH_TOKEN` through your local secret manager or protected environment.
+   Never put credentials in Terraform examples, shell command arguments, chat or Git.
+3. Explicit routing and a disposable-write opt-in:
+
+```sh
+export CATALYST_DATA_CENTER=in # use the eligible account's region
+export CATALYST_ENVIRONMENT=Development
+export CATALYST_ORGANIZATION_ID="your-organization-id"
+export CATALYST_TEST_ALLOW_PROJECT_CREATE=1
+make testacc-project
+```
+
+The gate fails on missing configuration instead of counting a skipped live test
+as a pass. It accepts any explicitly selected supported region, and only
+Development routing. Each run verifies the selected authentication mode; rerun
+with the other mode independently to establish both. Credentials must not be
+written to debug logs; leave Terraform debug logging disabled.
+
+The harness records only generated names and IDs. It captures partial-create
+Terraform state and attempts bounded cleanup even after a test failure, checking
+the exact ID and name before deletion. It never cleans up by name alone or removes
+a pre-existing ID from the initial inventory. A killed process or creation response
+without an ID needs manual inspection using the generated name; review the
+project before importing or deleting it. Do not rerun ambiguous creation blindly.
+
+Successful offline checks are separate from a successful live gate. Until an
+eligible account passes the gate and cleanup, keep the resource experimental.
+Hosted CI is currently blocked by billing; this local target does not depend on it.
+
+The saved India CLI login was subsequently used in memory on 2026-10-24 to mint a
+fresh access token and select its sole visible organization. The full Terraform
+gate reached creation and received HTTP 400 `PROJECT_CREATION_NOT_ALLOWED` again.
+An independent before/after project ID inventory comparison was unchanged. No
+credential values were printed or written to the repository. Authentication works
+in that context; REST creation eligibility still needs administrator/vendor action.
+
+Project safety now deliberately differs from ordinary automatic disappearance
+handling: an invisible project retains state and stops the run, even after three
+empty listings. An explicit organization is required; saved organization/data-center
+bindings reject changed provider routing. Legacy state must be refreshed in its
+original scope before mutation. Tests must assert no recreation on visibility loss.
+See [Project ownership and recovery](docs/guides/project_management.md) for shared
+state locking, migration and independently confirmed external deletion.
 
 ### Experimental user-role assignment
 

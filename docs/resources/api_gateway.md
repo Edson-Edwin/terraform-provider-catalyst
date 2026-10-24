@@ -10,6 +10,14 @@ description: |-
 
 Manage the project's API Gateway enabled setting. Enabling Gateway changes request routing: existing Function/Web Client endpoints need matching Gateway rules. Requires ZohoCatalyst.apigateway.READ/UPDATE and project read access. This resource owns only the enabled setting; use catalyst_api_gateway_ruleset for routes. Destroy disables Gateway and restores Security Rules routing. Set the ruleset project_id to this resource's id so Terraform destroys rules before disabling Gateway. Never share ownership across independent states or console/deployment tools. Import using the project ID. Operations wait up to five minutes for pending migrations. Live validation covers India Development only.
 
+## Environment Isolation
+
+An explicit provider organization is required. The computed `routing_scope` binds
+this resource to its data center, environment and organization. Changed routing is
+rejected before resource API calls, including when applying a saved creation plan.
+Refresh legacy state under its original routing before updating or deleting it.
+See [environment isolation and migration](../guides/environments.md).
+
 ## Example Usage
 
 ```terraform
@@ -33,6 +41,16 @@ resource "catalyst_api_gateway" "example" {
 ## Attribute Reference
 
 - `id` (String) Project ID identifying this implicit project-level configuration.
+- `routing_scope` (Attributes) Saved data center, environment and explicit organization routing. Provider routing must match before reads, plans or mutations. Legacy state binds only after a successful refresh with the original routing. This records configuration, not authenticated caller identity. (see [below for nested schema](#nestedatt--routing_scope))
+
+<a id="nestedatt--routing_scope"></a>
+### Nested Schema for `routing_scope`
+
+Read-Only:
+
+- `data_center` (String)
+- `environment` (String)
+- `organization_id` (String)
 
 ## Import
 

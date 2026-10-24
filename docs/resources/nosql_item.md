@@ -10,6 +10,14 @@ description: |-
 
 Manage a persistent configuration/seed item in an existing ONLINE NoSQL table. This does not provision tables or indexes and is not intended for application-owned transactional data. Both JSON fields use Catalyst typed attributes (S/N/B/BOOL/NULL/M/L/SS/SN/SB); jsonencode is recommended. item_json includes the configured primary keys and owns the complete item: removed non-key attributes are deleted remotely. Primary-key/project/table changes replace the item. Creation refuses existing keys and uses a server-side condition to prevent duplicate overwrite. Read uses consistent_read=true; per-item operation status is checked even on HTTP 200. Ambiguous writes are never replayed. Destroy deletes only the managed item and confirms absence; table/access failures retain state. Values and encoded keys remain in Terraform state, despite being sensitive. The provider limits each JSON field to 256 KiB. Import as project_id/table_id/base64url(keys_json), without base64 padding. Requires NoSQL table metadata read and item create/read/update/delete scopes. Live validation is limited to India Development.
 
+## Environment Isolation
+
+An explicit provider organization is required. The computed `routing_scope` binds
+this resource to its data center, environment and organization. Changed routing is
+rejected before resource API calls, including when applying a saved creation plan.
+Refresh legacy state under its original routing before updating or deleting it.
+See [environment isolation and migration](../guides/environments.md).
+
 ## Example Usage
 
 ```terraform
@@ -46,6 +54,16 @@ resource "catalyst_nosql_item" "site" {
 ## Attribute Reference
 
 - `id` (String, Sensitive) Composite identity containing base64url-encoded primary keys. Encoding is not encryption; secure Terraform state.
+- `routing_scope` (Attributes) Saved data center, environment and explicit organization routing. Provider routing must match before reads, plans or mutations. Legacy state binds only after a successful refresh with the original routing. This records configuration, not authenticated caller identity. (see [below for nested schema](#nestedatt--routing_scope))
+
+<a id="nestedatt--routing_scope"></a>
+### Nested Schema for `routing_scope`
+
+Read-Only:
+
+- `data_center` (String)
+- `environment` (String)
+- `organization_id` (String)
 
 ## Import
 

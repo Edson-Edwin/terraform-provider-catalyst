@@ -29,18 +29,19 @@ var _ resource.ResourceWithValidateConfig = &FunctionResource{}
 
 type FunctionResource struct{ client *catalyst.Client }
 type functionModel struct {
-	ID          types.String `tfsdk:"id"`
-	ProjectID   types.String `tfsdk:"project_id"`
-	Name        types.String `tfsdk:"name"`
-	Stack       types.String `tfsdk:"stack"`
-	Type        types.String `tfsdk:"type"`
-	Source      types.String `tfsdk:"source"`
-	SHA256      types.String `tfsdk:"source_sha256"`
-	Memory      types.Int64  `tfsdk:"memory"`
-	Environment types.Map    `tfsdk:"environment_variables"`
+	RoutingScope types.Object `tfsdk:"routing_scope"`
+	ID           types.String `tfsdk:"id"`
+	ProjectID    types.String `tfsdk:"project_id"`
+	Name         types.String `tfsdk:"name"`
+	Stack        types.String `tfsdk:"stack"`
+	Type         types.String `tfsdk:"type"`
+	Source       types.String `tfsdk:"source"`
+	SHA256       types.String `tfsdk:"source_sha256"`
+	Memory       types.Int64  `tfsdk:"memory"`
+	Environment  types.Map    `tfsdk:"environment_variables"`
 }
 
-func NewFunctionResource() resource.Resource { return &FunctionResource{} }
+func NewFunctionResource() resource.Resource { return withEnvironmentScope(&FunctionResource{}) }
 func (r *FunctionResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_function"
 }

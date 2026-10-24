@@ -10,6 +10,14 @@ description: |-
 
 Manage a pre-defined Webhook Job Scheduling cron using a five-field expression, daily/monthly/yearly calendar, one-time timestamp or relative periodic interval. Exactly one schedule mode is required; timezone defaults to UTC. Recurring schedules require end_time; one-time schedules omit it. Requires an existing Webhook job pool and the `ZohoCatalyst.cron.CREATE`, `.READ`, `.UPDATE`, and `.DELETE` scopes, plus `ZOHOCATALYST.projects.Read` to distinguish an absent cron from lost project access. Crons default to disabled. Enabling a cron schedules real HTTP requests and may incur Catalyst usage charges. Updates and deletion verify target ownership. Deletion waits up to two minutes for confirmed absence and respects cancellation; failures preserve state. Import using `project_id/cron_id`. Secret values are marked sensitive but remain in Terraform state; secure your state storage.
 
+## Environment Isolation
+
+An explicit provider organization is required. The computed `routing_scope` binds
+this resource to its data center, environment and organization. Changed routing is
+rejected before resource API calls, including when applying a saved creation plan.
+Refresh legacy state under its original routing before updating or deleting it.
+See [environment isolation and migration](../guides/environments.md).
+
 ## Example Usage
 
 ```terraform
@@ -61,6 +69,7 @@ resource "catalyst_webhook_cron" "example" {
 ## Attribute Reference
 
 - `id` (String) Cron ID as an exact numeric string.
+- `routing_scope` (Attributes) Saved data center, environment and explicit organization routing. Provider routing must match before reads, plans or mutations. Legacy state binds only after a successful refresh with the original routing. This records configuration, not authenticated caller identity. (see [below for nested schema](#nestedatt--routing_scope))
 
 <a id="nestedatt--calendar_schedule"></a>
 ### Nested Schema for `calendar_schedule`
@@ -78,6 +87,16 @@ Optional:
 - `months` (Set of Number) Months: 1 is January and 12 is December. Required for yearly schedules; omit for daily/monthly. Defaults to an empty set.
 - `week_days` (Set of Number) Exactly one weekday: 1 Sunday, 2 Monday, 3 Tuesday, 4 Wednesday, 5 Thursday, 6 Friday, 7 Saturday. Multiple weekdays are rejected by the service. Supply with weeks_of_month, instead of days. Defaults to an empty set.
 - `weeks_of_month` (Set of Number) Weeks, 1–5. Supply with week_days, instead of days. Defaults to an empty set.
+
+
+<a id="nestedatt--routing_scope"></a>
+### Nested Schema for `routing_scope`
+
+Read-Only:
+
+- `data_center` (String)
+- `environment` (String)
+- `organization_id` (String)
 
 ## Import
 

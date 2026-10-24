@@ -10,6 +10,14 @@ description: |-
 
 Deprecated: Zoho has announced File Store sunset on 31 October 2026; use Stratus for new storage. See the [vendor announcement](https://docs.catalyst.zoho.com/en/announcements/2026/filestore-sunset/). Manage a file in an existing Catalyst File Store folder (maximum 100 MB). Requires `ZohoCatalyst.files.CREATE`, `ZohoCatalyst.files.READ`, `ZohoCatalyst.files.DELETE`, project read access and `ZohoCatalyst.folders.READ`. Files are immutable through the documented API: changing any input replaces the file and changes its ID. Every refresh downloads the file to verify its SHA-256; file contents are never stored in Terraform state. Folder creation is not supported. Catalyst recommends Stratus for new storage; this resource supports existing File Store workloads. Import with `project_id/folder_id/file_id`, then set `source` and `source_sha256` in configuration. Deletion is polled for up to two minutes. This provider does not delete folders or other files.
 
+## Environment Isolation
+
+An explicit provider organization is required. The computed `routing_scope` binds
+this resource to its data center, environment and organization. Changed routing is
+rejected before resource API calls, including when applying a saved creation plan.
+Refresh legacy state under its original routing before updating or deleting it.
+See [environment isolation and migration](../guides/environments.md).
+
 ~> **Note:** This resource is deprecated. Use Stratus for new storage. It does not
 migrate existing files or permissions.
 
@@ -40,7 +48,17 @@ resource "catalyst_filestore_file" "example" {
 ## Attribute Reference
 
 - `id` (String) File ID as a precision-preserving string.
+- `routing_scope` (Attributes) Saved data center, environment and explicit organization routing. Provider routing must match before reads, plans or mutations. Legacy state binds only after a successful refresh with the original routing. This records configuration, not authenticated caller identity. (see [below for nested schema](#nestedatt--routing_scope))
 - `size` (Number) Remote file size in bytes.
+
+<a id="nestedatt--routing_scope"></a>
+### Nested Schema for `routing_scope`
+
+Read-Only:
+
+- `data_center` (String)
+- `environment` (String)
+- `organization_id` (String)
 
 ## Import
 

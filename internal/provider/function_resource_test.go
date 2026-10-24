@@ -80,6 +80,7 @@ resource "catalyst_function" "test" {
 }
 func TestFunctionLifecycle(t *testing.T) {
 	clearEnvironment(t)
+	t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 	t.Setenv("CATALYST_ACCESS_TOKEN", "offline-test")
 	dir := t.TempDir()
 	first := writeFunctionArchive(t, dir, "test_function", "one")
@@ -184,6 +185,7 @@ func TestFunctionArchiveValidation(t *testing.T) {
 
 func TestFunctionCreateFailureRetainsIdentity(t *testing.T) {
 	clearEnvironment(t)
+	t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 	source := writeFunctionArchive(t, t.TempDir(), "example", "one")
 	content, err := os.ReadFile(source)
 	if err != nil {
@@ -204,7 +206,7 @@ func TestFunctionCreateFailureRetainsIdentity(t *testing.T) {
 	}
 	checkDiagnostics(t, configured.Diagnostics)
 	values := map[string]any{"project_id": "123", "name": "example", "stack": "node22", "type": "basicio", "memory": 128, "source": source, "source_sha256": hex.EncodeToString(digest[:]), "environment_variables": map[string]string{}}
-	applied, err := server.ApplyResourceChange(t.Context(), &tfprotov6.ApplyResourceChangeRequest{TypeName: "catalyst_function", PriorState: jsonConfig(t, nil), PlannedState: jsonConfig(t, values), Config: jsonConfig(t, values)})
+	applied, err := server.ApplyResourceChange(t.Context(), &tfprotov6.ApplyResourceChangeRequest{TypeName: "catalyst_function", PriorState: jsonConfig(t, nil), PlannedState: boundResourceState(t, values), Config: jsonConfig(t, values)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,9 +229,13 @@ func TestFunctionCreateFailureRetainsIdentity(t *testing.T) {
 	if err = attrs["id"].As(&id); err != nil || id != "789" {
 		t.Fatal("created identity was lost")
 	}
+	if attrs["routing_scope"].IsNull() || !attrs["routing_scope"].IsKnown() {
+		t.Fatal("partial create lost routing binding")
+	}
 }
 func TestFunctionImportValidation(t *testing.T) {
 	server := providerserver.NewProtocol6(New("test")())()
+	configureScopeTest(t, server)
 	for _, id := range []string{"123", "123/0", "../789", "123/789/1", "123/789"} {
 		result, err := server.ImportResourceState(t.Context(), &tfprotov6.ImportResourceStateRequest{TypeName: "catalyst_function", ID: id})
 		if err != nil {

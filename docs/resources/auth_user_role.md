@@ -10,6 +10,14 @@ description: |-
 
 Assign an existing application end-user to an existing role through the official SDK's user-update API. Requires ZohoCatalyst.projects.users.READ and .UPDATE. Experimental: no disposable application user was available for live write verification; offline lifecycle tests do not establish live compatibility. Does not invite/delete users, provision roles, configure authentication, or edit table permissions. Destroy assigns the explicit destroy_role_id fallback; it never deletes the user. Use one resource/state per project/user across all tools because each user has one role and Catalyst provides no conditional role update. User profiles are not stored in state. Import as project_id/user_id/destroy_role_id; import only reads the current assignment.
 
+## Environment Isolation
+
+An explicit provider organization is required. The computed `routing_scope` binds
+this resource to its data center, environment and organization. Changed routing is
+rejected before resource API calls, including when applying a saved creation plan.
+Refresh legacy state under its original routing before updating or deleting it.
+See [environment isolation and migration](../guides/environments.md).
+
 ~> **Note:** This experimental resource has offline verification only. It assigns
 an existing end-user to an existing role. Destroy assigns the configured fallback
 role; it does not delete the user or configure login/permissions.
@@ -46,6 +54,16 @@ resource "catalyst_auth_user_role" "example" {
 
 - `id` (String) Assignment identity: project_id/user_id.
 - `role_name` (String) Current assigned role name reported by Catalyst.
+- `routing_scope` (Attributes) Saved data center, environment and explicit organization routing. Provider routing must match before reads, plans or mutations. Legacy state binds only after a successful refresh with the original routing. This records configuration, not authenticated caller identity. (see [below for nested schema](#nestedatt--routing_scope))
+
+<a id="nestedatt--routing_scope"></a>
+### Nested Schema for `routing_scope`
+
+Read-Only:
+
+- `data_center` (String)
+- `environment` (String)
+- `organization_id` (String)
 
 ## Import
 

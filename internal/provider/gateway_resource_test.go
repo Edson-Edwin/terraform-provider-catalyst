@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -46,6 +47,7 @@ resource "catalyst_api_gateway_ruleset" "test" {
 }
 func TestGatewayLifecycle(t *testing.T) {
 	clearEnvironment(t)
+	t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 	t.Setenv("CATALYST_ACCESS_TOKEN", "offline-test")
 	var mu sync.Mutex
 	enabled := false
@@ -119,7 +121,11 @@ func TestGatewayLifecycle(t *testing.T) {
 		}
 		return nil
 	}, Steps: []resource.TestStep{
-		{Config: initial, Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttr("catalyst_api_gateway.test", "enabled", "true"), resource.TestCheckResourceAttr("catalyst_api_gateway_ruleset.test", "rules.first.authentication.0", "OAuth"), resource.TestCheckResourceAttr("catalyst_api_gateway_ruleset.test", "rules.second.authentication.#", "0"))},
+		{Config: initial, Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttr("catalyst_api_gateway.test", "enabled", "true"), resource.TestCheckResourceAttr("catalyst_api_gateway.test", "routing_scope.environment", "Development"), resource.TestCheckResourceAttr("catalyst_api_gateway_ruleset.test", "routing_scope.organization_id", "123"), resource.TestCheckResourceAttr("catalyst_api_gateway_ruleset.test", "rules.first.authentication.0", "OAuth"), resource.TestCheckResourceAttr("catalyst_api_gateway_ruleset.test", "rules.second.authentication.#", "0"))},
+		{Config: strings.Replace(initial, `provider "catalyst" {}`, "provider \"catalyst\" {\n data_center = \"us\"\n environment = \"Production\"\n}", 1), PlanOnly: true, ExpectError: regexp.MustCompile("Resource routing changed")},
+		{Config: strings.Replace(initial, `provider "catalyst" {}`, `provider "catalyst" { data_center = "eu" }`, 1), PlanOnly: true, ExpectError: regexp.MustCompile("Resource routing changed")},
+		{Config: strings.Replace(initial, `provider "catalyst" {}`, `provider "catalyst" { organization_id = "456" }`, 1), PlanOnly: true, ExpectError: regexp.MustCompile("Resource routing changed")},
+		{Config: initial, PlanOnly: true},
 		{ResourceName: "catalyst_api_gateway.test", ImportState: true, ImportStateId: "123", ImportStateVerify: true},
 		{ResourceName: "catalyst_api_gateway_ruleset.test", ImportState: true, ImportStateId: "123", ImportStateVerify: true},
 		{Config: updated, Check: resource.TestCheckResourceAttr("catalyst_api_gateway_ruleset.test", "rules.%", "1")},
@@ -136,6 +142,7 @@ func TestGatewayLifecycle(t *testing.T) {
 }
 func TestGatewayRulesetPartialWriteRetainsState(t *testing.T) {
 	clearEnvironment(t)
+	t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 	p := &CatalystProvider{httpClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		body := `{"status":"success","data":{"status":true,"scheduled":false}}`
 		status := 200
@@ -155,7 +162,7 @@ func TestGatewayRulesetPartialWriteRetainsState(t *testing.T) {
 	}
 	checkDiagnostics(t, configured.Diagnostics)
 	values := map[string]any{"project_id": "123", "rules": map[string]any{"test": map[string]any{"source_endpoint": "/test", "target_endpoint": "/server/target/execute", "function_id": "456", "method": "GET", "authentication": []string{"OAuth"}}}}
-	applied, err := server.ApplyResourceChange(t.Context(), &tfprotov6.ApplyResourceChangeRequest{TypeName: "catalyst_api_gateway_ruleset", PriorState: jsonConfig(t, nil), PlannedState: jsonConfig(t, values), Config: jsonConfig(t, values)})
+	applied, err := server.ApplyResourceChange(t.Context(), &tfprotov6.ApplyResourceChangeRequest{TypeName: "catalyst_api_gateway_ruleset", PriorState: jsonConfig(t, nil), PlannedState: boundResourceState(t, values), Config: jsonConfig(t, values)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,6 +193,7 @@ func TestGatewayRulesetPartialWriteRetainsState(t *testing.T) {
 }
 func TestGatewayImportValidation(t *testing.T) {
 	server := providerserver.NewProtocol6(New("test")())()
+	configureScopeTest(t, server)
 	for _, kind := range []string{"catalyst_api_gateway", "catalyst_api_gateway_ruleset"} {
 		for _, id := range []string{"0", "../123", "123/456", "123"} {
 			result, err := server.ImportResourceState(t.Context(), &tfprotov6.ImportResourceStateRequest{TypeName: kind, ID: id})

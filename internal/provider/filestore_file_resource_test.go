@@ -37,6 +37,7 @@ resource "catalyst_filestore_file" "test" {
 }
 func TestFilestoreFileLifecycle(t *testing.T) {
 	clearEnvironment(t)
+	t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 	t.Setenv("CATALYST_ACCESS_TOKEN", "offline-test")
 	source := filepath.Join(t.TempDir(), "source.bin")
 	original := []byte{0, 1, 255, 5, 3}
@@ -146,6 +147,7 @@ func TestFilestoreFileRecoveryState(t *testing.T) {
 	for _, mode := range []string{"malformed_create", "corrupt_upload", "denied_delete", "denied_confirmation", "denied_read"} {
 		t.Run(mode, func(t *testing.T) {
 			clearEnvironment(t)
+			t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 			source := filepath.Join(t.TempDir(), "asset")
 			if err := os.WriteFile(source, []byte("fixture"), 0600); err != nil {
 				t.Fatal(err)
@@ -187,10 +189,10 @@ func TestFilestoreFileRecoveryState(t *testing.T) {
 				}
 				newState, diagnostics = read.NewState, read.Diagnostics
 			} else {
-				prior, planned := jsonConfig(t, nil), jsonConfig(t, values)
+				prior, planned := jsonConfig(t, nil), boundResourceState(t, values)
 				if strings.HasPrefix(mode, "denied") {
 					values["id"] = "789"
-					prior, planned = jsonConfig(t, values), jsonConfig(t, nil)
+					prior, planned = boundResourceState(t, values), jsonConfig(t, nil)
 				}
 				applied, applyErr := server.ApplyResourceChange(t.Context(), &tfprotov6.ApplyResourceChangeRequest{TypeName: "catalyst_filestore_file", PriorState: prior, PlannedState: planned, Config: planned})
 				if applyErr != nil {
@@ -230,6 +232,7 @@ func TestFilestoreFileRecoveryState(t *testing.T) {
 }
 func TestFilestoreImportValidation(t *testing.T) {
 	server := providerserver.NewProtocol6(New("test")())()
+	configureScopeTest(t, server)
 	for _, id := range []string{"1", "1/2", "1/2/0", "1/2/3/4", "../2/3", "1/2/3"} {
 		result, err := server.ImportResourceState(t.Context(), &tfprotov6.ImportResourceStateRequest{TypeName: "catalyst_filestore_file", ID: id})
 		if err != nil {

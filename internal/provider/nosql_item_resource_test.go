@@ -34,6 +34,7 @@ resource "catalyst_nosql_item" "test" {
 }
 func TestNoSQLItemTerraformLifecycle(t *testing.T) {
 	clearEnvironment(t)
+	t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 	t.Setenv("CATALYST_ACCESS_TOKEN", "test")
 	var mu sync.Mutex
 	var stored map[string]json.RawMessage

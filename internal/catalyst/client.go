@@ -312,7 +312,7 @@ func failureError(operation string, status int, failure apiFailure) error {
 		case "INVALID_ID":
 			return fmt.Errorf("%w (INVALID_ID); verify resource and parent IDs in the selected environment", base)
 		case "PROJECT_CREATION_NOT_ALLOWED":
-			return fmt.Errorf("%w (PROJECT_CREATION_NOT_ALLOWED); project creation is unavailable for this account or authentication context", base)
+			return fmt.Errorf("%w (PROJECT_CREATION_NOT_ALLOWED); project creation is unavailable for this account or authentication context; confirm the selected organization, API creation eligibility and project quota with your Catalyst administrator or support before retrying", base)
 		}
 	}
 	return base

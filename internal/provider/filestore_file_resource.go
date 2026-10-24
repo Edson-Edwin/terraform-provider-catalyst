@@ -29,18 +29,21 @@ var sha256Pattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 type FilestoreFileResource struct{ client *catalyst.Client }
 type filestoreFileModel struct {
-	ID        types.String `tfsdk:"id"`
-	ProjectID types.String `tfsdk:"project_id"`
-	FolderID  types.String `tfsdk:"folder_id"`
-	Name      types.String `tfsdk:"name"`
-	Source    types.String `tfsdk:"source"`
-	SHA256    types.String `tfsdk:"source_sha256"`
-	Size      types.Int64  `tfsdk:"size"`
+	RoutingScope types.Object `tfsdk:"routing_scope"`
+	ID           types.String `tfsdk:"id"`
+	ProjectID    types.String `tfsdk:"project_id"`
+	FolderID     types.String `tfsdk:"folder_id"`
+	Name         types.String `tfsdk:"name"`
+	Source       types.String `tfsdk:"source"`
+	SHA256       types.String `tfsdk:"source_sha256"`
+	Size         types.Int64  `tfsdk:"size"`
 }
 
 const filestoreDeprecation = "Zoho has announced File Store sunset on 31 October 2026 and does not provide it to new projects/accounts. Use catalyst_stratus_object and data.catalyst_stratus_buckets for new storage. Plan migration of existing files and permissions separately; this provider does not migrate them. See https://docs.catalyst.zoho.com/en/announcements/2026/filestore-sunset/."
 
-func NewFilestoreFileResource() resource.Resource { return &FilestoreFileResource{} }
+func NewFilestoreFileResource() resource.Resource {
+	return withEnvironmentScope(&FilestoreFileResource{})
+}
 func (r *FilestoreFileResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_filestore_file"
 }

@@ -51,6 +51,12 @@ Explicit provider arguments take precedence over environment variables. A null
 or omitted argument falls back to its environment variable; an explicit empty
 string suppresses the fallback. Configuration values must be known before apply.
 
+Managed resources require `organization_id` or `CATALYST_ORGANIZATION_ID`.
+Environment-scoped resources save their region, environment and organization in
+`routing_scope`. Changing provider routing does not move resources or promote them
+to Production. Read the [environment isolation and migration guide](guides/environments.md)
+before refreshing legacy state or configuring a second environment.
+
 ### OAuth Refresh Credentials
 
 Register an OAuth client for your account's data center, obtain a grant with the
@@ -263,8 +269,9 @@ service coverage. Data sources only read existing infrastructure.
 Tables, columns, indexes, buckets, job pools, roles and permissions must already
 exist. AppSail containers, explicit scaling controls, custom domains, Production
 promotion, Authentication setup and Connections provisioning are not implemented.
-The [service expansion guide](guides/service_expansion.md) and
-[Authentication and Connections guide](guides/authentication_connections.md)
+The [service expansion guide](guides/service_expansion.md),
+[Authentication and Connections guide](guides/authentication_connections.md) and
+[Project ownership and recovery guide](guides/project_management.md)
 explain the supported subsets and verification limits.
 
 ## Lifecycle and State

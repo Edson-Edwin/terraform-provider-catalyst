@@ -27,6 +27,7 @@ var _ resource.ResourceWithImportState = &FunctionCronResource{}
 var _ resource.ResourceWithValidateConfig = &FunctionCronResource{}
 
 type functionCronModel struct {
+	RoutingScope  types.Object `tfsdk:"routing_scope"`
 	ID            types.String `tfsdk:"id"`
 	ProjectID     types.String `tfsdk:"project_id"`
 	Name          types.String `tfsdk:"name"`
@@ -46,7 +47,9 @@ type functionCronModel struct {
 	RetryInterval types.Int64  `tfsdk:"retry_interval"`
 }
 
-func NewFunctionCronResource() resource.Resource { return &FunctionCronResource{} }
+func NewFunctionCronResource() resource.Resource {
+	return withEnvironmentScope(&FunctionCronResource{})
+}
 func (r *FunctionCronResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_function_cron"
 }

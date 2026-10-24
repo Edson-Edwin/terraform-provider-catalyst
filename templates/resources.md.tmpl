@@ -19,11 +19,58 @@ description: |-
 # Resource: {{ .Name }}
 
 {{ .Description | trimspace }}
+{{- if ne .Name "catalyst_project" }}
+
+## Environment Isolation
+
+An explicit provider organization is required. The computed `routing_scope` binds
+this resource to its data center, environment and organization. Changed routing is
+rejected before resource API calls, including when applying a saved creation plan.
+Refresh legacy state under its original routing before updating or deleting it.
+See [environment isolation and migration](../guides/environments.md).
+{{- end }}
 {{- if eq .Name "catalyst_project" }}
 
 !> **Note:** Project deletion removes the entire project, including Production
 contents. The deletion guard is enabled by default. Creation is experimental and
 has not passed a live lifecycle in the current account.
+
+### Lifecycle and recovery
+
+Creation refuses an existing project name. Once Catalyst returns an ID, Terraform
+retains that ID and waits for matching readable metadata. A partial response can
+recover through reads; an ambiguous POST without a trusted ID is never repeated
+automatically. Inspect the account before retrying and import the exact project
+if creation succeeded remotely.
+
+`timeouts` configures the complete operation budget, including requests and
+polling. Defaults are five minutes for create/delete and two minutes for
+read/update. The update operation changes local guard/timeout settings; it does
+not rename the project or change its timezone. Name changes require replacement.
+
+Apply `deletion_protection = false` separately before destroy or replacement.
+Import re-enables the guard. Deletion checks the immutable ID and expected name,
+then polls for absence. Permission failures, malformed replies and timeouts keep
+state for recovery. Even HTTP 404 plus three empty account listings cannot
+distinguish deletion from lost membership. Refresh and delete preflight therefore
+retain state and fail when the project is invisible; they never automatically
+forget it or schedule a replacement. Absence is accepted as completion only after
+the current delete operation receives a success response for the exact ID.
+
+An explicit provider `organization_id` is required. The resource records
+`data_center` and `organization_id` in state and rejects changed provider routing
+before making requests. Older state without these fields must first be refreshed
+with the original routing before update or deletion. Import binds the project to
+the explicitly selected organization and data center on its first successful read.
+These fields record routing and do not attest the caller's identity.
+
+After a timeout, inspect the exact project ID and refresh before retrying. Keep
+one owner across Terraform states and external tools. The guard is local to this
+resource; it does not prevent deletion through the console or another client.
+
+See [Project ownership and recovery](../guides/project_management.md) for shared
+state locking, confirmed external deletion, creation eligibility and timezone
+checks.
 {{- else if eq .Name "catalyst_auth_user_role" }}
 
 ~> **Note:** This experimental resource has offline verification only. It assigns

@@ -10,6 +10,14 @@ description: |-
 
 Deploy a Node.js 22 or 24 Function (Basic I/O, Advanced I/O, Event, Cron or Job) from a prebuilt ZIP using `ZohoCatalyst.functions.ALL` and project read access. Supports code/configuration updates, import and drift detection by downloading the archive. Names must be unique: creation checks existing Functions and requires explicit import instead of adoption. Catalyst uses name-keyed upserts; keep project/name ownership exclusive across Terraform states and external deployment tools because the API has no established atomic conditional-create operation. Updates own memory and environment variables. Secrets marked sensitive remain in state; source code is not stored in state. The provider limits compressed and expanded archives to 100 MB. Artifact/configuration read-back verifies persistence, not runtime execution or Production promotion. The provider never invokes the Function. Import with `project_id/function_id` and supply a matching source ZIP/hash afterward. Deletion is confirmed for up to two minutes. Live validation covers India Development only.
 
+## Environment Isolation
+
+An explicit provider organization is required. The computed `routing_scope` binds
+this resource to its data center, environment and organization. Changed routing is
+rejected before resource API calls, including when applying a saved creation plan.
+Refresh legacy state under its original routing before updating or deleting it.
+See [environment isolation and migration](../guides/environments.md).
+
 ## Example Usage
 
 ```terraform
@@ -47,6 +55,16 @@ resource "catalyst_function" "example" {
 ## Attribute Reference
 
 - `id` (String) Function ID as a precision-preserving string.
+- `routing_scope` (Attributes) Saved data center, environment and explicit organization routing. Provider routing must match before reads, plans or mutations. Legacy state binds only after a successful refresh with the original routing. This records configuration, not authenticated caller identity. (see [below for nested schema](#nestedatt--routing_scope))
+
+<a id="nestedatt--routing_scope"></a>
+### Nested Schema for `routing_scope`
+
+Read-Only:
+
+- `data_center` (String)
+- `environment` (String)
+- `organization_id` (String)
 
 ## Import
 

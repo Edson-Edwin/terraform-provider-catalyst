@@ -76,6 +76,7 @@ func TestAppSailNode24Lifecycle(t *testing.T) { testAppSailLifecycle(t, "node24"
 func testAppSailLifecycle(t *testing.T, stack string) {
 	t.Helper()
 	clearEnvironment(t)
+	t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 	t.Setenv("CATALYST_ACCESS_TOKEN", "offline-test")
 	dir := t.TempDir()
 	first := writeAppSailArchive(t, dir, "testappsail", "one")
@@ -181,6 +182,7 @@ func TestAppSailArchiveValidation(t *testing.T) {
 
 func TestAppSailCreateFailureRetainsIdentity(t *testing.T) {
 	clearEnvironment(t)
+	t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 	source := writeAppSailArchive(t, t.TempDir(), "example", "one")
 	content, err := os.ReadFile(source)
 	if err != nil {
@@ -201,7 +203,7 @@ func TestAppSailCreateFailureRetainsIdentity(t *testing.T) {
 	}
 	checkDiagnostics(t, configured.Diagnostics)
 	values := map[string]any{"project_id": "123", "name": "example", "stack": "node22", "startup_command": "node index.js", "port": 9000, "catalyst_auth": true, "memory": 128, "source": source, "source_sha256": hex.EncodeToString(digest[:]), "environment_variables": map[string]string{}}
-	applied, err := server.ApplyResourceChange(t.Context(), &tfprotov6.ApplyResourceChangeRequest{TypeName: "catalyst_appsail", PriorState: jsonConfig(t, nil), PlannedState: jsonConfig(t, values), Config: jsonConfig(t, values)})
+	applied, err := server.ApplyResourceChange(t.Context(), &tfprotov6.ApplyResourceChangeRequest{TypeName: "catalyst_appsail", PriorState: jsonConfig(t, nil), PlannedState: boundResourceState(t, values), Config: jsonConfig(t, values)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -230,6 +232,7 @@ func TestAppSailCreateFailureRetainsIdentity(t *testing.T) {
 }
 func TestAppSailImportValidation(t *testing.T) {
 	server := providerserver.NewProtocol6(New("test")())()
+	configureScopeTest(t, server)
 	for _, id := range []string{"123", "123/0", "../789", "123/789/1", "123/789"} {
 		result, err := server.ImportResourceState(t.Context(), &tfprotov6.ImportResourceStateRequest{TypeName: "catalyst_appsail", ID: id})
 		if err != nil {

@@ -65,6 +65,15 @@ test:
 testacc:
 	TF_ACC=1 go test -race -count=1 -v -timeout=5m -run '^TestAccProjectDataSource$$' ./internal/provider
 
+# Full disposable project lifecycle; explicit write opt-in and account eligibility required.
+testacc-project:
+	TF_ACC=1 go test -race -count=1 -v -timeout=20m -run '^TestAccProjectResource$$' ./internal/provider
+
+test-project:
+	TF_ACC=0 go test -race -count=1 -timeout=5m -run '^TestProject' ./internal/catalyst ./internal/provider
+
+.PHONY: testacc-project test-project
+
 testacc-discovery:
 	TF_ACC=1 go test -race -count=1 -v -timeout=5m -run '^TestAccDiscoveryDataSources$$' ./internal/provider
 

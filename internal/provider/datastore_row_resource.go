@@ -23,14 +23,17 @@ var _ resource.ResourceWithImportState = &DataStoreRowResource{}
 
 type DataStoreRowResource struct{ client *catalyst.Client }
 type dataStoreRowModel struct {
-	ID        types.String         `tfsdk:"id"`
-	ProjectID types.String         `tfsdk:"project_id"`
-	TableID   types.String         `tfsdk:"table_id"`
-	RowID     types.String         `tfsdk:"row_id"`
-	Values    jsontypes.Normalized `tfsdk:"values_json"`
+	RoutingScope types.Object         `tfsdk:"routing_scope"`
+	ID           types.String         `tfsdk:"id"`
+	ProjectID    types.String         `tfsdk:"project_id"`
+	TableID      types.String         `tfsdk:"table_id"`
+	RowID        types.String         `tfsdk:"row_id"`
+	Values       jsontypes.Normalized `tfsdk:"values_json"`
 }
 
-func NewDataStoreRowResource() resource.Resource { return &DataStoreRowResource{} }
+func NewDataStoreRowResource() resource.Resource {
+	return withEnvironmentScope(&DataStoreRowResource{})
+}
 func (r *DataStoreRowResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_datastore_row"
 }

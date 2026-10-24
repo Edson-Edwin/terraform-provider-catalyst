@@ -10,6 +10,14 @@ description: |-
 
 Manage a pre-defined CronExpression, daily/monthly/yearly calendar, one-time or relative periodic schedule targeting an existing Job Function and Function Job Pool. Validates target identities and project membership before writes. Defaults to disabled. Enabling submits real jobs and may incur Catalyst usage. The Function code and pool are separate resources/prerequisites. Supports updates, import as project_id/cron_id, drift and confirmed deletion. Requires cron create/read/update/delete, jobpool read, Function read and project read scopes. Parameter values are sensitive but remain in Terraform state; secure your state storage. Set exactly one schedule mode. Time and form changes update the same cron ID; date/week forms clear omitted fields. Week-based calendars require one weekday. One-time timestamps use Unix seconds and omit end_time. Relative interval_seconds schedules use UTC and recurring end_time; elapsed intervals omit the wall-clock timezone from API requests. Legacy Cron Function triggers are not managed here. Live validation is limited to India Development.
 
+## Environment Isolation
+
+An explicit provider organization is required. The computed `routing_scope` binds
+this resource to its data center, environment and organization. Changed routing is
+rejected before resource API calls, including when applying a saved creation plan.
+Refresh legacy state under its original routing before updating or deleting it.
+See [environment isolation and migration](../guides/environments.md).
+
 ## Example Usage
 
 ```terraform
@@ -55,6 +63,7 @@ resource "catalyst_function_cron" "example" {
 ## Attribute Reference
 
 - `id` (String) Cron ID as an exact numeric string.
+- `routing_scope` (Attributes) Saved data center, environment and explicit organization routing. Provider routing must match before reads, plans or mutations. Legacy state binds only after a successful refresh with the original routing. This records configuration, not authenticated caller identity. (see [below for nested schema](#nestedatt--routing_scope))
 
 <a id="nestedatt--calendar_schedule"></a>
 ### Nested Schema for `calendar_schedule`
@@ -72,6 +81,16 @@ Optional:
 - `months` (Set of Number) Months: 1 is January and 12 is December. Required for yearly schedules; omit for daily/monthly. Defaults to an empty set.
 - `week_days` (Set of Number) Exactly one weekday: 1 Sunday, 2 Monday, 3 Tuesday, 4 Wednesday, 5 Thursday, 6 Friday, 7 Saturday. Multiple weekdays are rejected by the service. Supply with weeks_of_month, instead of days. Defaults to an empty set.
 - `weeks_of_month` (Set of Number) Weeks, 1–5. Supply with week_days, instead of days. Defaults to an empty set.
+
+
+<a id="nestedatt--routing_scope"></a>
+### Nested Schema for `routing_scope`
+
+Read-Only:
+
+- `data_center` (String)
+- `environment` (String)
+- `organization_id` (String)
 
 ## Import
 

@@ -1,5 +1,11 @@
 ## 0.1.0 (Unreleased)
 
+BREAKING CHANGES:
+
+- All managed resources now require an explicit organization. Environment-scoped resources persist `routing_scope` and reject changed region, environment or organization before resource requests, including saved-plan applies. Refresh legacy state under its original routing before mutation. Projects retain their separate cross-environment scope.
+- Managed projects now require an explicit provider organization. State binds the organization and data center; changed routing fails before requests. Refresh legacy project state with its original routing before updates or deletion.
+- Invisible projects are retained with an error instead of automatically removed and recreated. After independently confirming external deletion, remove only the exact Terraform binding to authorize a replacement. Delete preflight no longer treats a missing project as success.
+
 FEATURES:
 
 - Add regional project/Stratus checks across both environments and authentication modes, SHA-256 validation of signed downloads, and disposable-object lifecycle checks with exact-key cleanup. Add a protected-environment CI matrix and offline verification of fixture isolation and cleanup failures. Authenticated live coverage remains pending regional fixtures.
@@ -17,6 +23,8 @@ FEATURES:
 - Manage existing File Store workloads with `catalyst_filestore_file`: binary upload, SHA-256 verification, import, replacement, drift detection and confirmed deletion without storing contents in state.
 
 FIXES AND RELIABILITY:
+
+- Add configurable project operation timeouts, exact-ID readiness checks that recover incomplete create metadata, and deletion polling that tolerates temporary read/list disagreement. Retain state on permission failures and timeouts without replaying ambiguous writes. Expand offline Terraform guard/import/recovery coverage and add `make testacc-project` for the full disposable-project lifecycle; live account eligibility remains unverified.
 
 - Clone standard HTTP transports, require certificate verification and TLS 1.2 or newer, preserve stronger TLS minimums and reject incompatible TLS limits without mutating shared clients.
 - Test forged Stratus origins and redirect credential isolation across every supported data center and both environments, including HTTP downgrade, cross-region/environment responses, lookalike hosts, userinfo, ports, paths and query strings.

@@ -10,6 +10,14 @@ description: |-
 
 Own the complete API Gateway ruleset for an enabled project. Supports Basic I/O and Advanced I/O Function targets, web client routes, OAuth/APIKey/CatalystUserManagement authentication combinations and explicitly unauthenticated routes. Client routes require GET and no authentication; a hosted web client is a prerequisite. Updating replaces the complete ruleset; omitted rules are deleted. Creation requires an empty ruleset; import existing supported rules using the project ID. Unsupported throttling/system policies fail safely instead of being discarded. Requires Gateway API read/create/update/delete scopes. Reference catalyst_api_gateway.id for lifecycle ordering. Destroy removes owned rules without disabling Gateway. Disabled Gateway reads retain state with an error. Use exclusive ruleset ownership across states, console users and deployment tools; the bulk API has no conditional-write primitive. Mutations wait for migration jobs and matching readback; no routes or Functions are invoked. Live evidence is limited to India Development; web client routes have offline/documented-contract verification only. Configured throttling and system routes remain unsupported.
 
+## Environment Isolation
+
+An explicit provider organization is required. The computed `routing_scope` binds
+this resource to its data center, environment and organization. Changed routing is
+rejected before resource API calls, including when applying a saved creation plan.
+Refresh legacy state under its original routing before updating or deleting it.
+See [environment isolation and migration](../guides/environments.md).
+
 ~> **Note:** This resource owns the complete custom ruleset. Removing an entry
 deletes that rule. Keep one owner for the project's rules across all states and
 deployment tools. Import supported existing rules before managing them.
@@ -47,6 +55,7 @@ resource "catalyst_api_gateway_ruleset" "example" {
 ## Attribute Reference
 
 - `id` (String) Project ID identifying the single ruleset.
+- `routing_scope` (Attributes) Saved data center, environment and explicit organization routing. Provider routing must match before reads, plans or mutations. Legacy state binds only after a successful refresh with the original routing. This records configuration, not authenticated caller identity. (see [below for nested schema](#nestedatt--routing_scope))
 
 <a id="nestedatt--rules"></a>
 ### Nested Schema for `rules`
@@ -62,6 +71,16 @@ Optional:
 - `function_id` (String) Existing Function's positive numeric ID; required for basicio/advancedio and omitted for client.
 - `method` (String) GET (default), POST, PUT, DELETE, PATCH or ANY. ANY cannot overlap other methods for the same source.
 - `target` (String) basicio (default), advancedio, or client. Client routes require GET, authentication=[] and no function_id.
+
+
+<a id="nestedatt--routing_scope"></a>
+### Nested Schema for `routing_scope`
+
+Read-Only:
+
+- `data_center` (String)
+- `environment` (String)
+- `organization_id` (String)
 
 ## Import
 

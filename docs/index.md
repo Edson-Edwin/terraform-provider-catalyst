@@ -55,6 +55,12 @@ Explicit provider arguments take precedence over environment variables. A null
 or omitted argument falls back to its environment variable; an explicit empty
 string suppresses the fallback. Configuration values must be known before apply.
 
+Managed resources require `organization_id` or `CATALYST_ORGANIZATION_ID`.
+Environment-scoped resources save their region, environment and organization in
+`routing_scope`. Changing provider routing does not move resources or promote them
+to Production. Read the [environment isolation and migration guide](guides/environments.md)
+before refreshing legacy state or configuring a second environment.
+
 ### OAuth Refresh Credentials
 
 Register an OAuth client for your account's data center, obtain a grant with the
@@ -267,8 +273,9 @@ service coverage. Data sources only read existing infrastructure.
 Tables, columns, indexes, buckets, job pools, roles and permissions must already
 exist. AppSail containers, explicit scaling controls, custom domains, Production
 promotion, Authentication setup and Connections provisioning are not implemented.
-The [service expansion guide](guides/service_expansion.md) and
-[Authentication and Connections guide](guides/authentication_connections.md)
+The [service expansion guide](guides/service_expansion.md),
+[Authentication and Connections guide](guides/authentication_connections.md) and
+[Project ownership and recovery guide](guides/project_management.md)
 explain the supported subsets and verification limits.
 
 ## Lifecycle and State
@@ -320,7 +327,7 @@ retrying. Import identities and replacement behavior are documented per resource
 - `data_center` (String) Data center: `us`, `eu`, `in`, `au`, `ca`, `jp`, or `sa`. Falls back to `CATALYST_DATA_CENTER`, then `us` in Development. Production requires an explicit value.
 - `environment` (String) `Development` or `Production`. Falls back to `CATALYST_ENVIRONMENT`, then `Development`.
 - `forbidden_organization_ids` (Set of String) Forbidden configured organization IDs. Requires explicit organization_id. Falls back to comma-separated CATALYST_FORBIDDEN_ORGANIZATION_IDS. An explicit empty set suppresses the environment fallback.
-- `organization_id` (String) Optional organization ID for the `CATALYST-ORG` header. Falls back to `CATALYST_ORGANIZATION_ID`.
+- `organization_id` (String) Organization ID for the `CATALYST-ORG` header. Required when managing resources; optional for data sources. Falls back to `CATALYST_ORGANIZATION_ID`.
 - `redirect_uri` (String) Optional registered redirect URI for OAuth refresh requests. Falls back to `CATALYST_REDIRECT_URI`. Omit for a Self Client.
 - `refresh_token` (String, Sensitive) OAuth refresh token. Falls back to `CATALYST_REFRESH_TOKEN`. Access tokens are refreshed automatically and cached in memory.
 - `validation_project_id` (String) Optional existing project to read during provider configuration. Checks credentials and project access in the selected region, environment and organization before exposing the client to resources. Requires project-read scope. Falls back to CATALYST_VALIDATION_PROJECT_ID. This is an access check, not caller-identity verification.

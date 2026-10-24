@@ -119,6 +119,43 @@ for injection names and the protected CI setup. Record actual date, commit, regi
 environment, mode and cleanup outcomes only after execution. Existing India service
 lifecycle evidence and the public TLS results above retain their original scope.
 
+### Saved environment routing (2026-10-24)
+
+All 12 environment-scoped managed resources now persist a computed `routing_scope`
+containing data center, environment and explicit organization. A shared lifecycle
+guard rejects mismatched or incomplete bindings before service calls on read,
+plan, update and delete. Creation plans also record routing and apply checks it
+again, preventing environment-variable changes from redirecting a saved plan.
+Import records the selected routing; partial-create recovery retains it with the
+created identity. Projects keep their separate cross-environment organization/DC
+binding because a whole project spans Development and Production.
+
+Managed resources now require explicit organization routing. Legacy resources can
+acquire their first binding only after a successful read under the original
+configuration; failed reads do not establish a binding, and unbound state cannot
+authorize updates or deletion. The operator must supply the original scope during
+this one-time migration because earlier state did not record it. See the
+[migration guide](docs/guides/environments.md).
+
+Focused protocol checks pass across all 12 resource types, covering 420 blocked
+operation scenarios with zero service requests and retained state. They include
+read, normal/destroy plans, creation, update and deletion with changed destinations,
+missing organization, unbound or incomplete scope. Successful/failed legacy refresh
+and partial-create binding checks also pass. Generated documentation validation,
+all example validations, schema loading and `go vet ./...` pass. The final full
+offline `go test -race -count=1 ./...` run passes (client 7.370 s, provider
+352.575 s, release tools 1.109 s). Real Terraform lifecycle tests also reject
+environment, region and organization switches, restore the original routing,
+verify import/state consistency and complete cleanup with unchanged expected
+write counts. These results cover the saved-plan checks as well as the original
+state-routing guard. Hosted CI was not executed; billing remains an external blocker.
+
+Dedicated Production fixtures have been requested and the user intends to provision
+them; no setup path or injected Production fixture variables are available yet.
+No live Production mutation or new regional compatibility result is claimed.
+Configured scope binding does not attest caller identity, establish distributed
+ownership, or implement environment creation, promotion or rollback.
+
 ## Service expansion evidence
 
 Latest service expansion (2026-10-23): **13 resources and 12 data sources**,
@@ -393,6 +430,110 @@ The maintainer confirmed on 2026-10-23 that no eligible Circuit test project is 
 `catalyst_project` implements the documented project POST/GET/DELETE endpoints, import by ID, immutable-name replacement and local deletion protection. Protection defaults to true, including import; apply false before destroy. Deleting a project affects the entire project, including Production contents. Ambiguous writes are not replayed, duplicate names are refused and created IDs are retained after incomplete responses. A missing project requires HTTP 404 INVALID_ID plus three successful account listings with no matching ID; explicit permission errors retain state. Loss of membership can also make a project invisible, so this is an account-visibility check, not proof of permanent backend deletion.
 
 Offline real-Terraform lifecycle, protection and recovery tests passed. The current live India login still receives PROJECT_CREATION_NOT_ALLOWED. No project was created by this probe; a successful live project lifecycle is not claimed. The resource is experimental until creation/deletion can be verified in an eligible account.
+
+### Project lifecycle hardening (2026-10-24)
+
+Project operations now accept positive duration overrides through `timeouts`:
+create/delete default to five minutes and read/update to two. The operation budget
+includes API requests and polling. Creation saves the returned ID before checking
+readability; incomplete metadata can recover through exact-ID/name reads without
+repeating POST. Delete confirmation tolerates temporary lookup/list disagreement,
+while permission failures, malformed responses and timeouts retain state.
+
+The focused race-enabled project suite passes, including real offline Terraform
+default protection, rejected protected destroys, import protection, guard/timeout
+updates, refresh, stable plans, replacement and external deletion. Client/protocol
+regressions cover delayed visibility, failed listings, wrong identities, partial
+create recovery, operation cancellation/timeouts and ambiguous delete responses.
+Static analysis, generated-document validation and all example validations pass.
+The complete offline `go test -race -count=1 ./...` regression suite also passes.
+
+`make testacc-project` now runs the disposable project Terraform lifecycle in an
+explicit region and organization with Development routing, using either configured
+authentication mode. It records trusted created IDs from Terraform state even on
+partial-create errors, checks names before cleanup, confirms exact-ID absence and
+compares the final project ID inventory with its baseline. Its shared lifecycle
+steps and recovery recorder are covered offline.
+
+**Initial live gate invocation:** no Catalyst credentials or routing fixtures were
+injected in the process. An invocation of `make testacc-project` failed at the
+required write opt-in before making API calls; this was neither a live API attempt
+nor a passing/skipped acceptance result. The later CLI-backed authenticated attempt
+is recorded below. The `PROJECT_CREATION_NOT_ALLOWED` restriction is unresolved. Follow the
+[project test prerequisites](CONTRIBUTING.md#experimental-project-management) to
+obtain eligible credentials and run the gate. Hosted CI also remains blocked by
+billing. Broader project settings and in-place rename/timezone management are not
+implemented or claimed.
+
+### Project visibility, routing and renewed live attempt (2026-10-24)
+
+This supersedes the earlier automatic project disappearance behavior. Managed
+projects now retain state and return an error on lost visibility, including HTTP
+404 INVALID_ID followed by three successful listings without the ID. Read does
+not forget the project or authorize recreation. Delete preflight also fails on
+that observation; the current operation requires a successful deletion response
+for the exact ID before its absence waiter can confirm completion.
+
+An explicit provider organization is required for managed projects. Computed
+`data_center` and `organization_id` fields bind state to routing. Changes to either
+are rejected before API requests; unbound legacy state must be refreshed using its
+original scope before update/deletion. These checks do not attest caller identity
+or provide distributed ownership across independent Terraform states.
+
+The full offline race suite passes after these changes (client 8.590 s, provider
+398.339 s, release tools 1.189 s). Focused protocol tests also verify that missing
+organization and changed routing cause zero API calls, legacy state can bind after
+a successful read, and unbound legacy mutations are refused. Static analysis and
+all Terraform example validations pass. These are local checks, not hosted CI results.
+
+The official project REST reference and installed CLI project client were reviewed
+again. A supported rename/timezone update contract was not established. Catalyst
+documents timezone changes through General Settings; the data-source example now
+supports an optional Terraform postcondition to detect a mismatch. This validates
+an expected timezone and does not manage it remotely. The new
+[ownership and recovery guide](docs/guides/project_management.md) explains these
+boundaries and the one-state-per-project requirement with backend locking.
+
+**Fresh live evidence:** although no credentials were injected into the shell,
+the installed CLI had a saved India login. A refreshed access token successfully
+read its single visible organization and project inventory. The full Terraform
+acceptance gate was then attempted with explicit organization and Development
+routing. Creation returned HTTP 400 `PROJECT_CREATION_NOT_ALLOWED` at step 1;
+the independent final project ID inventory exactly matched the baseline. The
+launcher initially stopped before writes to correct numeric ID parsing, then used
+precision-preserving ID parsing for the actual run. No successful creation or
+live lifecycle is claimed. Credentials stayed in memory; the recorded test output
+was redacted. Account/API eligibility remains the live blocker, separately from CI billing.
+
+**Duplicate-name check and retry (2026-10-24):** on a user-requested recheck,
+authenticated inventory showed three existing projects, none matching the failed
+test name. No existing project was deleted. A fresh Terraform lifecycle attempt
+used `tfacc997d64e869e23f21d3fa9ea684e8afe6` and again failed at creation with
+HTTP 400 `PROJECT_CREATION_NOT_ALLOWED` (provider test 1.878 s). The independent
+final project ID inventory matched the baseline. These observations do not support
+a duplicate-name explanation; the underlying account/API restriction remains
+unconfirmed.
+
+**Creation-flow diagnosis (2026-10-24):** a direct request outside Terraform to
+the documented India `POST /baas/v1/project` route, using a fresh unique name
+(`tfdiag2af22ae93e83eb45`), returned HTTP 400. Selective inspection of the response
+message revealed: "Project creation is not supported in this CLI version."
+The remaining message suggested upgrading the CLI. No project was created and
+the final ID inventory matched the three-project baseline. A separate read-only
+check of the refreshed OAuth response confirmed `ZohoCatalyst.projects.ALL` in
+the actual grant; this was not merely a cached requested scope. These observations
+supersede quota or missing-scope speculation as the leading explanation.
+
+The installed official CLI is 1.28.0. Its `lib/init/features/project.js` creation
+branch opens the Catalyst console and waits for the resulting project ID rather
+than calling the older `createProject` REST helper. This matches the official
+[July 2025 CLI release notes](https://docs.catalyst.zoho.com/en/release-notes/cli/):
+CLI 1.20.0 changed project creation to a console-assisted flow. The REST reference
+still documents direct creation, so the supported non-interactive replacement or
+eligibility for this OAuth context needs vendor clarification. This does not prove
+that every OAuth client or region rejects creation. Updating the local CLI alone
+does not change the Terraform provider's direct HTTP request. No existing projects
+were deleted, and no CLI upgrade or permission change was performed.
 
 ## Website-service milestone (2026-10-23)
 

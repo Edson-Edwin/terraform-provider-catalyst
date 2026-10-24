@@ -32,6 +32,7 @@ var _ resource.ResourceWithValidateConfig = &WebhookCronResource{}
 
 type WebhookCronResource struct{ client *catalyst.Client }
 type webhookCronModel struct {
+	RoutingScope  types.Object `tfsdk:"routing_scope"`
 	ID            types.String `tfsdk:"id"`
 	ProjectID     types.String `tfsdk:"project_id"`
 	Name          types.String `tfsdk:"name"`
@@ -54,7 +55,7 @@ type webhookCronModel struct {
 	RetryInterval types.Int64  `tfsdk:"retry_interval"`
 }
 
-func NewWebhookCronResource() resource.Resource { return &WebhookCronResource{} }
+func NewWebhookCronResource() resource.Resource { return withEnvironmentScope(&WebhookCronResource{}) }
 func (r *WebhookCronResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_webhook_cron"
 }

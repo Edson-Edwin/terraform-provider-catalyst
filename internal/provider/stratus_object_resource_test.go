@@ -38,6 +38,7 @@ resource "catalyst_stratus_object" "test" {
 }
 func TestStratusObjectLifecycle(t *testing.T) {
 	clearEnvironment(t)
+	t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 	t.Setenv("CATALYST_ACCESS_TOKEN", "offline-test")
 	source := filepath.Join(t.TempDir(), "source.bin")
 	if err := os.WriteFile(source, []byte{0, 255, 1, 2, 3}, 0600); err != nil {
@@ -146,6 +147,7 @@ func TestStratusObjectFailureRetainsState(t *testing.T) {
 	for _, mode := range []string{"accepted_then_denied", "denied_read", "denied_delete", "denied_confirmation"} {
 		t.Run(mode, func(t *testing.T) {
 			clearEnvironment(t)
+			t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 			source := filepath.Join(t.TempDir(), "asset")
 			content := []byte("bytes")
 			if err := os.WriteFile(source, content, 0600); err != nil {
@@ -199,10 +201,10 @@ func TestStratusObjectFailureRetainsState(t *testing.T) {
 				}
 				state, diagnostics = read.NewState, read.Diagnostics
 			} else {
-				prior, planned := jsonConfig(t, nil), jsonConfig(t, values)
+				prior, planned := jsonConfig(t, nil), boundResourceState(t, values, "in")
 				if strings.HasPrefix(mode, "denied") {
 					values["id"] = "123/test-bucket/asset"
-					prior, planned = jsonConfig(t, values), jsonConfig(t, nil)
+					prior, planned = boundResourceState(t, values, "in"), jsonConfig(t, nil)
 				}
 				applied, err := server.ApplyResourceChange(t.Context(), &tfprotov6.ApplyResourceChangeRequest{TypeName: "catalyst_stratus_object", PriorState: prior, PlannedState: planned, Config: planned})
 				if err != nil {
@@ -239,6 +241,7 @@ func TestStratusObjectFailureRetainsState(t *testing.T) {
 }
 func TestStratusObjectImportValidation(t *testing.T) {
 	server := providerserver.NewProtocol6(New("test")())()
+	configureScopeTest(t, server)
 	for _, id := range []string{"1/bucket/key", "1/bucket/nested/key", "0/bucket/key", "1/bucket/../bad", "1/UPPER/key", "1/bucket/", "1/bucket"} {
 		result, err := server.ImportResourceState(t.Context(), &tfprotov6.ImportResourceStateRequest{TypeName: "catalyst_stratus_object", ID: id})
 		if err != nil {

@@ -53,7 +53,7 @@ func (p *CatalystProvider) Schema(_ context.Context, _ provider.SchemaRequest, r
 		Attributes: map[string]schema.Attribute{
 			"data_center":                schema.StringAttribute{Optional: true, MarkdownDescription: "Data center: `us`, `eu`, `in`, `au`, `ca`, `jp`, or `sa`. Falls back to `CATALYST_DATA_CENTER`, then `us` in Development. Production requires an explicit value."},
 			"environment":                schema.StringAttribute{Optional: true, MarkdownDescription: "`Development` or `Production`. Falls back to `CATALYST_ENVIRONMENT`, then `Development`."},
-			"organization_id":            schema.StringAttribute{Optional: true, MarkdownDescription: "Optional organization ID for the `CATALYST-ORG` header. Falls back to `CATALYST_ORGANIZATION_ID`."},
+			"organization_id":            schema.StringAttribute{Optional: true, MarkdownDescription: "Organization ID for the `CATALYST-ORG` header. Required when managing resources; optional for data sources. Falls back to `CATALYST_ORGANIZATION_ID`."},
 			"access_token":               schema.StringAttribute{Optional: true, Sensitive: true, MarkdownDescription: "Existing OAuth access token. Falls back to `CATALYST_ACCESS_TOKEN`. Cannot be combined with refresh credentials. Does not refresh automatically."},
 			"client_id":                  schema.StringAttribute{Optional: true, MarkdownDescription: "OAuth client ID. Falls back to `CATALYST_CLIENT_ID`. Requires client_secret and refresh_token."},
 			"client_secret":              schema.StringAttribute{Optional: true, Sensitive: true, MarkdownDescription: "OAuth client secret. Falls back to `CATALYST_CLIENT_SECRET`."},

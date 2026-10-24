@@ -23,6 +23,7 @@ var _ resource.ResourceWithImportState = &AuthUserRoleResource{}
 
 type AuthUserRoleResource struct{ client *catalyst.Client }
 type authUserRoleModel struct {
+	RoutingScope  types.Object `tfsdk:"routing_scope"`
 	ID            types.String `tfsdk:"id"`
 	ProjectID     types.String `tfsdk:"project_id"`
 	UserID        types.String `tfsdk:"user_id"`
@@ -31,7 +32,9 @@ type authUserRoleModel struct {
 	RoleName      types.String `tfsdk:"role_name"`
 }
 
-func NewAuthUserRoleResource() resource.Resource { return &AuthUserRoleResource{} }
+func NewAuthUserRoleResource() resource.Resource {
+	return withEnvironmentScope(&AuthUserRoleResource{})
+}
 func (r *AuthUserRoleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_auth_user_role"
 }

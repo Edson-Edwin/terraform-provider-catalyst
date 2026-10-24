@@ -30,6 +30,7 @@ var _ resource.ResourceWithValidateConfig = &AppSailResource{}
 
 type AppSailResource struct{ client *catalyst.Client }
 type appsailModel struct {
+	RoutingScope  types.Object `tfsdk:"routing_scope"`
 	ID            types.String `tfsdk:"id"`
 	ProjectID     types.String `tfsdk:"project_id"`
 	Name          types.String `tfsdk:"name"`
@@ -46,7 +47,7 @@ type appsailModel struct {
 	Environment   types.Map    `tfsdk:"environment_variables"`
 }
 
-func NewAppSailResource() resource.Resource { return &AppSailResource{} }
+func NewAppSailResource() resource.Resource { return withEnvironmentScope(&AppSailResource{}) }
 func (r *AppSailResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_appsail"
 }

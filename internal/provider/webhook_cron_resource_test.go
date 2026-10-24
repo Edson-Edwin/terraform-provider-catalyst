@@ -59,6 +59,7 @@ func TestWebhookCronSchedulesLifecycle(t *testing.T) { testWebhookCronLifecycle(
 func testWebhookCronLifecycle(t *testing.T, schedules bool) {
 	t.Helper()
 	clearEnvironment(t)
+	t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 	t.Setenv("CATALYST_ACCESS_TOKEN", "offline-test")
 	var mu sync.Mutex
 	var stored map[string]any
@@ -184,6 +185,7 @@ func TestWebhookCronReadFailurePreservesState(t *testing.T) {
 	for _, status := range []int{401, 403, 500} {
 		t.Run(fmt.Sprint(status), func(t *testing.T) {
 			clearEnvironment(t)
+			t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 			p := &CatalystProvider{httpClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 				return &http.Response{StatusCode: status, Body: io.NopCloser(strings.NewReader("secret-from-server")), Header: make(http.Header)}, nil
 			})}}
@@ -226,6 +228,7 @@ func TestWebhookCronReadFailurePreservesState(t *testing.T) {
 
 func TestWebhookCronImportValidation(t *testing.T) {
 	server := providerserver.NewProtocol6(New("test")())()
+	configureScopeTest(t, server)
 	for _, id := range []string{"123", "123/0", "123/456/789", "../456", "123/456"} {
 		imported, err := server.ImportResourceState(t.Context(), &tfprotov6.ImportResourceStateRequest{TypeName: "catalyst_webhook_cron", ID: id})
 		if err != nil {
@@ -239,6 +242,7 @@ func TestWebhookCronImportValidation(t *testing.T) {
 
 func TestWebhookCronCreateFailureRetainsState(t *testing.T) {
 	clearEnvironment(t)
+	t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 	p := &CatalystProvider{httpClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		if req.Method != http.MethodPost {
 			t.Errorf("unexpected request %s", req.Method)
@@ -252,7 +256,7 @@ func TestWebhookCronCreateFailureRetainsState(t *testing.T) {
 	}
 	checkDiagnostics(t, configured.Diagnostics)
 	values := map[string]any{"project_id": "123", "job_pool_id": "456", "name": "test", "job_name": "test", "expression": "0 0 1 1 *", "timezone": "UTC", "url": "https://example.com", "end_time": 1893456000, "description": "", "enabled": false, "method": "get", "headers": map[string]string{}, "params": map[string]string{}, "body": "", "retry_count": 0, "retry_interval": 0}
-	applied, err := server.ApplyResourceChange(t.Context(), &tfprotov6.ApplyResourceChangeRequest{TypeName: "catalyst_webhook_cron", PriorState: jsonConfig(t, nil), PlannedState: jsonConfig(t, values), Config: jsonConfig(t, values)})
+	applied, err := server.ApplyResourceChange(t.Context(), &tfprotov6.ApplyResourceChangeRequest{TypeName: "catalyst_webhook_cron", PriorState: jsonConfig(t, nil), PlannedState: boundResourceState(t, values), Config: jsonConfig(t, values)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -286,7 +290,7 @@ func TestWebhookCronCreateFailureRetainsState(t *testing.T) {
 func TestWebhookCronReplacementAndUnknownPlan(t *testing.T) {
 	server := providerserver.NewProtocol6(New("test")())()
 	values := map[string]any{"id": "789", "project_id": "123", "job_pool_id": "456", "name": "test", "job_name": "test", "expression": "0 0 1 1 *", "timezone": "UTC", "url": "https://example.com", "end_time": 1893456000, "description": "", "enabled": false, "method": "get", "headers": map[string]string{}, "params": map[string]string{}, "body": "", "retry_count": 0, "retry_interval": 0}
-	prior := jsonConfig(t, values)
+	prior := boundResourceState(t, values)
 	values["project_id"] = "999"
 	proposed := jsonConfig(t, values)
 	delete(values, "id") // Computed identity belongs in state, never in configuration.
@@ -312,6 +316,7 @@ func TestWebhookCronReplacementAndUnknownPlan(t *testing.T) {
 		t.Fatal(err)
 	}
 	attrs["id"] = tftypes.NewValue(tftypes.String, nil)
+	attrs["routing_scope"] = tftypes.NewValue(attrs["routing_scope"].Type(), nil)
 	for _, key := range []string{"project_id", "job_pool_id", "url"} {
 		attrs[key] = tftypes.NewValue(tftypes.String, tftypes.UnknownValue)
 	}
@@ -336,6 +341,7 @@ func TestWebhookCronReplacementAndUnknownPlan(t *testing.T) {
 
 func TestWebhookCronDeleteFailurePreservesState(t *testing.T) {
 	clearEnvironment(t)
+	t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 	calls := 0
 	deleted := false
 	p := &CatalystProvider{httpClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -357,7 +363,7 @@ func TestWebhookCronDeleteFailurePreservesState(t *testing.T) {
 		t.Fatal(err)
 	}
 	checkDiagnostics(t, configured.Diagnostics)
-	applied, err := server.ApplyResourceChange(t.Context(), &tfprotov6.ApplyResourceChangeRequest{TypeName: "catalyst_webhook_cron", PriorState: jsonConfig(t, map[string]any{"id": "789", "project_id": "123"}), PlannedState: jsonConfig(t, nil), Config: jsonConfig(t, nil)})
+	applied, err := server.ApplyResourceChange(t.Context(), &tfprotov6.ApplyResourceChangeRequest{TypeName: "catalyst_webhook_cron", PriorState: boundResourceState(t, map[string]any{"id": "789", "project_id": "123"}), PlannedState: jsonConfig(t, nil), Config: jsonConfig(t, nil)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -384,6 +390,7 @@ func TestWebhookCronRefusesForeignTargetMutation(t *testing.T) {
 	for _, deleting := range []bool{false, true} {
 		t.Run(fmt.Sprint(deleting), func(t *testing.T) {
 			clearEnvironment(t)
+			t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 			writes := 0
 			p := &CatalystProvider{httpClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 				if req.Method != "GET" {
@@ -399,7 +406,7 @@ func TestWebhookCronRefusesForeignTargetMutation(t *testing.T) {
 			}
 			checkDiagnostics(t, configured.Diagnostics)
 			values := map[string]any{"id": "789", "project_id": "123", "name": "test", "job_pool_id": "456", "job_name": "job", "expression": "0 0 * * *", "timezone": "UTC", "url": "https://example.com", "end_time": 1893456000}
-			prior := jsonConfig(t, values)
+			prior := boundResourceState(t, values)
 			plan := prior
 			if deleting {
 				plan = jsonConfig(t, nil)

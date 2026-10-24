@@ -30,6 +30,7 @@ var _ resource.ResourceWithImportState = &AppSailCronResource{}
 var _ resource.ResourceWithValidateConfig = &AppSailCronResource{}
 
 type appSailCronModel struct {
+	RoutingScope  types.Object `tfsdk:"routing_scope"`
 	Path          types.String `tfsdk:"path"`
 	Method        types.String `tfsdk:"method"`
 	Headers       types.Map    `tfsdk:"headers"`
@@ -53,7 +54,7 @@ type appSailCronModel struct {
 	RetryInterval types.Int64  `tfsdk:"retry_interval"`
 }
 
-func NewAppSailCronResource() resource.Resource { return &AppSailCronResource{} }
+func NewAppSailCronResource() resource.Resource { return withEnvironmentScope(&AppSailCronResource{}) }
 func (r *AppSailCronResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_appsail_cron"
 }

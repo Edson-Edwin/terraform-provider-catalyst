@@ -18,18 +18,19 @@ import (
 
 type NoSQLItemResource struct{ client *catalyst.Client }
 type noSQLItemModel struct {
-	ID        types.String         `tfsdk:"id"`
-	ProjectID types.String         `tfsdk:"project_id"`
-	TableID   types.String         `tfsdk:"table_id"`
-	Keys      jsontypes.Normalized `tfsdk:"keys_json"`
-	Item      jsontypes.Normalized `tfsdk:"item_json"`
+	RoutingScope types.Object         `tfsdk:"routing_scope"`
+	ID           types.String         `tfsdk:"id"`
+	ProjectID    types.String         `tfsdk:"project_id"`
+	TableID      types.String         `tfsdk:"table_id"`
+	Keys         jsontypes.Normalized `tfsdk:"keys_json"`
+	Item         jsontypes.Normalized `tfsdk:"item_json"`
 }
 
 var _ resource.ResourceWithConfigure = &NoSQLItemResource{}
 var _ resource.ResourceWithValidateConfig = &NoSQLItemResource{}
 var _ resource.ResourceWithImportState = &NoSQLItemResource{}
 
-func NewNoSQLItemResource() resource.Resource { return &NoSQLItemResource{} }
+func NewNoSQLItemResource() resource.Resource { return withEnvironmentScope(&NoSQLItemResource{}) }
 func (r *NoSQLItemResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_nosql_item"
 }

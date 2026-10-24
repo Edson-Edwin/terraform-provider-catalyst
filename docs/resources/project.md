@@ -3,16 +3,53 @@
 page_title: "Catalyst: catalyst_project"
 subcategory: "Projects"
 description: |-
-  Create and delete a Catalyst project using the documented project API. Experimental: live creation is blocked in the current test account with PROJECT_CREATION_NOT_ALLOWED; full live lifecycle is not verified. Requires ZOHOCATALYST.projects.CREATE, .Read and .Delete scopes. Name changes replace the project. Deletion protection defaults to true; apply deletion_protection=false before destroying. Project deletion permanently removes the entire project and its contents, including Production applications. Use resource references for child dependencies and Terraform lifecycle.prevent_destroy for additional protection. Import by project ID; import enables local deletion protection. Creation refuses an existing name, but exclusive ownership across states/tools is still required. Ambiguous writes are not retried.
+  Manage a Catalyst project's creation, reads, import and deletion. Experimental: a successful live create/delete lifecycle is still pending; the previously tested account rejected creation with PROJECT_CREATION_NOT_ALLOWED. Requires ZOHOCATALYST.projects.CREATE, .Read and .Delete scopes. Name changes replace the entire project. Deletion protection defaults to true; apply deletion_protection=false before destroying. Project deletion permanently removes all contents, including Production applications. Use resource references for child dependencies and Terraform lifecycle.prevent_destroy for additional protection. Import by project ID enables local deletion protection. Existing names are refused during creation; exclusive ownership across states and deployment tools is required. Ambiguous writes are not retried. Created IDs are saved before waiting for readable metadata. An explicit provider organization_id is required. State records data center and organization; changing that routing is rejected. Loss of project visibility retains state and stops the operation instead of recreating the project.
 ---
 
 # Resource: catalyst_project
 
-Create and delete a Catalyst project using the documented project API. Experimental: live creation is blocked in the current test account with PROJECT_CREATION_NOT_ALLOWED; full live lifecycle is not verified. Requires ZOHOCATALYST.projects.CREATE, .Read and .Delete scopes. Name changes replace the project. Deletion protection defaults to true; apply deletion_protection=false before destroying. Project deletion permanently removes the entire project and its contents, including Production applications. Use resource references for child dependencies and Terraform lifecycle.prevent_destroy for additional protection. Import by project ID; import enables local deletion protection. Creation refuses an existing name, but exclusive ownership across states/tools is still required. Ambiguous writes are not retried.
+Manage a Catalyst project's creation, reads, import and deletion. Experimental: a successful live create/delete lifecycle is still pending; the previously tested account rejected creation with PROJECT_CREATION_NOT_ALLOWED. Requires ZOHOCATALYST.projects.CREATE, .Read and .Delete scopes. Name changes replace the entire project. Deletion protection defaults to true; apply deletion_protection=false before destroying. Project deletion permanently removes all contents, including Production applications. Use resource references for child dependencies and Terraform lifecycle.prevent_destroy for additional protection. Import by project ID enables local deletion protection. Existing names are refused during creation; exclusive ownership across states and deployment tools is required. Ambiguous writes are not retried. Created IDs are saved before waiting for readable metadata. An explicit provider organization_id is required. State records data center and organization; changing that routing is rejected. Loss of project visibility retains state and stops the operation instead of recreating the project.
 
 !> **Note:** Project deletion removes the entire project, including Production
 contents. The deletion guard is enabled by default. Creation is experimental and
 has not passed a live lifecycle in the current account.
+
+### Lifecycle and recovery
+
+Creation refuses an existing project name. Once Catalyst returns an ID, Terraform
+retains that ID and waits for matching readable metadata. A partial response can
+recover through reads; an ambiguous POST without a trusted ID is never repeated
+automatically. Inspect the account before retrying and import the exact project
+if creation succeeded remotely.
+
+`timeouts` configures the complete operation budget, including requests and
+polling. Defaults are five minutes for create/delete and two minutes for
+read/update. The update operation changes local guard/timeout settings; it does
+not rename the project or change its timezone. Name changes require replacement.
+
+Apply `deletion_protection = false` separately before destroy or replacement.
+Import re-enables the guard. Deletion checks the immutable ID and expected name,
+then polls for absence. Permission failures, malformed replies and timeouts keep
+state for recovery. Even HTTP 404 plus three empty account listings cannot
+distinguish deletion from lost membership. Refresh and delete preflight therefore
+retain state and fail when the project is invisible; they never automatically
+forget it or schedule a replacement. Absence is accepted as completion only after
+the current delete operation receives a success response for the exact ID.
+
+An explicit provider `organization_id` is required. The resource records
+`data_center` and `organization_id` in state and rejects changed provider routing
+before making requests. Older state without these fields must first be refreshed
+with the original routing before update or deletion. Import binds the project to
+the explicitly selected organization and data center on its first successful read.
+These fields record routing and do not attest the caller's identity.
+
+After a timeout, inspect the exact project ID and refresh before retrying. Keep
+one owner across Terraform states and external tools. The guard is local to this
+resource; it does not prevent deletion through the console or another client.
+
+See [Project ownership and recovery](../guides/project_management.md) for shared
+state locking, confirmed external deletion, creation eligibility and timezone
+checks.
 
 ## Example Usage
 
@@ -20,6 +57,13 @@ has not passed a live lifecycle in the current account.
 resource "catalyst_project" "example" {
   name                = "ExampleWebsite"
   deletion_protection = true
+
+  timeouts = {
+    create = "5m"
+    read   = "2m"
+    update = "2m"
+    delete = "10m"
+  }
 }
 ```
 
@@ -33,14 +77,27 @@ resource "catalyst_project" "example" {
 ### Optional
 
 - `deletion_protection` (Boolean) Local Terraform deletion guard. Defaults to true, including after import. Apply false before destroy. Changing this flag does not modify Catalyst.
+- `timeouts` (Attributes) Operation time budgets. A timeout retains known project state for recovery; it does not replay writes or undo a remote operation. (see [below for nested schema](#nestedatt--timeouts))
 
 ## Attribute Reference
 
+- `data_center` (String) Data center bound to this project in Terraform state. Provider routing must continue to match.
 - `domain` (String) Project domain reported by Catalyst; null if absent.
 - `domain_name` (String) Project domain name reported by Catalyst; null if absent.
 - `id` (String) Project ID as a precision-preserving string.
+- `organization_id` (String) Explicit provider organization bound to this project in Terraform state. This records routing, not authenticated caller identity.
 - `project_type` (String) Project type reported by Catalyst; null if absent.
 - `timezone` (String) Project timezone reported by Catalyst; null if absent. Timezone updates are not managed by this resource.
+
+<a id="nestedatt--timeouts"></a>
+### Nested Schema for `timeouts`
+
+Optional:
+
+- `create` (String) Maximum duration for create, including requests and polling. Defaults to 5m. Use a positive Go duration such as 30s or 10m.
+- `delete` (String) Maximum duration for delete, including requests and polling. Defaults to 5m. Use a positive Go duration such as 30s or 10m.
+- `read` (String) Maximum duration for read, including requests and polling. Defaults to 2m. Use a positive Go duration such as 30s or 10m.
+- `update` (String) Maximum duration for update, including requests and polling. Defaults to 2m. Use a positive Go duration such as 30s or 10m.
 
 ## Import
 

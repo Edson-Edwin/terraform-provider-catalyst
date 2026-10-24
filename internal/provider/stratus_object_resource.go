@@ -27,6 +27,7 @@ var _ resource.ResourceWithValidateConfig = &StratusObjectResource{}
 
 type StratusObjectResource struct{ client *catalyst.Client }
 type stratusObjectModel struct {
+	RoutingScope types.Object `tfsdk:"routing_scope"`
 	MultipartMiB types.Int64  `tfsdk:"multipart_part_size_mb"`
 	ID           types.String `tfsdk:"id"`
 	ProjectID    types.String `tfsdk:"project_id"`
@@ -40,7 +41,9 @@ type stratusObjectModel struct {
 	Metadata     types.Map    `tfsdk:"metadata"`
 }
 
-func NewStratusObjectResource() resource.Resource { return &StratusObjectResource{} }
+func NewStratusObjectResource() resource.Resource {
+	return withEnvironmentScope(&StratusObjectResource{})
+}
 func (r *StratusObjectResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_stratus_object"
 }

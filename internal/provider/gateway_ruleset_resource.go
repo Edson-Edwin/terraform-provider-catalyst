@@ -24,9 +24,10 @@ var _ resource.ResourceWithValidateConfig = &GatewayRulesetResource{}
 
 type GatewayRulesetResource struct{ client *catalyst.Client }
 type gatewayRulesetModel struct {
-	ID        types.String `tfsdk:"id"`
-	ProjectID types.String `tfsdk:"project_id"`
-	Rules     types.Map    `tfsdk:"rules"`
+	RoutingScope types.Object `tfsdk:"routing_scope"`
+	ID           types.String `tfsdk:"id"`
+	ProjectID    types.String `tfsdk:"project_id"`
+	Rules        types.Map    `tfsdk:"rules"`
 }
 type gatewayRuleModel struct {
 	Target         types.String `tfsdk:"target"`
@@ -39,7 +40,9 @@ type gatewayRuleModel struct {
 
 var gatewayRuleTypes = map[string]attr.Type{"target": types.StringType, "source_endpoint": types.StringType, "target_endpoint": types.StringType, "function_id": types.StringType, "method": types.StringType, "authentication": types.SetType{ElemType: types.StringType}}
 
-func NewGatewayRulesetResource() resource.Resource { return &GatewayRulesetResource{} }
+func NewGatewayRulesetResource() resource.Resource {
+	return withEnvironmentScope(&GatewayRulesetResource{})
+}
 func (r *GatewayRulesetResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_api_gateway_ruleset"
 }

@@ -10,6 +10,14 @@ description: |-
 
 Manage one persistent configuration/seed row in an existing Data Store table. Not for application-owned customer transactions. Supports scalar string/number/boolean/null columns, generated ROWID, import, in-place updates and drift detection. Owns columns present in values_json; removing a previously managed column explicitly clears it to null. Other columns are not adopted except on import, which initially reads all scalar application columns. System fields/profiles are excluded. Project/table changes replace the row. Ambiguous creates are never retried; if the response loses ROWID, inspect the table and import before retrying. Destroy deletes only the generated/imported row and confirms absence. Values remain in sensitive Terraform state. Requires table/schema READ and row CREATE/READ/UPDATE/DELETE OAuth scopes. Import as project_id/table_id/row_id. Table, schema, indexes and permissions are not provisioned.
 
+## Environment Isolation
+
+An explicit provider organization is required. The computed `routing_scope` binds
+this resource to its data center, environment and organization. Changed routing is
+rejected before resource API calls, including when applying a saved creation plan.
+Refresh legacy state under its original routing before updating or deleting it.
+See [environment isolation and migration](../guides/environments.md).
+
 ## Example Usage
 
 ```terraform
@@ -39,7 +47,17 @@ resource "catalyst_datastore_row" "example" {
 ## Attribute Reference
 
 - `id` (String) Composite project/table/row identity.
+- `routing_scope` (Attributes) Saved data center, environment and explicit organization routing. Provider routing must match before reads, plans or mutations. Legacy state binds only after a successful refresh with the original routing. This records configuration, not authenticated caller identity. (see [below for nested schema](#nestedatt--routing_scope))
 - `row_id` (String) Server-generated ROWID, preserved as a string.
+
+<a id="nestedatt--routing_scope"></a>
+### Nested Schema for `routing_scope`
+
+Read-Only:
+
+- `data_center` (String)
+- `environment` (String)
+- `organization_id` (String)
 
 ## Import
 

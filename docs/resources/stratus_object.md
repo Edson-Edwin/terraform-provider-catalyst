@@ -10,6 +10,14 @@ description: |-
 
 Manage an object in an existing unversioned Stratus bucket. Uploads local bytes and content type, supports in-place content updates, import, SHA-256 drift detection and confirmed deletion. Files are limited to 100 MiB. Single upload is the default; multipart_part_size_mb opts into multipart transfers. Versioned keys and TTL are not supported. Owns the complete custom metadata map; removing entries clears them remotely. The key must belong exclusively to this resource and have no version history. Destroy permanently removes the managed key. Creation checks absence and uses overwrite=false; existing keys require explicit import. Temporary signatures remain in memory; transfers use the expected regional Stratus origin without OAuth headers. Source contents are not stored in state. Requires bucket read and object read/create/update/delete scopes; metadata updates need ZohoCatalyst.buckets.objects.UPDATE. Import as project_id/bucket_name/object_key, retaining nested slashes. Multipart transfer settings are local and must be supplied again after import. Incomplete sessions are reported with an upload ID; a public abort/resume lifecycle has not been established. Live validation is limited to India Development.
 
+## Environment Isolation
+
+An explicit provider organization is required. The computed `routing_scope` binds
+this resource to its data center, environment and organization. Changed routing is
+rejected before resource API calls, including when applying a saved creation plan.
+Refresh legacy state under its original routing before updating or deleting it.
+See [environment isolation and migration](../guides/environments.md).
+
 ## Example Usage
 
 ```terraform
@@ -56,7 +64,17 @@ resource "catalyst_stratus_object" "example" {
 
 - `etag` (String) Opaque ETag returned by Stratus; source_sha256 verifies actual content.
 - `id` (String) Composite project_id/bucket_name/object_key identity.
+- `routing_scope` (Attributes) Saved data center, environment and explicit organization routing. Provider routing must match before reads, plans or mutations. Legacy state binds only after a successful refresh with the original routing. This records configuration, not authenticated caller identity. (see [below for nested schema](#nestedatt--routing_scope))
 - `size` (Number) Remote object size in bytes.
+
+<a id="nestedatt--routing_scope"></a>
+### Nested Schema for `routing_scope`
+
+Read-Only:
+
+- `data_center` (String)
+- `environment` (String)
+- `organization_id` (String)
 
 ## Import
 

@@ -28,6 +28,7 @@ resource "catalyst_datastore_row" "test" {
 
 func TestDataStoreRowTerraformLifecycle(t *testing.T) {
 	clearEnvironment(t)
+	t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 	t.Setenv("CATALYST_ACCESS_TOKEN", "offline")
 	var mu sync.Mutex
 	var row map[string]json.RawMessage
@@ -111,6 +112,7 @@ func TestDataStoreRowTerraformLifecycle(t *testing.T) {
 
 func TestDataStoreRowPermissionFailureRetainsState(t *testing.T) {
 	clearEnvironment(t)
+	t.Setenv("CATALYST_ORGANIZATION_ID", "123")
 	p := &CatalystProvider{httpClient: &http.Client{Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
 		return &http.Response{StatusCode: 403, Header: make(http.Header), Body: io.NopCloser(strings.NewReader("private@example.test"))}, nil
 	})}}
