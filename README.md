@@ -6,6 +6,8 @@ This is a community provider, not an official Zoho or HashiCorp product. It is u
 
 - [Provider documentation and configuration](docs/index.md)
 - [Resources and data sources by service](docs/index.md#supported-services)
+- [Environment isolation and state migration](docs/guides/environments.md)
+- [Project ownership and recovery](docs/guides/project_management.md)
 - [All-services example](examples/all_services/) and [full-stack website example](examples/full_stack/)
 - [Implementation status and verification evidence](API_COVERAGE.md)
 - [Contributing](CONTRIBUTING.md), [release process](RELEASING.md) and [changelog](CHANGELOG.md)
@@ -30,6 +32,7 @@ Configure your own credentials, using placeholders below:
 ```sh
 export CATALYST_DATA_CENTER="in"
 export CATALYST_ENVIRONMENT="Development"
+export CATALYST_ORGANIZATION_ID="your-organization-id"
 export CATALYST_CLIENT_ID="your-client-id"
 export CATALYST_CLIENT_SECRET="your-client-secret"
 export CATALYST_REFRESH_TOKEN="your-refresh-token"
@@ -45,6 +48,14 @@ terraform -chdir=examples/data-sources/catalyst_project plan
 ```
 
 This requires an existing project and the `ZOHOCATALYST.projects.Read` scope. A Catalyst CLI login alone does not configure provider credentials. See [authentication and configuration](docs/index.md#authentication-and-configuration) for access-token mode, OAuth setup, environment-variable precedence and aliases.
+
+Every managed resource requires an explicit `organization_id` or
+`CATALYST_ORGANIZATION_ID`; data sources may omit it. Environment-scoped resources
+record their data center, environment and organization in state and reject routing
+changes, including between a saved plan and its apply. Refresh legacy state under
+its original routing before mutation; follow the
+[environment migration guide](docs/guides/environments.md). Projects span both
+environments, and whole-project deletion affects Production too.
 
 Production now requires an explicit `data_center` or `CATALYST_DATA_CENTER`; set
 `us` explicitly if you previously relied on the default. Optional organization
@@ -73,7 +84,7 @@ verified TLS 1.2 or newer and block redirects; see [regional security policies](
 | Cache | Existing segment discovery only |
 | File Store | Deprecated file management and folder discovery for legacy projects |
 
-Existing tables, schemas, buckets, job pools, roles and permissions are prerequisites. Containers, custom domains, Production promotion, Authentication setup and Connections provisioning are not implemented. Project creation is account-dependent and has no successful live lifecycle verification; user-role assignment and Gateway client routes also retain verification limits. See the [service expansion guide](docs/guides/service_expansion.md) for the precise boundaries.
+Existing tables, schemas, buckets, job pools, roles and permissions are prerequisites. Containers, custom domains, Production promotion, Authentication setup and Connections provisioning are not implemented. Project creation has no successful live lifecycle verification: the tested India OAuth context was rejected with a CLI-version message, while the inspected official CLI uses console-assisted creation. A supported non-interactive route needs vendor clarification; see [project creation limits](docs/guides/project_management.md#unblock-live-project-creation). User-role assignment and Gateway client routes also retain verification limits. See the [service expansion guide](docs/guides/service_expansion.md) for the precise boundaries.
 
 File Store is deprecated. New storage examples use Stratus; legacy migrations and permission changes must be planned separately. See the [File Store resource](docs/resources/filestore_file.md) for the recorded vendor notice and limitations.
 

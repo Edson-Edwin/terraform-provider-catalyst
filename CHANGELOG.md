@@ -46,6 +46,8 @@ FIXES AND RELIABILITY:
 
 DEVELOPMENT AND RELEASES:
 
+- Document required organization routing, legacy-state migration, and the observed console-assisted project creation restriction. Keep pending authenticated regional and Production verification separate from passed offline checks.
+
 - Verify downloaded draft artifacts against the trusted signing-key fingerprint before local-mirror installation.
 - Add an isolated post-publication Registry installation checker and read-only release-preflight tooling.
 - Add API, Terraform lifecycle/protocol and opt-in live tests for storage and discovery.

@@ -58,6 +58,10 @@ These two targets read project/job-pool metadata and create no cloud objects. Po
 
 ### Mutation test opt-ins
 
+All managed-resource tests require `CATALYST_ORGANIZATION_ID` for the dedicated
+fixture organization, in addition to explicit region and environment. Verify the
+fixture belongs to that destination before enabling writes.
+
 Each `make testacc-*` target sets `TF_ACC=1`; mutation tests also require the explicit opt-ins below. Set those flags to `1` only for the target you intend to run. Unless noted, tests generate their own payloads and verify cleanup. They do not prove other data centers or Production compatibility. The matrix describes test prerequisites, not an instruction to execute every live test.
 
 | Make target | Additional opt-ins and prerequisites |
@@ -79,6 +83,7 @@ Each `make testacc-*` target sets `TF_ACC=1`; mutation tests also require the ex
 For example, to run only the Data Store configuration-row lifecycle after preparing its dedicated table:
 
 ```sh
+export CATALYST_ORGANIZATION_ID="your-fixture-organization-id"
 export CATALYST_TEST_ALLOW_DATASTORE_ROW_CREATE=1
 export CATALYST_TEST_DATASTORE_TABLE_ID="your-dedicated-table-id"
 make testacc-datastore-row
@@ -99,10 +104,11 @@ focused offline project suite.
 Prerequisites:
 
 1. An account and organization eligible to create projects through the REST API.
-   The previously tested India account returned `PROJECT_CREATION_NOT_ALLOWED`.
-   If eligibility is unknown, ask your Catalyst administrator or Catalyst support
-   to confirm API project creation for the intended organization. A console-created
-   project does not establish API creation eligibility.
+   The tested India OAuth context returned `PROJECT_CREATION_NOT_ALLOWED` with
+   a CLI-version message; the official CLI now uses console-assisted creation.
+   Confirm a supported non-interactive route with Catalyst support before retrying;
+   see [the creation diagnosis](docs/guides/project_management.md#unblock-live-project-creation).
+   A console-created project does not establish API creation eligibility.
 2. OAuth credentials with `ZOHOCATALYST.projects.CREATE`,
    `ZOHOCATALYST.projects.Read` and `ZOHOCATALYST.projects.Delete`. Follow the
    [official OAuth setup](https://docs.catalyst.zoho.com/en/api/oauth2/register-new-client/)
@@ -143,7 +149,12 @@ fresh access token and select its sole visible organization. The full Terraform
 gate reached creation and received HTTP 400 `PROJECT_CREATION_NOT_ALLOWED` again.
 An independent before/after project ID inventory comparison was unchanged. No
 credential values were printed or written to the repository. Authentication works
-in that context; REST creation eligibility still needs administrator/vendor action.
+in that context. A subsequent unique-name direct request received a message that
+creation was unsupported in that CLI version; the actual refreshed grant included
+`ZohoCatalyst.projects.ALL`. CLI 1.20.0 introduced console-assisted creation, and
+the inspected CLI 1.28.0 follows that flow. A supported non-interactive route for
+this OAuth context needs vendor clarification; a CLI upgrade alone does not change
+Terraform requests. See [the recorded diagnosis](API_COVERAGE.md).
 
 Project safety now deliberately differs from ordinary automatic disappearance
 handling: an invisible project retains state and stops the run, even after three

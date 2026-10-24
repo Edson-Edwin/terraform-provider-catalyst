@@ -42,7 +42,7 @@ func (r *ProjectResource) Metadata(_ context.Context, req resource.MetadataReque
 func (r *ProjectResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manage a Catalyst project's creation, reads, import and deletion. " +
-			"Experimental: a successful live create/delete lifecycle is still pending; the previously tested account rejected creation with PROJECT_CREATION_NOT_ALLOWED. " +
+			"Experimental: a successful live create/delete lifecycle is still pending; the tested OAuth context rejected direct creation with PROJECT_CREATION_NOT_ALLOWED and a CLI-version message. The official CLI uses console-assisted creation; a supported non-interactive route for this context needs vendor clarification. " +
 			"Requires ZOHOCATALYST.projects.CREATE, .Read and .Delete scopes. " +
 			"Name changes replace the entire project. Deletion protection defaults to true; apply deletion_protection=false before destroying. " +
 			"Project deletion permanently removes all contents, including Production applications. " +

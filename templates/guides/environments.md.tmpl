@@ -80,10 +80,13 @@ attributes can still be stored in state and saved plans.
 Offline tests exercise routing guards and region/environment request isolation.
 They do not prove that every service supports Production mutations or promotion.
 Authenticated checks need dedicated per-region/per-environment fixtures described
-in CONTRIBUTING.md. Run read-only authentication and Stratus checks first; enable
+in the [contributor guide](https://github.com/Edson-Edwin/terraform-provider-catalyst/blob/main/CONTRIBUTING.md). Run read-only authentication and Stratus checks first; enable
 disposable-object writes only for explicitly designated fixtures. The write gate
 verifies content integrity and cleanup but does not certify all service lifecycles.
 
 Production promotion/rollback and authenticated account-identity attestation require
 verified supported Catalyst contracts. They are not implemented by a routing header
-or by changing a rating. See API_COVERAGE.md for recorded live results and limits.
+or by changing a rating. See the
+[verification evidence](https://github.com/Edson-Edwin/terraform-provider-catalyst/blob/main/API_COVERAGE.md)
+for recorded live results and limits. Dedicated Production fixtures remain pending;
+no successful all-seven-region authenticated gate or Production lifecycle is claimed.

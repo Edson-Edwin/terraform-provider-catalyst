@@ -109,15 +109,31 @@ own supported timezone settings, which are separate from the project timezone.
 
 ## Unblock live project creation
 
-On 2026-10-24 a fresh access token from the saved India CLI login authenticated
-successfully and the live Terraform creation request in its sole visible
-organization again returned HTTP 400 `PROJECT_CREATION_NOT_ALLOWED`. The project
-ID inventory was unchanged after the attempt. Confirm REST
-creation eligibility, selected organization and project quota with the Catalyst
-administrator or support. The [getting-started guide](https://docs.catalyst.zoho.com/en/getting-started/catalyst-projects/)
-requires the first project to be created through the console before CLI creation;
-that documented CLI prerequisite is not a proven explanation for the recorded
-REST failure in an account that already has projects.
+On 2026-10-24 the tested India OAuth context authenticated successfully, but
+Terraform creation returned HTTP 400 `PROJECT_CREATION_NOT_ALLOWED`. A direct
+request to the documented `POST /baas/v1/project` route with a different unique
+name also failed. Its response said project creation was unsupported in that CLI
+version, despite Terraform making a direct HTTP request. The refreshed grant
+included `ZohoCatalyst.projects.ALL`. Existing project names did not match either
+attempt, and the project ID inventory remained unchanged. No existing projects
+were deleted.
+
+The [official CLI release notes](https://docs.catalyst.zoho.com/en/release-notes/cli/)
+record a switch to console-assisted creation in CLI 1.20.0 (July 2025). The inspected
+CLI 1.28.0 opens the console and waits for a project ID instead of using its older
+REST create helper. The [REST reference](https://docs.catalyst.zoho.com/en/api/code-reference/general/projects/create-new-project/)
+still documents direct creation. A supported non-interactive route or eligibility
+for this OAuth context needs vendor clarification. Updating the local CLI does not
+change Terraform's request, and this result does not establish that all clients
+or regions reject creation.
+
+For work that can use an existing project, create it through the console and use
+`data.catalyst_project`. Import into a managed resource only when this state is to
+own the whole project: configure its exact existing name and original routing,
+keep deletion protection enabled, import the exact project ID and review the next
+plan. Console creation and import do not verify automated creation. See the
+[recorded evidence](https://github.com/Edson-Edwin/terraform-provider-catalyst/blob/main/API_COVERAGE.md)
+for the diagnostic boundaries.
 
 Use credentials with `ZOHOCATALYST.projects.CREATE`, `.Read` and `.Delete`, securely
 injected into the local environment. Run `make testacc-project` from the provider
@@ -133,7 +149,8 @@ a successful authenticated lifecycle run. Hosted CI is separately blocked by bil
 When asking your administrator or Catalyst support for help, provide the region,
 organization ID and this non-secret diagnostic: authenticated project listing
 succeeds, but `POST /baas/v1/project` for a unique empty project returns HTTP 400
-`PROJECT_CREATION_NOT_ALLOWED`. Ask which account/client prerequisites permit
-creation and whether a supported project rename/timezone mutation API or atomic
-ownership mechanism exists. Never include access tokens, refresh tokens or client
+`PROJECT_CREATION_NOT_ALLOWED`. Include the observed CLI-version message and ask which supported
+non-interactive endpoint and OAuth client prerequisites permit creation. Separately
+ask whether a supported project rename/timezone mutation API or atomic ownership
+mechanism exists. Never include access tokens, refresh tokens or client
 secrets in the request.

@@ -69,6 +69,7 @@ instructions. The provider consumes existing credentials.
 ```shell
 export CATALYST_DATA_CENTER="in"
 export CATALYST_ENVIRONMENT="Development"
+export CATALYST_ORGANIZATION_ID="your-organization-id"
 export CATALYST_CLIENT_ID="your-client-id"
 export CATALYST_CLIENT_SECRET="your-client-secret"
 export CATALYST_REFRESH_TOKEN="your-refresh-token"
@@ -119,7 +120,7 @@ Terraform configuration and application archives.
 | --- | --- | --- |
 | `data_center` | `CATALYST_DATA_CENTER` | `us` in Development; explicit value required in Production |
 | `environment` | `CATALYST_ENVIRONMENT` | `Development` |
-| `organization_id` | `CATALYST_ORGANIZATION_ID` | No organization override |
+| `organization_id` | `CATALYST_ORGANIZATION_ID` | Required for managed resources; optional for data sources |
 | `access_token` | `CATALYST_ACCESS_TOKEN` | Use complete refresh credentials, if supplied |
 | `client_id` | `CATALYST_CLIENT_ID` | Required with refresh authentication |
 | `client_secret` | `CATALYST_CLIENT_SECRET` | Required with refresh authentication |
@@ -144,8 +145,9 @@ the implicit US default. An explicit empty region suppresses the environment
 fallback and therefore fails in Production. This is a deliberate compatibility
 change: existing Production configurations relying on the default must set `us`
 explicitly. Selecting Production is not
-a deployment promotion or project migration. `organization_id` optionally sets
-the `CATALYST-ORG` header.
+a deployment promotion or project migration. `organization_id` sets the
+`CATALYST-ORG` header and is required for managed resources; it remains optional
+for data sources.
 
 ```terraform
 provider "catalyst" {
@@ -306,7 +308,9 @@ retrying. Import identities and replacement behavior are documented per resource
 | Missing table, bucket, role or job pool | Provision the documented prerequisite in the selected project/environment. Discovery does not create it. |
 | Existing deployment name | Import the existing object; do not create a second Terraform owner. |
 | App URL exists but requests fail | Check the application's entry point, built dependencies, listening address/port and application permissions. |
-| Project creation rejected | The experimental project API is account-dependent; current live creation was rejected. Use an existing project. |
+| Missing organization or routing mismatch | Supply the original explicit organization, data center and environment. Changing routing does not migrate an object; see [environment isolation](guides/environments.md). |
+| Legacy state has no routing binding | Review and apply a refresh-only plan under the original routing before mutation; see [state migration](guides/environments.md#upgrade-existing-state). |
+| Project creation rejected | The tested OAuth context rejected direct creation with a CLI-version message; the inspected CLI uses console-assisted creation. Use a console-created project through a data source or deliberate import; see [project creation limits](guides/project_management.md#unblock-live-project-creation). |
 
 ## Argument Reference
 
