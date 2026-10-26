@@ -237,9 +237,9 @@ func TestOAuthStaleRefreshCannotInstallCooldown(t *testing.T) {
 	unblock()
 	<-old.done
 	c.mu.Lock()
-	clear := c.cooldown.until.IsZero()
+	cooldownCleared := c.cooldown.until.IsZero()
 	c.mu.Unlock()
-	if !clear {
+	if !cooldownCleared {
 		t.Fatal("late response throttled a newer refresh")
 	}
 	c.invalidate("fresh")

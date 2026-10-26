@@ -21,16 +21,16 @@ func testRoutingScope(dc, env, org string) map[string]any {
 // values so adding the binding cannot alter the configuration or planned values.
 func boundResourceState(t *testing.T, values map[string]any, dataCenter ...string) *tfprotov6.DynamicValue {
 	t.Helper()
-	copy := make(map[string]any, len(values)+1)
+	boundValues := make(map[string]any, len(values)+1)
 	for k, v := range values {
-		copy[k] = v
+		boundValues[k] = v
 	}
 	dc := "us"
 	if len(dataCenter) > 0 {
 		dc = dataCenter[0]
 	}
-	copy["routing_scope"] = testRoutingScope(dc, "Development", "123")
-	return jsonConfig(t, copy)
+	boundValues["routing_scope"] = testRoutingScope(dc, "Development", "123")
+	return jsonConfig(t, boundValues)
 }
 
 func configureScopeTest(t *testing.T, server tfprotov6.ProviderServer) {

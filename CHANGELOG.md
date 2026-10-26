@@ -8,6 +8,8 @@ BREAKING CHANGES:
 
 FEATURES:
 
+- Add a guided source preview with an offline installation check, read-only project discovery and an optional disposable AppSail deploy/update/destroy example. The launcher keeps credentials in child-process environment, remembers trial routing and app identity, and retains Terraform state for recovery. Add automated launcher isolation tests and a narrowly scoped secret-scanner exception for a public Make enum.
+
 - Add regional project/Stratus checks across both environments and authentication modes, SHA-256 validation of signed downloads, and disposable-object lifecycle checks with exact-key cleanup. Add a protected-environment CI matrix and offline verification of fixture isolation and cleanup failures. Authenticated live coverage remains pending regional fixtures.
 
 - Add `allowed_data_centers` and `allowed_environments` configuration policies with environment fallbacks. Nonempty policies require explicit destinations and fail before authentication or access preflight when a selection is not approved.
@@ -23,6 +25,8 @@ FEATURES:
 - Manage existing File Store workloads with `catalyst_filestore_file`: binary upload, SHA-256 verification, import, replacement, drift detection and confirmed deletion without storing contents in state.
 
 FIXES AND RELIABILITY:
+
+- Add configurable Function operation budgets, code-free configuration updates with artifact prechecks, and in-place Node runtime changes. Preserve recovery state on timeout, reconcile changed refresh snapshots and skip artifact downloads while deployment metadata is stale. Expand lifecycle regressions and add an opt-in generated-fixture Basic I/O execution gate covering original-artifact redeployment with bounded exact-ID cleanup.
 
 - Add configurable project operation timeouts, exact-ID readiness checks that recover incomplete create metadata, and deletion polling that tolerates temporary read/list disagreement. Retain state on permission failures and timeouts without replaying ambiguous writes. Expand offline Terraform guard/import/recovery coverage and add `make testacc-project` for the full disposable-project lifecycle; live account eligibility remains unverified.
 

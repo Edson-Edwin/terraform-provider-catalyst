@@ -12,6 +12,18 @@ permissions:
   contents: read
 
 jobs:
+  secrets:
+    name: Source and history secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   # Ensure project builds before running testing matrix
   build:
     name: Build
@@ -27,7 +39,7 @@ jobs:
       - run: go build -v .
       - run: make deps-check
       - run: go vet ./...
-      - run: python3 -m unittest discover -s scripts -p 'test_run_regional_check.py' -v
+      - run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
       - run: test -z "$(gofmt -l main.go internal tools/tools.go)"
       - name: Run linters
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
@@ -82,6 +94,7 @@ jobs:
       - run: make test
         timeout-minutes: 10
       - run: make verify
+      - run: python3 scripts/try-provider.py check
 
   package:
     name: Release package verification

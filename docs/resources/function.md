@@ -3,12 +3,12 @@
 page_title: "Catalyst: catalyst_function"
 subcategory: "Functions"
 description: |-
-  Deploy a Node.js 22 or 24 Function (Basic I/O, Advanced I/O, Event, Cron or Job) from a prebuilt ZIP using ZohoCatalyst.functions.ALL and project read access. Supports code/configuration updates, import and drift detection by downloading the archive. Names must be unique: creation checks existing Functions and requires explicit import instead of adoption. Catalyst uses name-keyed upserts; keep project/name ownership exclusive across Terraform states and external deployment tools because the API has no established atomic conditional-create operation. Updates own memory and environment variables. Secrets marked sensitive remain in state; source code is not stored in state. The provider limits compressed and expanded archives to 100 MB. Artifact/configuration read-back verifies persistence, not runtime execution or Production promotion. The provider never invokes the Function. Import with project_id/function_id and supply a matching source ZIP/hash afterward. Deletion is confirmed for up to two minutes. Live validation covers India Development only.
+  Deploy a Node.js 22 or 24 Function (Basic I/O, Advanced I/O, Event, Cron or Job) from a prebuilt ZIP using ZohoCatalyst.functions.ALL and project read access. Supports code/configuration updates, import and drift detection by downloading the archive. Names must be unique: creation checks existing Functions and requires explicit import instead of adoption. Catalyst uses name-keyed upserts; keep project/name ownership exclusive across Terraform states and external deployment tools because the API has no established atomic conditional-create operation. Updates own memory and environment variables. Configuration-only updates omit the ZIP and verify the existing artifact hash before writing. Source-path and timeout-only changes do not deploy. Secrets marked sensitive remain in state; source code is not stored in state. The provider limits compressed and expanded archives to 100 MB. Artifact/configuration read-back verifies persistence, not runtime execution or Production promotion. The provider never invokes the Function. Import with project_id/function_id and supply a matching source ZIP/hash afterward. Operation timeouts are configurable; deletion defaults to two minutes. Live validation covers India Development only.
 ---
 
 # Resource: catalyst_function
 
-Deploy a Node.js 22 or 24 Function (Basic I/O, Advanced I/O, Event, Cron or Job) from a prebuilt ZIP using `ZohoCatalyst.functions.ALL` and project read access. Supports code/configuration updates, import and drift detection by downloading the archive. Names must be unique: creation checks existing Functions and requires explicit import instead of adoption. Catalyst uses name-keyed upserts; keep project/name ownership exclusive across Terraform states and external deployment tools because the API has no established atomic conditional-create operation. Updates own memory and environment variables. Secrets marked sensitive remain in state; source code is not stored in state. The provider limits compressed and expanded archives to 100 MB. Artifact/configuration read-back verifies persistence, not runtime execution or Production promotion. The provider never invokes the Function. Import with `project_id/function_id` and supply a matching source ZIP/hash afterward. Deletion is confirmed for up to two minutes. Live validation covers India Development only.
+Deploy a Node.js 22 or 24 Function (Basic I/O, Advanced I/O, Event, Cron or Job) from a prebuilt ZIP using `ZohoCatalyst.functions.ALL` and project read access. Supports code/configuration updates, import and drift detection by downloading the archive. Names must be unique: creation checks existing Functions and requires explicit import instead of adoption. Catalyst uses name-keyed upserts; keep project/name ownership exclusive across Terraform states and external deployment tools because the API has no established atomic conditional-create operation. Updates own memory and environment variables. Configuration-only updates omit the ZIP and verify the existing artifact hash before writing. Source-path and timeout-only changes do not deploy. Secrets marked sensitive remain in state; source code is not stored in state. The provider limits compressed and expanded archives to 100 MB. Artifact/configuration read-back verifies persistence, not runtime execution or Production promotion. The provider never invokes the Function. Import with `project_id/function_id` and supply a matching source ZIP/hash afterward. Operation timeouts are configurable; deletion defaults to two minutes. Live validation covers India Development only.
 
 ## Environment Isolation
 
@@ -17,6 +17,14 @@ this resource to its data center, environment and organization. Changed routing 
 rejected before resource API calls, including when applying a saved creation plan.
 Refresh legacy state under its original routing before updating or deleting it.
 See [environment isolation and migration](../guides/environments.md).
+
+## Updates and Verification
+
+Memory/environment-only updates omit the ZIP and check the existing artifact hash
+before writing. Node runtime updates preserve identity and require a matching ZIP.
+Operation timeouts cover requests and polling; a known ID remains available for
+recovery after a deployment timeout. See [Function deployment and verification](../guides/function_management.md)
+for ownership limits, timeout configuration and the separate execution test gate.
 
 ## Example Usage
 
@@ -32,6 +40,13 @@ resource "catalyst_function" "example" {
   source_sha256         = var.function_zip_sha256
   memory                = 256
   environment_variables = { APP_MODE = "example" }
+
+  timeouts = {
+    create = "5m"
+    read   = "2m"
+    update = "5m"
+    delete = "2m"
+  }
 }
 ```
 
@@ -49,13 +64,25 @@ resource "catalyst_function" "example" {
 
 - `environment_variables` (Map of String, Sensitive) Complete desired environment-variable map. Removing keys clears them remotely. Values remain in Terraform state.
 - `memory` (Number) Memory allocation in MB: 128, 256 or 512; defaults to 256.
-- `stack` (String) Supported runtimes: node22 and node24; defaults to node22.
+- `stack` (String) Supported runtimes: node22 and node24; defaults to node22. Runtime changes update in place and require a matching source ZIP.
+- `timeouts` (Attributes) Operation time budgets. A timeout retains known Function state for recovery; it does not replay writes or undo a remote operation. (see [below for nested schema](#nestedatt--timeouts))
 - `type` (String) Supported types: basicio, advancedio, event, cron and job; defaults to basicio. Event/cron triggers and Job Scheduling pools/schedules are separate configuration and are not created by this resource.
 
 ## Attribute Reference
 
 - `id` (String) Function ID as a precision-preserving string.
 - `routing_scope` (Attributes) Saved data center, environment and explicit organization routing. Provider routing must match before reads, plans or mutations. Legacy state binds only after a successful refresh with the original routing. This records configuration, not authenticated caller identity. (see [below for nested schema](#nestedatt--routing_scope))
+
+<a id="nestedatt--timeouts"></a>
+### Nested Schema for `timeouts`
+
+Optional:
+
+- `create` (String) Maximum duration for create, including requests and polling. Defaults to 5m. Use a positive Go duration such as 30s or 10m.
+- `delete` (String) Maximum duration for delete, including requests and polling. Defaults to 2m. Use a positive Go duration such as 30s or 10m.
+- `read` (String) Maximum duration for read, including requests and polling. Defaults to 2m. Use a positive Go duration such as 30s or 10m.
+- `update` (String) Maximum duration for update, including requests and polling. Defaults to 5m. Use a positive Go duration such as 30s or 10m.
+
 
 <a id="nestedatt--routing_scope"></a>
 ### Nested Schema for `routing_scope`

@@ -92,9 +92,10 @@ func TestProjectFailureRetainsState(t *testing.T) {
 				case http.MethodDelete:
 					writes++
 					body = `{"status":"success","data":{"id":"901"}}`
-					if scenario == "delete_wrong_id" {
+					switch scenario {
+					case "delete_wrong_id":
 						body = `{"status":"success","data":{"id":"902"}}`
-					} else if scenario == "delete_ambiguous" {
+					case "delete_ambiguous":
 						status, body = 503, "server-secret"
 					}
 				case http.MethodGet:
@@ -146,10 +147,11 @@ func TestProjectFailureRetainsState(t *testing.T) {
 				state, diagnostics = result.NewState, result.Diagnostics
 			} else {
 				planned := jsonConfig(t, nil)
-				if scenario == "partial_recovers" || scenario == "create_timeout" {
+				switch scenario {
+				case "partial_recovers", "create_timeout":
 					delete(values, "id")
 					prior, planned = jsonConfig(t, nil), jsonConfig(t, values)
-				} else if scenario == "update_permission" {
+				case "update_permission":
 					values["deletion_protection"] = true
 					planned = jsonConfig(t, values)
 				}

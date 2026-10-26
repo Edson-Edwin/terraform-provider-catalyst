@@ -1,0 +1,13 @@
+title = "Catalyst provider secret scanning"
+
+[extend]
+useDefault = true
+
+# The generic API-key rule mistakes this public Make target and fixed enum for
+# a credential across two lines. Keep the exception limited to this exact match.
+[[allowlists]]
+description = "Public regional test target with the literal all enum"
+condition = "AND"
+paths = ['''(^|/)GNUmakefile$''']
+regexTarget = "match"
+regexes = ['''testacc-regional-auth-all:\r?\n\tCATALYST_TEST_REGIONS=all(?:[ \t]|$)''']

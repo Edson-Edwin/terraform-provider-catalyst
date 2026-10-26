@@ -39,6 +39,7 @@ type functionModel struct {
 	SHA256       types.String `tfsdk:"source_sha256"`
 	Memory       types.Int64  `tfsdk:"memory"`
 	Environment  types.Map    `tfsdk:"environment_variables"`
+	Timeouts     types.Object `tfsdk:"timeouts"`
 }
 
 func NewFunctionResource() resource.Resource { return withEnvironmentScope(&FunctionResource{}) }
@@ -47,11 +48,12 @@ func (r *FunctionResource) Metadata(_ context.Context, req resource.MetadataRequ
 }
 func (r *FunctionResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	replace := []planmodifier.String{stringplanmodifier.RequiresReplace()}
-	resp.Schema = schema.Schema{MarkdownDescription: "Deploy a Node.js 22 or 24 Function (Basic I/O, Advanced I/O, Event, Cron or Job) from a prebuilt ZIP using `ZohoCatalyst.functions.ALL` and project read access. Supports code/configuration updates, import and drift detection by downloading the archive. Names must be unique: creation checks existing Functions and requires explicit import instead of adoption. Catalyst uses name-keyed upserts; keep project/name ownership exclusive across Terraform states and external deployment tools because the API has no established atomic conditional-create operation. Updates own memory and environment variables. Secrets marked sensitive remain in state; source code is not stored in state. The provider limits compressed and expanded archives to 100 MB. Artifact/configuration read-back verifies persistence, not runtime execution or Production promotion. The provider never invokes the Function. Import with `project_id/function_id` and supply a matching source ZIP/hash afterward. Deletion is confirmed for up to two minutes. Live validation covers India Development only.", Attributes: map[string]schema.Attribute{
+	resp.Schema = schema.Schema{MarkdownDescription: "Deploy a Node.js 22 or 24 Function (Basic I/O, Advanced I/O, Event, Cron or Job) from a prebuilt ZIP using `ZohoCatalyst.functions.ALL` and project read access. Supports code/configuration updates, import and drift detection by downloading the archive. Names must be unique: creation checks existing Functions and requires explicit import instead of adoption. Catalyst uses name-keyed upserts; keep project/name ownership exclusive across Terraform states and external deployment tools because the API has no established atomic conditional-create operation. Updates own memory and environment variables. Configuration-only updates omit the ZIP and verify the existing artifact hash before writing. Source-path and timeout-only changes do not deploy. Secrets marked sensitive remain in state; source code is not stored in state. The provider limits compressed and expanded archives to 100 MB. Artifact/configuration read-back verifies persistence, not runtime execution or Production promotion. The provider never invokes the Function. Import with `project_id/function_id` and supply a matching source ZIP/hash afterward. Operation timeouts are configurable; deletion defaults to two minutes. Live validation covers India Development only.", Attributes: map[string]schema.Attribute{
+		"timeouts":              operationTimeoutsSchema("Function", map[string]string{"create": "5m", "read": "2m", "update": "5m", "delete": "2m"}),
 		"id":                    schema.StringAttribute{Computed: true, MarkdownDescription: "Function ID as a precision-preserving string.", PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
 		"project_id":            schema.StringAttribute{Required: true, MarkdownDescription: "Existing project ID.", PlanModifiers: replace},
 		"name":                  schema.StringAttribute{Required: true, MarkdownDescription: "Unique Function name; must match the ZIP configuration and package name. Changing it replaces the Function.", PlanModifiers: replace},
-		"stack":                 schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("node22"), MarkdownDescription: "Supported runtimes: node22 and node24; defaults to node22.", PlanModifiers: replace},
+		"stack":                 schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("node22"), MarkdownDescription: "Supported runtimes: node22 and node24; defaults to node22. Runtime changes update in place and require a matching source ZIP."},
 		"type":                  schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString("basicio"), MarkdownDescription: "Supported types: basicio, advancedio, event, cron and job; defaults to basicio. Event/cron triggers and Job Scheduling pools/schedules are separate configuration and are not created by this resource.", PlanModifiers: replace},
 		"source":                schema.StringAttribute{Required: true, MarkdownDescription: "Local prebuilt ZIP containing catalyst-config.json, package.json and the entry point at its root. Build dependencies before applying."},
 		"source_sha256":         schema.StringAttribute{Required: true, MarkdownDescription: "Lowercase hex SHA-256, usually filesha256(source). Changed contents update code in place. Refresh records the remote archive hash."},
@@ -167,14 +169,18 @@ func (d *functionModel) populate(ctx context.Context, result *catalyst.FunctionD
 	d.Environment = env
 	return diags
 }
-func (r *FunctionResource) persist(ctx context.Context, data *functionModel, creating bool, diags *diag.Diagnostics, setState func()) {
-	archive, err := readUploadSource(data.Source.ValueString(), data.SHA256.ValueString())
-	if err == nil {
-		err = validateFunctionArchive(archive, data.Name.ValueString(), data.Stack.ValueString(), data.Type.ValueString())
-	}
-	if err != nil {
-		diags.AddError("Invalid Function source", err.Error())
-		return
+func (r *FunctionResource) persist(ctx context.Context, data *functionModel, creating, uploadCode bool, diags *diag.Diagnostics, setState func()) {
+	var archive []byte
+	var err error
+	if uploadCode {
+		archive, err = readUploadSource(data.Source.ValueString(), data.SHA256.ValueString())
+		if err == nil {
+			err = validateFunctionArchive(archive, data.Name.ValueString(), data.Stack.ValueString(), data.Type.ValueString())
+		}
+		if err != nil {
+			diags.AddError("Invalid Function source", err.Error())
+			return
+		}
 	}
 	desired, dg := data.api(ctx)
 	diags.Append(dg...)
@@ -185,7 +191,12 @@ func (r *FunctionResource) persist(ctx context.Context, data *functionModel, cre
 	if creating {
 		id = ""
 	}
-	result, err := r.client.DeployFunction(ctx, data.ProjectID.ValueString(), id, desired, archive)
+	var result *catalyst.FunctionDeployment
+	if uploadCode {
+		result, err = r.client.DeployFunction(ctx, data.ProjectID.ValueString(), id, desired, archive)
+	} else {
+		result, err = r.client.UpdateFunctionConfiguration(ctx, data.ProjectID.ValueString(), id, desired, data.SHA256.ValueString())
+	}
 	if result != nil && catalyst.ValidID(string(result.ID)) {
 		data.ID = types.StringValue(string(result.ID))
 		setState()
@@ -209,7 +220,12 @@ func (r *FunctionResource) Create(ctx context.Context, req resource.CreateReques
 	if resp.Diagnostics.HasError() || !r.ready(&resp.Diagnostics) {
 		return
 	}
-	r.persist(ctx, &data, true, &resp.Diagnostics, func() { resp.Diagnostics.Append(resp.State.Set(ctx, &data)...) })
+	ctx, cancel := operationContext(ctx, data.Timeouts, "create", 5*time.Minute, "Function", &resp.Diagnostics)
+	defer cancel()
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	r.persist(ctx, &data, true, true, &resp.Diagnostics, func() { resp.Diagnostics.Append(resp.State.Set(ctx, &data)...) })
 }
 func (r *FunctionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var data functionModel
@@ -217,7 +233,23 @@ func (r *FunctionResource) Update(ctx context.Context, req resource.UpdateReques
 	if resp.Diagnostics.HasError() || !r.ready(&resp.Diagnostics) {
 		return
 	}
-	r.persist(ctx, &data, false, &resp.Diagnostics, func() { resp.Diagnostics.Append(resp.State.Set(ctx, &data)...) })
+	ctx, cancel := operationContext(ctx, data.Timeouts, "update", 5*time.Minute, "Function", &resp.Diagnostics)
+	defer cancel()
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	var prior functionModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	uploadCode := !data.SHA256.Equal(prior.SHA256) || !data.Stack.Equal(prior.Stack)
+	if !uploadCode && data.Memory.Equal(prior.Memory) && data.Environment.Equal(prior.Environment) {
+		// Source-path and timeout edits are local metadata, not deployments.
+		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+		return
+	}
+	r.persist(ctx, &data, false, uploadCode, &resp.Diagnostics, func() { resp.Diagnostics.Append(resp.State.Set(ctx, &data)...) })
 }
 func (r *FunctionResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var data functionModel
@@ -225,22 +257,27 @@ func (r *FunctionResource) Read(ctx context.Context, req resource.ReadRequest, r
 	if resp.Diagnostics.HasError() || !r.ready(&resp.Diagnostics) {
 		return
 	}
-	result, err := r.client.GetFunctionDeployment(ctx, data.ProjectID.ValueString(), data.ID.ValueString())
+	ctx, cancel := operationContext(ctx, data.Timeouts, "read", 2*time.Minute, "Function", &resp.Diagnostics)
+	defer cancel()
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	var saved catalyst.FunctionDeployment
+	if !data.SHA256.IsNull() && !data.SHA256.IsUnknown() {
+		var diagnostics diag.Diagnostics
+		saved, diagnostics = data.api(ctx)
+		resp.Diagnostics.Append(diagnostics...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+	result, hash, err := r.client.ReadStableFunctionDeployment(ctx, data.ProjectID.ValueString(), data.ID.ValueString(), saved, data.SHA256.ValueString())
 	if errors.Is(err, catalyst.ErrFunctionNotFound) {
 		resp.State.RemoveResource(ctx)
 		return
 	}
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read Catalyst Function", err.Error())
-		return
-	}
-	hash, err := r.client.FunctionSHA256(ctx, data.ProjectID.ValueString(), data.ID.ValueString())
-	if errors.Is(err, catalyst.ErrFunctionNotFound) {
-		resp.State.RemoveResource(ctx)
-		return
-	}
-	if err != nil {
-		resp.Diagnostics.AddError("Unable to read Function artifact", err.Error())
 		return
 	}
 	resp.Diagnostics.Append(data.populate(ctx, result, hash)...)
@@ -252,8 +289,11 @@ func (r *FunctionResource) Delete(ctx context.Context, req resource.DeleteReques
 	if resp.Diagnostics.HasError() || !r.ready(&resp.Diagnostics) {
 		return
 	}
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	ctx, cancel := operationContext(ctx, data.Timeouts, "delete", 2*time.Minute, "Function", &resp.Diagnostics)
 	defer cancel()
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	err := r.client.DeleteFunction(ctx, data.ProjectID.ValueString(), data.ID.ValueString())
 	if errors.Is(err, catalyst.ErrFunctionNotFound) {
 		return

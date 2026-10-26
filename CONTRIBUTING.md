@@ -67,7 +67,8 @@ Each `make testacc-*` target sets `TF_ACC=1`; mutation tests also require the ex
 | Make target | Additional opt-ins and prerequisites |
 | --- | --- |
 | `testacc-cron`, `testacc-webhook-cron-schedules` | `CATALYST_TEST_ALLOW_CRON_CREATE`, `CATALYST_TEST_JOB_POOL_ID` for an existing Webhook pool |
-| `testacc-function`, `testacc-function-variants`, `testacc-function-background` | `CATALYST_TEST_ALLOW_FUNCTION_CREATE` |
+| `testacc-function`, `testacc-function-variants`, `testacc-function-background` | `CATALYST_TEST_ALLOW_FUNCTION_CREATE`; includes configuration-only updates and Node 22-to-24 upgrades |
+| `testacc-function-execution` | Both `CATALYST_TEST_ALLOW_FUNCTION_CREATE` and `CATALYST_TEST_ALLOW_FUNCTION_INVOKE`; generated constant-output Basic I/O fixtures only; `ZohoCatalyst.functions.EXECUTE` plus deployment/read/delete scopes |
 | `testacc-appsail`, `testacc-appsail-languages` | `CATALYST_TEST_ALLOW_APPSAIL_CREATE`; language fixtures also require a JDK with `javac --release 8` |
 | `testacc-appsail-health` | Both `CATALYST_TEST_ALLOW_APPSAIL_CREATE` and `CATALYST_TEST_ALLOW_APPSAIL_INVOKE`; explicitly invokes generated constant-response applications |
 | `testacc-function-cron`, `testacc-function-cron-schedules` | Both `CATALYST_TEST_ALLOW_FUNCTION_CREATE` and `CATALYST_TEST_ALLOW_FUNCTION_CRON_CREATE`; `CATALYST_TEST_FUNCTION_POOL_ID` for an existing Function pool |
@@ -90,6 +91,48 @@ make testacc-datastore-row
 ```
 
 The row test needs `ZohoCatalyst.tables.READ`, `ZohoCatalyst.tables.columns.READ`, and each of `ZohoCatalyst.tables.rows.CREATE`, `.READ`, `.UPDATE` and `.DELETE` as individual scopes. It creates configuration rows, not schema. Stratus tests create objects, not buckets. Scheduling tests create disabled schedules, not job pools. These tests do not constitute complete service provisioning.
+
+### Function runtime verification
+
+The normal Function Terraform lifecycle never invokes handlers. To check actual
+execution, use the separate client/API gate in a dedicated Development project:
+
+```sh
+# Inject either an access token OR complete OAuth refresh credentials securely.
+export CATALYST_DATA_CENTER="in"
+export CATALYST_ENVIRONMENT="Development"
+export CATALYST_ORGANIZATION_ID="your-fixture-organization-id"
+export CATALYST_TEST_PROJECT_ID="your-dedicated-development-project-id"
+export CATALYST_TEST_ALLOW_FUNCTION_CREATE=1
+export CATALYST_TEST_ALLOW_FUNCTION_INVOKE=1
+make testacc-function-execution
+```
+
+Use `ZohoCatalyst.functions.ALL` and project read access, or separately provisioned
+permissions for creation, configuration, artifact reads, execution and deletion.
+The gate fails when opt-ins or explicit routing are missing. It supports either
+access-token or OAuth-refresh mode; a successful run verifies only the selected
+mode and region. Never put credentials in command arguments, logs or Git.
+
+The gate creates two isolated Basic I/O fixtures, checks three matching outputs
+per phase around configuration/code updates and redeployment of the original artifact,
+and restores the original Function inventory. Cleanup uses bounded independent
+context after failure or cancellation;
+only a returned new ID with matching name/runtime/type may be deleted. A process
+killed before cleanup or an ambiguous creation without an ID requires manual
+inspection using the logged generated name. Do not clean up unrelated objects.
+
+The Terraform Function matrices also attempt bounded fallback cleanup with a fresh
+client after failure, but only for a recorded new ID whose generated name/type still
+match and which was absent from the starting inventory. A successful recovery does
+not turn the failed test into a pass. If the first apply fails before its identity
+check records the ID, inspect Terraform's retained state and establish ownership
+before using the explicit fixture recovery gate.
+
+Development execution does not establish Production readiness or background
+trigger delivery. Dedicated Production fixtures and a verified promotion contract
+are still required. See [Function management](docs/guides/function_management.md)
+and [recorded evidence](API_COVERAGE.md).
 
 ### Experimental project management
 

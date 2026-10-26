@@ -56,7 +56,7 @@ func New(config Config, httpClient *http.Client) (*Client, error) {
 	}
 	if config.DataCenter == "" {
 		if config.Environment == "Production" {
-			return nil, errors.New("Production requires an explicit data_center or CATALYST_DATA_CENTER; the US default is only available in Development")
+			return nil, errors.New("production requires an explicit data_center or CATALYST_DATA_CENTER; the US default is only available in Development")
 		}
 		config.DataCenter = "us"
 	}

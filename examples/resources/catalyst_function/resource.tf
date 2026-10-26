@@ -9,4 +9,11 @@ resource "catalyst_function" "example" {
   source_sha256         = var.function_zip_sha256
   memory                = 256
   environment_variables = { APP_MODE = "example" }
+
+  timeouts = {
+    create = "5m"
+    read   = "2m"
+    update = "5m"
+    delete = "2m"
+  }
 }

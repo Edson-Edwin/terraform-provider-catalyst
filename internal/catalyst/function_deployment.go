@@ -21,6 +21,15 @@ var ErrFunctionNotFound = errors.New("the Catalyst Function does not exist")
 var errFunctionPending = errors.New("function metadata is temporarily unavailable")
 var functionName = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]{0,99}$`)
 
+// Resource operations supply one budget for requests and all nested polling.
+// Standalone client calls still have a bounded default.
+func functionOperationContext(ctx context.Context, fallback time.Duration) (context.Context, context.CancelFunc) {
+	if _, ok := ctx.Deadline(); ok {
+		return context.WithCancel(ctx)
+	}
+	return context.WithTimeout(ctx, fallback)
+}
+
 func ValidFunctionName(name string) bool { return functionName.MatchString(name) }
 
 type FunctionConfiguration struct {
@@ -70,7 +79,7 @@ func (c *Client) confirmFunctionAbsent(ctx context.Context, project, id string) 
 	return ErrFunctionNotFound
 }
 func readFunctionEventually[T any](ctx context.Context, c *Client, read func(context.Context) (*T, error)) (*T, error) {
-	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	ctx, cancel := functionOperationContext(ctx, time.Minute)
 	defer cancel()
 	for {
 		result, err := read(ctx)
@@ -137,6 +146,20 @@ func (c *Client) getFunctionDeploymentOnce(ctx context.Context, project, id stri
 // DeployFunction serializes name checks and upserts per client, not across processes.
 // Catalyst's name-keyed API has no established conditional-create primitive.
 func (c *Client) DeployFunction(ctx context.Context, project, id string, desired FunctionDeployment, archive []byte) (*FunctionDeployment, error) {
+	return c.deployFunction(ctx, project, id, desired, archive, "")
+}
+
+// UpdateFunctionConfiguration follows the official CLI's code-free upsert.
+// A matching existing ID and artifact are required; this is not atomic CAS.
+func (c *Client) UpdateFunctionConfiguration(ctx context.Context, project, id string, desired FunctionDeployment, expectedHash string) (*FunctionDeployment, error) {
+	decoded, err := hex.DecodeString(expectedHash)
+	if !ValidID(id) || err != nil || len(decoded) != sha256.Size || hex.EncodeToString(decoded) != expectedHash {
+		return nil, errors.New("configuration updates require an existing Function ID and SHA-256")
+	}
+	return c.deployFunction(ctx, project, id, desired, nil, expectedHash)
+}
+
+func (c *Client) deployFunction(ctx context.Context, project, id string, desired FunctionDeployment, archive []byte, expectedHash string) (*FunctionDeployment, error) {
 	path, err := functionPath(project, "")
 	if err != nil {
 		return nil, err
@@ -155,7 +178,7 @@ func (c *Client) DeployFunction(ctx context.Context, project, id string, desired
 		if err != nil {
 			return nil, err
 		}
-		if current.Name != desired.Name || current.Stack != desired.Stack || current.Type != desired.Type {
+		if current.Name != desired.Name || !ValidFunctionStack(current.Stack) || current.Type != desired.Type || (expectedHash != "" && current.Stack != desired.Stack) {
 			return nil, errors.New("function identity/configuration changed; refresh the Terraform plan")
 		}
 	}
@@ -166,6 +189,15 @@ func (c *Client) DeployFunction(ctx context.Context, project, id string, desired
 	for _, item := range existing {
 		if item.Name == desired.Name && string(item.ID) != id {
 			return nil, errors.New("function name already exists; import it explicitly instead of overwriting it")
+		}
+	}
+	if expectedHash != "" {
+		actualHash, err := c.FunctionSHA256(ctx, project, id)
+		if err != nil {
+			return nil, err
+		}
+		if actualHash != expectedHash {
+			return nil, errors.New("function artifact changed since planning; refresh before updating configuration")
 		}
 	}
 	if desired.Type == "advancedio" {
@@ -186,12 +218,14 @@ func (c *Client) DeployFunction(ctx context.Context, project, id string, desired
 			return nil, errors.New("could not encode Function deployment")
 		}
 	}
-	part, err := writer.CreateFormFile("code", "function.zip")
-	if err != nil {
-		return nil, err
-	}
-	if _, err = part.Write(archive); err != nil {
-		return nil, err
+	if expectedHash == "" {
+		part, err := writer.CreateFormFile("code", "function.zip")
+		if err != nil {
+			return nil, err
+		}
+		if _, err = part.Write(archive); err != nil {
+			return nil, err
+		}
 	}
 	if err = writer.Close(); err != nil {
 		return nil, err
@@ -211,7 +245,7 @@ func (c *Client) FunctionSHA256(ctx context.Context, project, id string) (string
 	if err != nil {
 		return "", err
 	}
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	ctx, cancel := functionOperationContext(ctx, 2*time.Minute)
 	defer cancel()
 	for {
 		res, err := c.get(ctx, path+"/download")
@@ -252,7 +286,7 @@ func (c *Client) FunctionSHA256(ctx context.Context, project, id string) (string
 }
 
 func (c *Client) DeleteFunction(ctx context.Context, project, id string) error {
-	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	ctx, cancel := functionOperationContext(ctx, time.Minute)
 	defer cancel()
 	for {
 		err := c.deleteFunctionOnce(ctx, project, id)
@@ -301,9 +335,49 @@ func (c *Client) deleteFunctionOnce(ctx context.Context, project, id string) err
 	return nil
 }
 
+func matchesFunctionDeployment(a, b *FunctionDeployment) bool {
+	return a != nil && b != nil && a.Name == b.Name && a.Stack == b.Stack && a.Type == b.Type && a.Configuration.Memory == b.Configuration.Memory && maps.Equal(a.Configuration.Environment.Variables, b.Configuration.Environment.Variables)
+}
+
+// ReadStableFunctionDeployment accepts an unchanged snapshot immediately. A
+// changed snapshot must agree across three observations before replacing state.
+// The saved snapshot is not a desired-state filter: stable external drift is returned.
+func (c *Client) ReadStableFunctionDeployment(ctx context.Context, project, id string, saved FunctionDeployment, savedHash string) (*FunctionDeployment, string, error) {
+	ctx, cancel := functionOperationContext(ctx, 2*time.Minute)
+	defer cancel()
+	var previous *FunctionDeployment
+	previousHash := ""
+	stable := 0
+	for {
+		current, err := c.GetFunctionDeployment(ctx, project, id)
+		if err != nil {
+			return nil, "", err
+		}
+		hash, err := c.FunctionSHA256(ctx, project, id)
+		if err != nil {
+			return nil, "", err
+		}
+		if savedHash != "" && hash == savedHash && matchesFunctionDeployment(current, &saved) {
+			return current, hash, nil
+		}
+		if hash == previousHash && matchesFunctionDeployment(current, previous) {
+			stable++
+		} else {
+			stable = 1
+		}
+		if stable == 3 {
+			return current, hash, nil
+		}
+		previous, previousHash = current, hash
+		if err = c.wait(ctx, 2*time.Second); err != nil {
+			return nil, "", err
+		}
+	}
+}
+
 // WaitFunctionDeployment requires stable configuration and artifact observations after upsert.
 func (c *Client) WaitFunctionDeployment(ctx context.Context, project, id string, desired FunctionDeployment, hash string) (*FunctionDeployment, error) {
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	ctx, cancel := functionOperationContext(ctx, 2*time.Minute)
 	defer cancel()
 	stable := 0
 	for {
@@ -312,12 +386,13 @@ func (c *Client) WaitFunctionDeployment(ctx context.Context, project, id string,
 		if err != nil && !errors.Is(err, ErrFunctionNotFound) {
 			return nil, err
 		}
-		if err == nil {
+		if err == nil && matchesFunctionDeployment(current, &desired) {
+			// Avoid downloading large archives while metadata is still stale.
 			actualHash, hashErr := c.FunctionSHA256(ctx, project, id)
 			if hashErr != nil && !errors.Is(hashErr, ErrFunctionNotFound) {
 				return nil, hashErr
 			}
-			if hashErr == nil && current.Name == desired.Name && current.Stack == desired.Stack && current.Type == desired.Type && current.Configuration.Memory == desired.Configuration.Memory && maps.Equal(current.Configuration.Environment.Variables, desired.Configuration.Environment.Variables) && actualHash == hash {
+			if hashErr == nil && actualHash == hash {
 				matched = true
 				stable++
 				if stable == 3 {
@@ -334,7 +409,7 @@ func (c *Client) WaitFunctionDeployment(ctx context.Context, project, id string,
 	}
 }
 func (c *Client) WaitFunctionDeleted(ctx context.Context, project, id string) error {
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	ctx, cancel := functionOperationContext(ctx, 2*time.Minute)
 	defer cancel()
 	for {
 		_, err := c.GetFunction(ctx, project, id)

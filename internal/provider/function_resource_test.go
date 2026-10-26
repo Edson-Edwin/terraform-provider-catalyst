@@ -88,7 +88,7 @@ func TestFunctionLifecycle(t *testing.T) {
 	var mu sync.Mutex
 	var stored *catalyst.FunctionDeployment
 	var archive []byte
-	writes, deletes := 0, 0
+	writes, uploads, deletes := 0, 0, 0
 	p := &CatalystProvider{httpClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		mu.Lock()
 		defer mu.Unlock()
@@ -110,13 +110,15 @@ func TestFunctionLifecycle(t *testing.T) {
 			}
 			defer func() { _ = req.MultipartForm.RemoveAll() }()
 			file, _, err := req.FormFile("code")
-			if err != nil {
-				return nil, err
-			}
-			defer file.Close()
-			archive, err = io.ReadAll(file)
-			if err != nil {
-				return nil, err
+			if err == nil {
+				defer file.Close()
+				archive, err = io.ReadAll(file)
+				if err != nil {
+					return nil, err
+				}
+				uploads++
+			} else if !errors.Is(err, http.ErrMissingFile) || stored == nil {
+				return nil, errors.New("new Function must include code")
 			}
 			stored = &catalyst.FunctionDeployment{FunctionMetadata: catalyst.FunctionMetadata{ID: "9007199254740993123", Name: req.FormValue("name"), Stack: req.FormValue("stack"), Type: req.FormValue("type")}}
 			if err = json.Unmarshal([]byte(req.FormValue("configuration")), &stored.Configuration); err != nil {
@@ -144,6 +146,21 @@ func TestFunctionLifecycle(t *testing.T) {
 	})}}
 	initial := functionConfig("123", "test_function", first, false)
 	updated := functionConfig("123", "test_function", second, true)
+	configOnly := functionConfig("123", "test_function", first, true)
+	copyPath := filepath.Join(dir, "same-code.zip")
+	copyBytes, err := os.ReadFile(first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = os.WriteFile(copyPath, copyBytes, 0600); err != nil {
+		t.Fatal(err)
+	}
+	pathOnly := strings.ReplaceAll(configOnly, first, copyPath)
+	third := writeFunctionArchiveVariant(t, dir, "test_function", "three", "node24", "basicio")
+	upgraded := strings.Replace(functionConfig("123", "test_function", third, false), `name = "test_function"`, `name = "test_function"
+ stack = "node24"`, 1)
+	localOnly := strings.Replace(configOnly, "memory = 256", `timeouts = { create="10m", read="3m", update="10m", delete="3m" }
+ memory = 256`, 1)
 	resource.UnitTest(t, resource.TestCase{ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){"catalyst": providerserver.NewProtocol6WithError(p)}, CheckDestroy: func(_ *terraform.State) error {
 		mu.Lock()
 		defer mu.Unlock()
@@ -153,15 +170,19 @@ func TestFunctionLifecycle(t *testing.T) {
 		return nil
 	}, Steps: []resource.TestStep{
 		{Config: initial, Check: resource.TestCheckResourceAttr("catalyst_function.test", "id", "9007199254740993123")},
-		{ResourceName: "catalyst_function.test", ImportState: true, ImportStateId: "123/9007199254740993123", ImportStateVerify: true, ImportStateVerifyIgnore: []string{"source"}},
+		{ResourceName: "catalyst_function.test", ImportState: true, ImportStateId: "123/9007199254740993123", ImportStateVerify: true, ImportStateVerifyIgnore: []string{"source", "timeouts"}},
+		{Config: configOnly, Check: resource.TestCheckResourceAttr("catalyst_function.test", "environment_variables.TEST_VALUE", "fixture")},
+		{Config: pathOnly},
+		{Config: localOnly},
 		{Config: updated, Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttr("catalyst_function.test", "id", "9007199254740993123"), resource.TestCheckResourceAttr("catalyst_function.test", "memory", "256"), resource.TestCheckResourceAttr("catalyst_function.test", "environment_variables.TEST_VALUE", "fixture"))},
 		{Config: initial, Check: resource.TestCheckResourceAttr("catalyst_function.test", "environment_variables.%", "0")},
 		{PreConfig: func() { mu.Lock(); archive = append(bytes.Clone(archive), []byte("remote drift")...); mu.Unlock() }, Config: initial},
 		{PreConfig: func() { mu.Lock(); stored = nil; mu.Unlock() }, Config: initial},
-		{Config: initial, PlanOnly: true},
+		{Config: upgraded, Check: resource.ComposeTestCheckFunc(resource.TestCheckResourceAttr("catalyst_function.test", "id", "9007199254740993123"), resource.TestCheckResourceAttr("catalyst_function.test", "stack", "node24"))},
+		{Config: upgraded, PlanOnly: true},
 	}})
-	if writes != 5 || deletes != 1 {
-		t.Fatalf("unexpected mutation counts %d %d", writes, deletes)
+	if writes != 7 || uploads != 6 || deletes != 1 {
+		t.Fatalf("unexpected mutations: writes=%d uploads=%d deletes=%d", writes, uploads, deletes)
 	}
 }
 func TestFunctionArchiveValidation(t *testing.T) {

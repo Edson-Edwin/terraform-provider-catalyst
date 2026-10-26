@@ -8,12 +8,18 @@ This is a community provider, not an official Zoho or HashiCorp product. It is u
 - [Resources and data sources by service](docs/index.md#supported-services)
 - [Environment isolation and state migration](docs/guides/environments.md)
 - [Project ownership and recovery](docs/guides/project_management.md)
+- [Function deployment and verification](docs/guides/function_management.md)
 - [All-services example](examples/all_services/) and [full-stack website example](examples/full_stack/)
 - [Implementation status and verification evidence](API_COVERAGE.md)
 - [Contributing](CONTRIBUTING.md), [release process](RELEASING.md) and [changelog](CHANGELOG.md)
 - [Support](.github/SUPPORT.md) and [security reporting](SECURITY.md)
 
 ## Getting started
+
+For an account-free installation check, followed by a read-only trial and an
+optional disposable AppSail deployment, follow the [guided quick-start](examples/quickstart/README.md).
+The launcher uses your own OAuth credentials and keeps its local state in the
+Git-ignored `.trial/` directory. No Registry installation is required.
 
 For local development, install Go 1.25.8 or newer, Terraform 1.13 or newer, Make and a POSIX shell. Application runtimes and build tools are needed only for the applications you deploy; the provider itself is written in Go.
 

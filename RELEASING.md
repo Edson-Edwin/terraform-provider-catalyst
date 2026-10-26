@@ -2,6 +2,26 @@
 
 A release must describe the capabilities actually supported. Passing offline checks does not establish broad Catalyst service coverage or successful public installation.
 
+## Public source preview
+
+Source access and Terraform Registry publication are separate milestones. After
+reviewing tracked files and the complete Git history for credentials, the source
+repository can be public while Registry signing and registration remain pending.
+Keep the README explicit that the provider is under development and unpublished.
+Do not represent source installation as a signed binary release or Registry install.
+
+The [guided quick-start](examples/quickstart/README.md) builds the checkout locally,
+verifies the provider schema without account access, and offers separate read-only
+and opt-in AppSail trial commands. Run `python3 scripts/try-provider.py check`
+before sharing it. The default command only plans the read-only example; deployment
+and deletion require explicit commands and Terraform's normal confirmation.
+
+Before changing visibility, scan history and the current source with Gitleaks
+using the checked-in `.gitleaks.toml`, inspect every finding and review the diff.
+The sole exception recognizes a fixed public `all` enum in GNUmakefile; it must
+not be expanded into a file-wide exclusion. Do not publish `.trial/`, state,
+credentials, debug logs or local build artifacts as source.
+
 ## Before the first public release
 
 1. Resolve the GitHub Actions account/billing limitation and obtain successful checks for the intended commit.

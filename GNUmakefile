@@ -121,10 +121,12 @@ deps-check:
 	cd tools && go mod tidy -diff
 
 check: deps-check test-release-tools
+	python3 -m unittest discover -s scripts -p 'test_*.py' -v
 	test -z "$$(gofmt -l main.go internal tools/tools.go)"
 	terraform fmt -check -recursive examples/
 	go vet ./...
 	$(MAKE) test verify
+	python3 scripts/try-provider.py check
 
 # Offline packaging: never signs or publishes. Requires GoReleaser v2.18.3.
 release-check: deps-check test-release-tools
@@ -157,6 +159,11 @@ testacc-function:
 	TF_ACC=1 go test -race -count=1 -timeout=5m -run '^TestAccFunction$$' ./internal/provider
 
 .PHONY: testacc-function
+
+testacc-function-execution:
+	TF_ACC=1 go test -race -count=1 -timeout=20m -run '^TestAccFunctionExecution$$' ./internal/catalyst
+
+.PHONY: testacc-function-execution
 
 testacc-appsail:
 	TF_ACC=1 go test -race -count=1 -timeout=5m -run '^TestAccAppSail$$' ./internal/provider

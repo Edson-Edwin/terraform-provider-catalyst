@@ -29,6 +29,16 @@ rejected before resource API calls, including when applying a saved creation pla
 Refresh legacy state under its original routing before updating or deleting it.
 See [environment isolation and migration](../guides/environments.md).
 {{- end }}
+{{- if eq .Name "catalyst_function" }}
+
+## Updates and Verification
+
+Memory/environment-only updates omit the ZIP and check the existing artifact hash
+before writing. Node runtime updates preserve identity and require a matching ZIP.
+Operation timeouts cover requests and polling; a known ID remains available for
+recovery after a deployment timeout. See [Function deployment and verification](../guides/function_management.md)
+for ownership limits, timeout configuration and the separate execution test gate.
+{{- end }}
 {{- if eq .Name "catalyst_project" }}
 
 !> **Note:** Project deletion removes the entire project, including Production

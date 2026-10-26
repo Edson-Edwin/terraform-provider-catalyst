@@ -1,0 +1,11 @@
+{
+  "name": "catalyst-terraform-trial",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

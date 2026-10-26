@@ -202,7 +202,7 @@ gap; it is not included as a passing managed-container lifecycle.
 | `catalyst_api_gateway` | Enable/disable project Gateway routing | Offline Terraform lifecycle and recovery tests; live India Development enable/import/destroy |
 | `catalyst_api_gateway_ruleset` | Basic/Advanced I/O Function targets, client GET routes and OAuth/APIKey/CatalystUserManagement combinations; import and drift | Expanded live India Development Function-target/authentication lifecycle; client routes have offline/documented verification only; throttling/system policies remain unsupported |
 | `catalyst_appsail` | Manage 15 Node/Java SE/Python managed runtime ZIPs, memory, command, port, authentication, login redirect/root reset and environment maps; URL, import and artifact drift | Offline lifecycle, safety and recovery tests; live results recorded below |
-| `catalyst_function` | Manage Node.js 22/24 Basic I/O, Advanced I/O, Event, Cron and Job Function code, memory and environment variables; import and drift | Offline lifecycle/safety regressions; live India Development create/import/update/clear/stable plan/destroy with baseline cleanup; never invoked |
+| `catalyst_function` | Manage Node.js 22/24 Basic I/O, Advanced I/O, Event, Cron and Job Function code, memory and environment variables; import and drift | Offline lifecycle/safety regressions; live India Development create/import/update/clear/stable plan/destroy with baseline cleanup; separate generated Basic I/O execution evidence below |
 | `data.catalyst_functions` | List serverless Function IDs and names | Offline contracts and populated live Terraform discovery in replacement India Development project; never invokes Functions |
 | `data.catalyst_datastore_table` | Read existing table and column metadata, excluding defaults/profiles/rows | Offline strict-schema and Terraform tests; live India Development read/stable plan |
 | `data.catalyst_nosql_tables` / `data.catalyst_nosql_table` | Read table identities, keys, status, TTL settings and index identities/statuses | Offline API/Terraform tests; live India Development populated reads and stable plans |
@@ -556,3 +556,92 @@ Sources: [AppSail managed runtimes](https://docs.catalyst.zoho.com/en/serverless
 The final local `make check` passed: dependency consistency, formatting, vet, full offline race suite, all example validations, schema loading and no-op provider plan. Configured static analysis reported zero issues. Hosted CI was not queried.
 
 All 14 unsigned platform snapshot archives also passed checksum/layout/manifest verification and native Terraform installation/schema handshake through an isolated filesystem mirror. These are local package checks, not a signed release or public Registry publication.
+
+## Function reliability and runtime verification (2026-10-25)
+
+This iteration adds configurable Function create/read/update/delete budgets;
+configuration-only upserts without code uploads; artifact prechecks before those
+upserts; local-only source-path/timeout edits; and in-place Node 22-to-24 upgrades.
+The official CLI 1.28.0 `functions:config` implementation supplies configuration
+without a source stream, including the separate Advanced I/O server endpoint.
+The [Function implementation guide](https://docs.catalyst.zoho.com/en/serverless/help/functions/implementation/)
+also documents runtime-version updates. Existing name/type and region/organization/
+environment guards remain in effect. Name-keyed upsert still has no established
+atomic conditional-create or compare-and-swap contract.
+
+Refresh now reconciles changed metadata/artifact snapshots before replacing saved
+state. A matching saved snapshot returns immediately; a changed snapshot requires
+three consecutive matching observations. Stable external drift is still returned.
+Deployment verification avoids downloading code while configuration is stale.
+There is no verified remote-checksum/conditional-download contract, so archive
+reads remain necessary. Timeouts preserve trusted recovery identities and do not
+undo server-side operations or replay ambiguous writes.
+
+The new `make testacc-function-execution` gate creates only generated constant-output
+Basic I/O Functions in a dedicated Development project. It verifies Node 22 and
+Node 24 execution after creation, a code-free configuration update, a code
+update and redeployment of the original artifact. It requires three consecutive expected outputs, checks artifact integrity
+before invoking, and only retries a recognized previous generated output. Arbitrary
+responses and ambiguous execution failures fail with their bodies withheld. Cleanup
+uses the returned new ID, checks its identity, and confirms the original inventory.
+Both create and invocation opt-ins are mandatory; ordinary provider operations
+never invoke handlers.
+
+**Live execution evidence:** using the existing India Development test project
+and access-token mode, the initial gate passed Node 22 but observed an unexpected
+Node 24 runtime response. Its cause was not conclusively established. The stricter
+three-observation gate subsequently passed both runtimes (91.29 seconds; Go package
+92.321 seconds), including configuration changes and updated-code output. Fixtures
+were removed and an independent subsequent read confirmed the empty baseline.
+This verifies generated Basic I/O fixtures only, not application behavior,
+Advanced I/O execution, background-trigger delivery, other regions or Production.
+
+**Live lifecycle findings:** the first expanded Terraform matrix exposed a stale
+post-destroy observation for Node 22 Advanced I/O and a stale post-update
+memory/environment snapshot for Node 24 Job Functions. The independent final
+inventory was empty. These findings prompted stable refresh reconciliation and a
+bounded post-destroy absence check rather than relaxing cleanup or suppressing
+drift. With those fixes, all four Basic/Advanced I/O lifecycle variants passed
+(264.87 seconds), including code-free updates, variable clearing, original-artifact
+redeployment, import, stable plans, same-ID Node 22-to-24 upgrades and deletion.
+The following background matrix passed Node 22 Event, then failed during Node 22
+Cron verification with a transport error. Terraform cleanup also failed, leaving
+one generated Cron fixture. Guarded exact-ID recovery subsequently passed and an
+independent inventory check confirmed zero Functions remained. The failure is
+retained as evidence, not counted as a passing lifecycle run.
+
+The matrix now attempts bounded fallback cleanup with an independent client after
+a failure with a recorded new ID. It refuses baseline IDs and changed names/types;
+the original failure remains a failure. Offline regression tests verify refusal of
+foreign identities and successful cleanup of an owned fixture. A missing created
+ID or terminated process still needs operator investigation.
+
+The subsequent six-case Event/Cron/Job matrix passed on Node 22 and Node 24
+(385.41 seconds; Go package 386.445 seconds), with no skipped variants. An independent
+inventory check confirmed the empty baseline was restored. Together with the four
+HTTP variants above, all ten expanded lifecycle cases passed; these runs were
+India Development with access-token authentication. Background lifecycle success
+does not establish Event/Cron/Job trigger execution.
+
+The final four-phase execution gate passed on both Node 22 and Node 24 using
+OAuth-refresh authentication (101.86 seconds; Go package 102.872 seconds). This run
+verified generated Basic I/O output after creation, code-free configuration updates,
+code changes and redeployment of the original artifact/configuration, requiring
+three matching outputs per phase. An independent inventory check confirmed the
+empty baseline was restored. The earlier access-token run covered the first three
+phases; original-artifact execution was verified in OAuth-refresh mode only.
+
+**Offline verification:** the full race suite passed (client 8.835 seconds,
+provider 429.836 seconds, release tools 1.221 seconds), followed by focused race
+tests for original-artifact redeployment, execution safeguards and fixture recovery.
+`go vet ./...`, generated documentation validation, formatting and diff checks
+passed. Static analysis reports zero new findings in this change; the repository
+still has five pre-existing findings in client/project/environment test code and
+an existing client diagnostic. Hosted CI has not run.
+
+Production fixtures remain unavailable. Versions/weighted aliases, verified
+promotion/rollback contracts, other Function language runtimes, and atomic ownership
+across independent writers remain outside the implemented surface. Hosted CI is
+still billing-blocked. No numerical score here certifies Production readiness or
+AWS Lambda feature parity. See [Function management](docs/guides/function_management.md)
+for operation budgets, recovery and repeatable checks.

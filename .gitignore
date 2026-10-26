@@ -39,6 +39,7 @@ website/vendor
 /terraform-provider-catalyst
 .terraform.lock.hcl
 *.tfstate*
+/.trial/
 
 # Local credentials and variable files
 .env
