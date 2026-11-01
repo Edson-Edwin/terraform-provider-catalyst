@@ -1,32 +1,82 @@
-# Terraform Provider testing workflow.
+# Fast main-branch CI; full compatibility/package checks run on demand and releases.
 name: Tests
 
 on:
   pull_request:
+    branches: [main]
   push:
-    branches: ['**']
+    branches: [main]
   workflow_call:
+    inputs:
+      full:
+        description: Run all Terraform versions, native platforms and release packaging
+        type: boolean
+        default: false
 
 # Testing only needs permissions to read the repository contents.
 permissions:
   contents: read
 
+# Cancel superseded branch/PR checks, but never interrupt a release's checks.
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+env:
+  TF_ACC: '0'
+  CHECKPOINT_DISABLE: '1'
+
 jobs:
-  secrets:
-    name: Source and history secret scan
+  changes:
+    name: Secret scan and required checks
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      runtime: ${{ steps.paths.outputs.runtime }}
+      validation: ${{ steps.paths.outputs.validation }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+      - id: paths
+        name: Detect code and configuration changes
+        env:
+          FULL_CHECKS: ${{ inputs.full || false }}
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import subprocess
+
+          base, head = os.environ['BASE_SHA'], os.environ['HEAD_SHA']
+          if os.environ['FULL_CHECKS'] == 'true' or not base or set(base) == {'0'}:
+              runtime = validation = True
+          else:
+              revision = [f'{base}...{head}'] if os.environ['EVENT_NAME'] == 'pull_request' else [base, head]
+              paths = subprocess.check_output(['git', 'diff', '--name-only', '-z', *revision]).decode().split('\0')
+              paths = [path for path in paths if path]
+              runtime = any(path.endswith('.go') or path in {'go.mod', 'go.sum', 'GNUmakefile'}
+                            or path.startswith('.github/workflows/') for path in paths)
+              def prose(path):
+                  return path.endswith('.md') and ('/' not in path or path.endswith('/README.md')
+                      or path.startswith(('docs/guides/', '.github/')))
+              validation = any(not prose(path) for path in paths)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'runtime={str(runtime).lower()}\nvalidation={str(validation).lower()}\n')
+          print(f'Runtime tests: {runtime}; configuration/docs/example checks: {validation}')
+          PY
+
       - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Ensure project builds before running testing matrix
+  # Formatting, generation and examples share one tool setup/build cache.
   build:
-    name: Build
+    name: Static checks, docs and examples
+    needs: changes
+    if: needs.changes.outputs.validation == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -35,8 +85,13 @@ jobs:
         with:
           go-version-file: 'go.mod'
           cache: true
-      - run: go mod download
-      - run: go build -v .
+          cache-dependency-path: |
+            go.sum
+            tools/go.sum
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: '1.16.5'
+          terraform_wrapper: false
       - run: make deps-check
       - run: go vet ./...
       - run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
@@ -46,57 +101,57 @@ jobs:
         with:
           version: v2.15.0
 
-  generate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: 'go.mod'
-          cache: true
-      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
-        with:
-          terraform_version: '1.16.5'
-          terraform_wrapper: false
       - run: terraform fmt -check -recursive examples/
       - run: make generate
       - name: git diff
         run: |
           git diff --exit-code
           test -z "$(git ls-files --others --exclude-standard docs examples)"
+      - run: make verify
+      - run: python3 scripts/try-provider.py check
 
   # Verify supported Terraform CLI versions using offline lifecycle tests
   test:
     name: 'Provider Verification: Terraform ${{ matrix.terraform }}'
-    needs: build
+    # Run alongside static checks rather than waiting for them.
+    needs: changes
+    if: needs.changes.outputs.runtime == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        # Terraform versions
-        terraform:
-          - '1.13.*'
-          - '1.14.*'
-          - '1.15.*'
-          - '1.16.*'
+        terraform: ${{ fromJSON(inputs.full && '["1.13.*", "1.14.*", "1.15.*", "1.16.*"]' || '["1.16.*"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: 'go.mod'
           cache: true
+          # Separate source-keyed race cache from the static-check cache.
+          cache-dependency-path: |
+            go.sum
+            main.go
+            internal/**/*.go
       - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_version: ${{ matrix.terraform }}
           terraform_wrapper: false
-      - run: go mod download
-      - run: make test
+      - name: Offline race tests
+        env:
+          FULL_CHECKS: ${{ inputs.full || false }}
+        run: |
+          extra=()
+          if [ "$FULL_CHECKS" = true ]; then extra=(-count=1); fi
+          go test -race "${extra[@]}" -timeout=10m ./...
         timeout-minutes: 10
       - run: make verify
+        if: inputs.full && matrix.terraform != '1.16.*'
       - run: python3 scripts/try-provider.py check
+        if: inputs.full && matrix.terraform != '1.16.*'
 
   package:
+    if: inputs.full
     name: Release package verification
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -119,6 +174,7 @@ jobs:
       - run: make release-check
 
   native:
+    if: inputs.full
     name: Native lifecycle (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15

@@ -2,6 +2,41 @@
 
 This is a community provider for Zoho Catalyst, built with the Terraform Plugin Framework. Use the framework for new resources. Keep changes focused on a supported Catalyst management API and a complete Terraform lifecycle.
 
+## Branches and CI
+
+Use `development` for ongoing work. Pushing commits to that branch does not start
+CI or releases. Keep the workflow files in the branch so merging it cannot delete
+the checks on `main`. Run the local checks below before sharing changes.
+
+```sh
+git fetch origin
+git switch development
+```
+
+Pull requests targeting `main` and pushes to `main` run the fast test workflow:
+
+- Every run scans source and history for secrets.
+- Code changes run Linux race tests with Terraform 1.16 alongside static checks,
+  documentation generation and example/trial validation.
+- Configuration, scripts, examples and generated-reference edits run the relevant
+  validation job. Prose-only README, top-level Markdown, `.github` Markdown and
+  guide edits skip the Go/tooling jobs.
+- New commits cancel superseded checks for the same branch or pull request. Go
+  build/test caching avoids repeating unchanged work where possible.
+
+For the complete Terraform 1.13–1.16 matrix, native Windows/macOS tests and unsigned
+release-package verification, run **Actions → Full verification → Run workflow**
+with `main` selected, or use:
+
+```sh
+gh workflow run full.yml --ref main
+```
+
+Manual full and credentialed regional jobs only execute from `main`. Release tags
+must point to a commit contained in `main`; release signing still requires the
+full suite to pass. Main-branch CI does not deploy Catalyst resources or publish a
+release. See [RELEASING.md](RELEASING.md) for the signed draft process.
+
 ## Local checks
 
 Install Go 1.25.8 or newer, Terraform, Make, golangci-lint v2.15.0, and GoReleaser v2.18.3. Default tests need no Catalyst account or credentials.
@@ -15,9 +50,14 @@ make release-check
 
 `make check` verifies dependency files, formatting, static checks, offline tests, and example schemas. `make generate` updates generated references; include those changes with the implementation. `make release-check` builds unsigned snapshots for all configured platforms, checks checksums and the Registry manifest, installs the native package using a local filesystem mirror, and starts it through Terraform. It rejects mixed release versions and checks the requested version when supplied. It does not publish or contact Catalyst.
 
-Native Windows and macOS CI jobs run offline tests and builds; Linux runs the race detector and the Terraform version matrix. These workflow definitions still need successful hosted runs.
+The full verification workflow runs native Windows/macOS offline tests and builds,
+plus Linux race tests across the Terraform version matrix. Routine main-branch CI
+uses one Linux/Terraform version to reduce runner time.
 
-CI also checks that generation produces no tracked or untracked documentation changes. It covers the latest patches in the Terraform 1.13–1.16 series. Add newer series deliberately; do not assume compatibility without checking them.
+When validation is selected, CI checks that generation produces no tracked or
+untracked documentation changes. Full checks cover the latest patches in the
+Terraform 1.13–1.16 series. Add newer series deliberately; do not assume
+compatibility without checking them.
 
 ## Resource changes
 

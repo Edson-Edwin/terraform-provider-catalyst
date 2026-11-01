@@ -45,7 +45,7 @@ func EvaluateReadiness(public bool, head string, dirty bool, runs []WorkflowRun,
 	if dirty {
 		cleanDetail = "Commit the reviewed changes before tagging."
 	}
-	return []Gate{{"clean_source", !dirty, cleanDetail}, {"public_repository", public, "Terraform Registry requires a public source repository."}, {"ci_for_head", latest != nil && latest.Status == "completed" && latest.Conclusion == "success", "Require successful push checks for the exact local HEAD, including native OS tests."}, {"signing_secret_names", names["GPG_PRIVATE_KEY"] && names["PASSPHRASE"], "Checks repository secret names only; contents and signing identity require separate verification."}, {"private_security_reporting", security, "Enable private vulnerability reporting or verify an alternative private contact."}}
+	return []Gate{{"clean_source", !dirty, cleanDetail}, {"public_repository", public, "Terraform Registry requires a public source repository."}, {"ci_for_head", latest != nil && latest.Status == "completed" && latest.Conclusion == "success", "Require successful main-branch push checks for the exact local HEAD. Full Terraform/platform/package checks run again before release signing."}, {"signing_secret_names", names["GPG_PRIVATE_KEY"] && names["PASSPHRASE"], "Checks repository secret names only; contents and signing identity require separate verification."}, {"private_security_reporting", security, "Enable private vulnerability reporting or verify an alternative private contact."}}
 }
 
 type ReadinessReport struct {

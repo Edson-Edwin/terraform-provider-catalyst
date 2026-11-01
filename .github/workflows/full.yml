@@ -1,0 +1,17 @@
+name: Full verification
+
+# Expensive checks are explicit and only run trusted main-branch source.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/test.yml
+    with:
+      full: true
+    permissions:
+      contents: read

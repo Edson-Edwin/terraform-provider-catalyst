@@ -24,7 +24,7 @@ credentials, debug logs or local build artifacts as source.
 
 ## Before the first public release
 
-1. Resolve the GitHub Actions account/billing limitation and obtain successful checks for the intended commit.
+1. Obtain successful main-branch checks for the intended commit. Use the manual Full verification workflow on `main` to inspect the complete compatibility/package suite before tagging; it runs again as a required release gate.
 2. Review tracked files and history before making the intended source repository public. Keep account credentials and state private.
 3. Enable and test private vulnerability reporting, or publish a working private reporting contact.
 4. Create or select the maintainer's release-signing key. Store its private key as `GPG_PRIVATE_KEY` and its passphrase as `PASSPHRASE` in GitHub Actions secrets. Keep a secure backup and a revocation plan. Register the public key with the Terraform Registry. Do not place the private key in this repository.
@@ -37,7 +37,15 @@ The release and test workflows pin GoReleaser v2.18.3 and golangci-lint v2.15.0.
 
 Prepare a versioned changelog entry and ensure the exact intended commit passes checks. Use a semantic version tag such as `v0.1.0-alpha.1` (use lowercase prerelease identifiers) for the first limited preview. Do not tag an unreviewed working tree.
 
-A tag starts the release workflow. It first calls the shared test workflow, including lint, dependency checks, generated-document checks, Terraform 1.13–1.16 tests and unsigned package verification. The signing job runs only after all those jobs succeed. It then verifies required inputs and creates a **draft** GitHub release with signed checksums. The workflow verifies the checksum signature after uploading the draft; a draft is not a public announcement.
+A tag starts the release workflow. It first verifies that the tagged commit is
+contained in `main`, then calls the shared test workflow with `full: true`,
+including lint, dependency checks, generated-document checks, Terraform 1.13–1.16
+tests, native Windows/macOS tests and unsigned package verification. These full
+checks bypass the fast workflow's changed-file skips and test-result cache. The
+signing job runs only after all those jobs succeed. It then verifies required
+inputs and creates a **draft** GitHub release with signed checksums. The workflow
+verifies the checksum signature after uploading the draft; a draft is not a public
+announcement.
 
 The build uses the tagged source without running `go mod tidy` to rewrite dependencies. `go mod tidy -diff` checks both modules, and release builds use read-only dependency resolution. Actions use fixed commit SHAs.
 
@@ -64,7 +72,10 @@ Local follow-up validation on 2026-10-23 exercised GoReleaser signing with a dis
 
 ## Preparation without hosted CI
 
-The maintainer has deferred hosted CI while resolving billing. Continue local implementation and validation with `make check`, `make lint`, `make generate`, and `make release-check`. This does not require a GitHub run. The release workflow remains configured to run checks when hosted execution is available; this task does not bypass that gate or publish anything.
+If hosted CI is unavailable, continue local implementation and validation with
+`make check`, `make lint`, `make generate`, and `make release-check`. This does not
+require a GitHub run. The release workflow still requires hosted full checks
+before signing; local verification does not bypass that gate.
 
 The draft verification step now downloads the actual GitHub draft assets into a temporary directory, validates the detached signature against the imported maintainer fingerprint, checks every archive/manifest/version, and performs a native local-mirror install and schema handshake. It verifies the files a maintainer would publish, rather than just the build-directory signature.
 

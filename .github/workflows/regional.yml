@@ -22,6 +22,7 @@ concurrency:
 
 jobs:
   source:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     name: Require trusted default-branch source
     runs-on: ubuntu-latest
     timeout-minutes: 2
