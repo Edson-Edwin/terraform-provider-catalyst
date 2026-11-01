@@ -5,6 +5,7 @@ The Catalyst provider lets Terraform manage supported [Zoho Catalyst](https://ca
 This is a community provider, not an official Zoho or HashiCorp product. It is under development and is **not yet available from the public Terraform Registry**. The current implementation registers **13 resource types and 12 data source types**; some capabilities are experimental or deprecated. These counts do not represent complete Catalyst service coverage.
 
 - [Provider documentation and configuration](docs/index.md)
+- **[Trial guide for testers](examples/quickstart/README.md)** — start here to check and try the provider.
 - [Resources and data sources by service](docs/index.md#supported-services)
 - [Environment isolation and state migration](docs/guides/environments.md)
 - [Project ownership and recovery](docs/guides/project_management.md)
@@ -14,12 +15,29 @@ This is a community provider, not an official Zoho or HashiCorp product. It is u
 - [Contributing](CONTRIBUTING.md), [release process](RELEASING.md) and [changelog](CHANGELOG.md)
 - [Support](.github/SUPPORT.md) and [security reporting](SECURITY.md)
 
-## Getting started
+## Try the development preview
 
-For an account-free installation check, followed by a read-only trial and an
-optional disposable AppSail deployment, follow the [guided quick-start](examples/quickstart/README.md).
-The launcher uses your own OAuth credentials and keeps its local state in the
-Git-ignored `.trial/` directory. No Registry installation is required.
+Testers can use the public source preview now. Install Go 1.25.8 or newer,
+Terraform 1.13 or newer and Python 3.9 or newer, then run:
+
+```sh
+git clone https://github.com/Edson-Edwin/terraform-provider-catalyst.git
+cd terraform-provider-catalyst
+python3 scripts/try-provider.py check
+```
+
+This checks the build and examples without Catalyst credentials. Continue with the
+**[trial guide](examples/quickstart/README.md)** to set up your own OAuth access,
+list projects and optionally deploy, update and remove a demonstration AppSail in
+an existing Development project. The guide includes expected results,
+troubleshooting and a checklist for reporting your findings.
+
+The provider runs on your computer. This preview needs no hosted provider server,
+Registry account or Registry installation. Skip `terraform init` for the trial
+launcher. On Windows, use `py -3` instead of `python3` if needed. Project creation
+is experimental and excluded from this trial.
+
+## Local development setup
 
 For local development, install Go 1.25.8 or newer, Terraform 1.13 or newer, Make and a POSIX shell. Application runtimes and build tools are needed only for the applications you deploy; the provider itself is written in Go.
 
@@ -110,7 +128,7 @@ make lint
 make generate
 ```
 
-The [contributor guide](CONTRIBUTING.md) explains documentation generation, resource lifecycle expectations and opt-in live tests. Local checks do not establish public release availability or feature parity with other providers. Recorded live evidence is limited to the regions and behaviors listed in [API_COVERAGE.md](API_COVERAGE.md). Hosted CI is currently blocked by account billing, as reported by the maintainer; local verification and pending live regional checks are recorded separately.
+The [contributor guide](CONTRIBUTING.md) explains documentation generation, resource lifecycle expectations and opt-in live tests. Local checks do not establish public release availability or feature parity with other providers. Recorded live evidence is limited to the regions and behaviors listed in [API_COVERAGE.md](API_COVERAGE.md). See [GitHub Actions](https://github.com/Edson-Edwin/terraform-provider-catalyst/actions) for automated check results; live regional checks are recorded separately.
 
 ## License
 

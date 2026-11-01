@@ -1,12 +1,34 @@
-# Try the Catalyst Terraform provider
+# Trial guide for testers
 
 This community provider is under development. You can try the source checkout now;
 it is not yet published on the Terraform Registry. Use your own Catalyst account
 and credentials. No credentials, state or account access are provided by the
 maintainer. Project creation is experimental and is not part of this trial.
 
+The provider runs on your computer. You do not need to host it, sign up for the
+Terraform Registry or wait for a production release. Start with the offline check;
+continue to account access and deployment only when you want to test those steps.
+
+## What you can test
+
+| Stage | What it checks | Expected result |
+| --- | --- | --- |
+| `check` | Local build, Terraform provider schema and example configuration | Command exits successfully without Catalyst credentials or API calls |
+| `read` | OAuth access and project discovery | Terraform displays the visible project IDs and names, or an empty list |
+| `plan` | Proposed AppSail deployment | Terraform proposes one AppSail in your selected existing Development project |
+| `apply` | AppSail creation and deployment | Terraform completes and prints a `demo_url` to open after startup |
+| Edit and `apply` | Application code update | The demonstration page shows your change after deployment and refresh |
+| `destroy` | AppSail removal | Terraform removes the tracked trial app; your existing project remains |
+
+This is a focused first trial, not verification of every resource in the provider.
+For broader testing, use the [all-services instructions](../all_services/README.md)
+and check [coverage and live-test limits](../../API_COVERAGE.md) first. Some services
+need existing tables, buckets or other prerequisites. The trial launcher accepts
+Development only; it refuses Production.
+
 ## Requirements
 
+- Git to download the repository.
 - Terraform 1.13 or newer, Go 1.25.8 or newer, and Python 3.9 or newer on your PATH.
 - An internet connection for initial Go dependency downloads and live API requests.
 - Your Catalyst organization ID and data center (`in`, `us`, `eu`, `au`, `ca`, `jp` or `sa`).
@@ -114,3 +136,35 @@ For a new independent trial after successful cleanup, use another checkout. Use
 the normal examples and a shared state backend for team deployments; this launcher
 is a local evaluation flow for one operator. For unsupported services and live-test
 boundaries, see [API_COVERAGE.md](../../API_COVERAGE.md).
+
+## Troubleshooting
+
+| Symptom | What to do |
+| --- | --- |
+| `git`, `go`, `terraform` or Python is not found | Install the required tool, check its version and reopen your terminal so PATH is refreshed. On Windows, try `py -3` for Python. |
+| First build takes a while or dependency downloads fail | The first run downloads Go modules. Check your internet or proxy settings and retry `check`. |
+| Terraform tries to install the provider from the Registry | Use the launcher commands in this guide and skip `terraform init`; the preview builds a local provider. |
+| Authentication fails | Check your data center, organization, OAuth scopes and permissions. A Catalyst CLI login alone does not configure the provider. Replace an expired access token. |
+| Credential configuration is rejected | Choose either an access token or the complete client ID, client secret and refresh-token set. Do not mix the two modes. |
+| No projects are listed | Check the selected organization and data center and whether your OAuth identity can see the intended project. |
+| Deployment or cleanup fails | Keep `.trial/`, confirm the selected project and required AppSail permissions, and follow the state and recovery instructions above. |
+| New-project creation returns `PROJECT_CREATION_NOT_ALLOWED` | Use an existing Development project for this trial. The latest live creation test was rejected in the tested India OAuth context; project creation is still experimental. |
+
+## Record and share your results
+
+Use this checklist to show which steps you actually tested:
+
+- [ ] Offline `check` completed.
+- [ ] Read-only project lookup completed.
+- [ ] AppSail plan showed the intended Development project and one trial app.
+- [ ] AppSail apply completed and the demonstration URL responded.
+- [ ] Editing `examples/quickstart/site/index.js` and applying again updated the page.
+- [ ] Destroy completed and the trial AppSail was removed.
+
+You can share your findings with the person who invited you or
+[open a GitHub issue](https://github.com/Edson-Edwin/terraform-provider-catalyst/issues/new).
+Include the tested commit (`git rev-parse HEAD`), operating system, Terraform/Go/Python
+versions, data center, command or stage, expected result and actual result. Mark
+untested stages as not tested. Include error text only after removing sensitive
+details. Do not attach OAuth credentials, `.trial/`, state files or saved plans.
+Report sensitive vulnerabilities through the [security policy](../../SECURITY.md).

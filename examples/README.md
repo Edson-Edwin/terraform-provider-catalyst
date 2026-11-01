@@ -2,6 +2,10 @@
 
 This directory contains examples that are mostly used for documentation, but can also be run/tested manually via the Terraform CLI.
 
+**First time testing the provider? Start with the [trial guide](quickstart/README.md).**
+It walks through an offline check, OAuth setup, a read-only project lookup and an
+optional Development AppSail deployment with update and cleanup steps.
+
 For one configuration containing every currently registered resource and data
 source, see [all_services/main.tf](all_services/main.tf) and its
 [setup instructions](all_services/README.md). Optional inputs control which
