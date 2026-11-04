@@ -39,6 +39,16 @@ On Windows, use `py -3` instead of `python3` if needed. Node.js is not required 
 your machine: the small sample has no dependencies and runs on Catalyst's Node 24
 runtime. The launcher builds the provider for your own operating system.
 
+Check your installed versions before starting (on Windows, use `py -3 --version`
+if `python3` is unavailable):
+
+```sh
+git --version
+go version
+terraform version
+python3 --version
+```
+
 ## 1. Download and check without account access
 
 ```sh
