@@ -39,6 +39,9 @@ release. See [RELEASING.md](RELEASING.md) for the signed draft process.
 
 ## Local checks
 
+See the [developer scripts guide](scripts/README.md) for the local setup and trial
+commands, including which commands contact Catalyst or can change cloud resources.
+
 Install Go 1.25.8 or newer, Terraform, Make, golangci-lint v2.15.0, and GoReleaser v2.18.3. Default tests need no Catalyst account or credentials.
 
 ```sh
