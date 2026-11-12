@@ -63,6 +63,13 @@ The launcher uses a checkout-local development override: skip `terraform init`
 for these commands. No provider is downloaded from the Registry or installed in
 your global Terraform configuration.
 
+To see the available modes and data center, organization and project flags without
+building the provider or contacting Catalyst, run:
+
+```sh
+python3 scripts/try-provider.py --help
+```
+
 ## 2. Set up your own OAuth access
 
 Follow Zoho's [OAuth setup documentation](https://docs.catalyst.zoho.com/en/api/oauth2/generate-grant-token/)
