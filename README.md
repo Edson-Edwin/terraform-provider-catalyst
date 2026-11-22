@@ -2,7 +2,7 @@
 
 The Catalyst provider lets Terraform manage supported [Zoho Catalyst](https://catalyst.zoho.com/) application infrastructure. Each user supplies their own OAuth credentials and selects a data center and environment.
 
-This is a community provider, not an official Zoho or HashiCorp product. It is under development and is **not yet available from the public Terraform Registry**. The current implementation registers **13 resource types and 12 data source types**; some capabilities are experimental or deprecated. These counts do not represent complete Catalyst service coverage.
+This is a community provider, not an official Zoho or HashiCorp product. It is under development and is **not yet available from the public Terraform Registry**. The current implementation registers **13 resource types and 15 data source types**; some capabilities are experimental or deprecated. These counts do not represent complete Catalyst service coverage.
 
 - [Provider documentation and configuration](docs/index.md)
 - **[Trial guide for testers](examples/quickstart/README.md)** — start here to check and try the provider.
@@ -12,6 +12,7 @@ This is a community provider, not an official Zoho or HashiCorp product. It is u
 - [Function deployment and verification](docs/guides/function_management.md)
 - [All-services example](examples/all_services/) and [full-stack website example](examples/full_stack/)
 - [Implementation status and verification evidence](API_COVERAGE.md)
+- [Prioritized roadmap](docs/guides/provider_roadmap.md) and [operation audit](coverage/README.md)
 - [Contributing](CONTRIBUTING.md), [release process](RELEASING.md) and [changelog](CHANGELOG.md)
 - [Support](.github/SUPPORT.md) and [security reporting](SECURITY.md)
 
@@ -98,11 +99,15 @@ verified TLS 1.2 or newer and block redirects; see [regional security policies](
 | --- | --- |
 | AppSail | Managed Node, Java SE and Python ZIP deployments, code/configuration updates, import and artifact drift |
 | Functions | Node22/24 Basic I/O, Advanced I/O, Event, Cron and Job Function deployments |
-| Stratus | Objects/metadata in existing unversioned buckets, optional multipart transfers and bucket discovery |
+| Stratus | Objects and metadata in existing unversioned buckets, optional multipart transfers, and read-only bucket/CORS/object-version discovery |
+| Web Client Hosting | Existing deployment history and live-version indicators |
+| Organizations and project environments | Visible organization IDs and names, and existing environment metadata |
+| Slate | Existing app identities |
+| Pipelines and ConvoKraft | Existing pipeline metadata and SmartTrain training-material metadata |
 | NoSQL | Configuration items and existing table/index metadata |
 | Data Store | Configuration rows and existing table/column metadata |
 | API Gateway | Enable/disable and complete ruleset ownership; supported Function/client targets and authentication modes |
-| Job Scheduling | Webhook, Job Function and AppSail schedules; existing pool discovery |
+| Job Scheduling | Webhook, Job Function and AppSail schedules; pool discovery with capacity details |
 | Projects | Discovery; experimental project creation/deletion with deletion protection |
 | Authentication | User access metadata; experimental existing-user role assignment |
 | Cache | Existing segment discovery only |

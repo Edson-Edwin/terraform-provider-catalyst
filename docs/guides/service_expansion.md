@@ -25,6 +25,21 @@ No route or Function was invoked during Gateway testing. The multipart and row
 tests used generated data in dedicated existing prerequisites. No hosted CI or
 Production changes were performed.
 
+## Read-only infrastructure details
+
+The job pool lookup reports capacity when Catalyst supplies it. Stratus bucket
+lookups report versioning and regional URLs or list the bucket’s CORS rules.
+Object version discovery reads IDs, latest flags and available version metadata
+from an existing versioned object. These data sources have offline Terraform
+protocol coverage and await live reads. For the read-only
+`make testacc-stratus-versions` gate, set `CATALYST_TEST_PROJECT_ID`,
+`CATALYST_TEST_VERSIONED_BUCKET`, `CATALYST_TEST_VERSIONED_OBJECT_KEY` and
+`CATALYST_TEST_LATEST_VERSION_ID` alongside the provider credentials.
+
+Web Client Hosting history reports existing version IDs, app versions and the
+live indicator. Its read acceptance test is `make testacc-web-client-versions`.
+It needs a hosted client and the expected `CATALYST_TEST_WEB_CLIENT_LIVE_HISTORY_ID`.
+
 ## Data Store row ownership
 
 `values_json` owns its listed application columns. Removing a previously managed
@@ -78,7 +93,7 @@ headers are never forwarded to the Stratus transfer host.
 | AppSail custom domains | Supported platform feature, but a verified provider lifecycle and domain/DNS/TLS test fixture are still needed. |
 | Production promotion | Provider environment selection is not a project promotion operation. A supported, scoped migration/deletion/rollback contract and isolated Production verification are still needed; no project was promoted. |
 | Stratus bucket provisioning | Console creation is documented; no stable bucket creation/update/deletion ownership contract was established by this audit. |
-| Stratus policies, CORS and versioning | Platform features exist. Verified management read/write/reset contracts and isolated lifecycle evidence are still needed; multipart transfer does not configure them. |
+| Stratus policies, CORS and versioning | The new data sources read CORS rules and versioning. Policies and settings changes still need verified API contracts and isolated lifecycle evidence. |
 | NoSQL tables and indexes | Current help restricts management to the remote console; the provider reads existing metadata and manages configuration items. |
 | NoSQL table TTL configuration | No table-management lifecycle implemented. Existing typed item JSON can contain expiry values when the table already has a configured TTL attribute. |
 | Data Store schema, indexes and permissions | Row CRUD is implemented, but table/column/index/permission ownership and reset/deletion contracts remain unverified. Project-wide import/export is not proof of safe individual-resource CRUD. |

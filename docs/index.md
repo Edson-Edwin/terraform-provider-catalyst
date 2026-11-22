@@ -262,11 +262,15 @@ service coverage. Data sources only read existing infrastructure.
 | --- | --- | --- |
 | AppSail | [Application](resources/appsail.md) | None |
 | Functions | [Function](resources/function.md) | [Functions](data-sources/functions.md) |
-| Stratus | [Object and multipart transfer](resources/stratus_object.md) | [Buckets](data-sources/stratus_buckets.md) |
+| Stratus | [Object and multipart transfer](resources/stratus_object.md) | [Buckets](data-sources/stratus_buckets.md), [Bucket details](data-sources/stratus_bucket.md), [Bucket CORS](data-sources/stratus_bucket_cors.md), [Object versions](data-sources/stratus_object_versions.md) |
+| Web Client Hosting | | [Deployment history](data-sources/web_client_versions.md) |
+| Organizations and project environments | | [Organizations](data-sources/organizations.md), [Environment inventory](data-sources/project_environments.md) |
+| Slate | | [Slate apps](data-sources/slate_apps.md) |
+| Pipelines and ConvoKraft | | [Pipeline metadata](data-sources/pipeline.md), [SmartTrain materials](data-sources/smarttrain_materials.md) |
 | NoSQL | [Configuration item](resources/nosql_item.md) | [Tables](data-sources/nosql_tables.md), [table schema](data-sources/nosql_table.md) |
 | Data Store | [Configuration row](resources/datastore_row.md) | [Tables](data-sources/datastore_tables.md), [table schema](data-sources/datastore_table.md) |
 | API Gateway | [Gateway](resources/api_gateway.md), [complete ruleset](resources/api_gateway_ruleset.md) | None |
-| Job Scheduling | [Webhook](resources/webhook_cron.md), [Job Function](resources/function_cron.md), [AppSail](resources/appsail_cron.md) | [Job pools](data-sources/job_pools.md) |
+| Job Scheduling | [Webhook](resources/webhook_cron.md), [Job Function](resources/function_cron.md), [AppSail](resources/appsail_cron.md) | [Job pools](data-sources/job_pools.md), [Pool details](data-sources/job_pool.md) |
 | Projects | [Project (experimental)](resources/project.md) | [Project](data-sources/project.md), [projects](data-sources/projects.md) |
 | Authentication | [User role assignment (experimental)](resources/auth_user_role.md) | [User access metadata](data-sources/auth_user.md) |
 | Cache | None | [Segments](data-sources/cache_segments.md) |

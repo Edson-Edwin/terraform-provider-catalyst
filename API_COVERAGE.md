@@ -1,6 +1,47 @@
 # Catalyst API coverage and implementation plan
 
-This community provider is under development. Public availability and broad service coverage remain goals; implemented capabilities are listed below. API availability must be verified separately from the Terraform schema and mock tests.
+This community provider is under development. Source is public; Terraform Registry publication and broad service coverage remain goals. Implemented capabilities are listed below. API availability must be verified separately from the Terraform schema and mock tests.
+
+## Current audit status on 2026-11-24
+
+Source is public and main CI is operational. Historical billing-blocked and
+pending-hosted-CI statements below describe earlier milestones, not the current
+workflow. Full compatibility/package checks remain separate manual/release gates;
+a successful prose-only main run does not establish a fresh full-suite run.
+
+The [validated operation audit](coverage/README.md) now tracks all 59 inventory
+entries, separating implementation, API contracts, test fixtures and live evidence.
+The inventory remains incomplete: source-reviewed entries are identified separately
+from entries carried forward for further service/field review. See the
+[roadmap](docs/guides/provider_roadmap.md) and run `make coverage-audit` for the
+prioritized backlog.
+
+Project creation still has no passing full lifecycle: the 2026-11-01 India recheck
+returned `PROJECT_CREATION_NOT_ALLOWED`. Three approved direct API project deletions
+succeeded on 2026-11-08; that does not prove creation or Terraform lifecycle support.
+The former `TerraformProviderTests` project was deleted during that cleanup, so
+earlier fixture IDs must be verified or replaced before any new live run.
+`Project-Rainfall` is excluded from destructive testing. This audit stage is offline.
+
+The provider now registers 13 resources and 22 data sources. Recent discovery
+types have offline Terraform protocol tests and await live verification.
+
+- `data.catalyst_job_pool` reads an existing pool by ID and exposes its configured
+  memory or target count when reported. [Zoho job pool API](https://docs.catalyst.zoho.com/en/api/code-reference/job-scheduling/jobpool/get-jobpool/)
+- `data.catalyst_stratus_bucket` reads the validated regional URL and versioning
+  status of an existing bucket.
+- `data.catalyst_stratus_bucket_cors` reads configured domains and allowed methods.
+  Manage these settings in the console. [Zoho CORS SDK reference](https://docs.catalyst.zoho.com/en/sdk/javascript/v1/cloudscale/stratus/get-bucket-cors/)
+- `data.catalyst_stratus_object_versions` reads one existing object's version IDs,
+  latest flags, and available size, ETag and timestamp metadata. [Zoho version-listing reference](https://docs.catalyst.zoho.com/en/sdk/nodejs/v2/cloud-scale/stratus/list-object-versions/)
+- `data.catalyst_web_client_versions` reads existing client deployment history
+  IDs, version labels and live indicators. [Pinned Catalyst CLI contract](https://github.com/catalystbyzoho/zcatalyst-cli/blob/ed1eef8f32f870201c2a3c72b607318ca11a0861/src/endpoints/lib/client.ts)
+- `data.catalyst_organizations`, `data.catalyst_project_environments` and
+  `data.catalyst_slate_apps` use the pinned CLI discovery contracts.
+- `data.catalyst_pipeline` reads an existing pipeline's name and status by ID.
+  [Zoho pipeline read reference](https://docs.catalyst.zoho.com/en/api/code-reference/pipelines/get-pipeline-details/)
+- `data.catalyst_smarttrain_materials` reads allowlisted material metadata through
+  the full sample URL for a Development bot. [Zoho SmartTrain read reference](https://docs.catalyst.zoho.com/en/api/code-reference/convokraft/get-training-materials/)
 
 ## Authentication and regional safeguards (2026-10-24)
 
@@ -266,7 +307,7 @@ This is a capability inventory, not a claim of 100% coverage. A read-only data s
 | Data Store | Table/column discovery and configuration-row lifecycle | Table/column/index/permission provisioning remains unimplemented; changing customer transactions belong in the app |
 | File Store | Folder discovery; file upload/read/import/delete and replacement | Folder provisioning API not established; metadata updates have no documented endpoint; legacy service |
 | Cache | Segment discovery | Segment creation is explicitly console-only; cache entries expire within 48 hours and are not durable infrastructure |
-| Stratus | Bucket discovery; unversioned single/multipart objects, metadata, import, drift and deletion | Bucket provisioning/policies/CORS/versioning/TTL remain unimplemented; multipart abort/resume and sources over 100 MiB are not implemented |
+| Stratus | Bucket discovery; unversioned single/multipart objects, metadata, import, drift and deletion | Bucket provisioning, policy/CORS/versioning updates and object TTL remain unimplemented; multipart abort/resume and sources over 100 MiB are not implemented |
 | NoSQL | Table/key/TTL/index metadata discovery; persistent configuration-item create/import/update/attribute removal/drift/delete | Table/index provisioning, TTL configuration and permissions remain unsupported; ordinary changing application data belongs in the app |
 | Functions / AppSail / Circuits | Node.js 22/24 Basic I/O, Advanced I/O, Event, Cron and Job Function management; 15 managed Node/Java SE/Python AppSail runtimes; Function discovery | Other Function runtimes/types and Circuit deployment/configuration remain unimplemented; AppSail WAR/custom runtimes, scaling and domains remain unimplemented |
 | API Gateway / Authentication / Connections | Basic/Advanced I/O and client Gateway routes; OAuth/APIKey/CatalystUserManagement or explicit no-auth; experimental existing-user role assignment | Gateway client live verification, throttling/system policies, Authentication setup/custom roles/permissions and Connections provisioning remain incomplete |
