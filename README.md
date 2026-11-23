@@ -103,6 +103,7 @@ verified TLS 1.2 or newer and block redirects; see [regional security policies](
 | Web Client Hosting | Existing deployment history and live-version indicators |
 | Organizations and project environments | Visible organization IDs and names, and existing environment metadata |
 | Slate | Existing app identities |
+| Data Streams | Existing channel inventory, exact-ID lookup, and reported retention and access-control metadata |
 | Pipelines and ConvoKraft | Existing pipeline metadata and SmartTrain training-material metadata |
 | NoSQL | Configuration items and existing table/index metadata |
 | Data Store | Configuration rows and existing table/column metadata |

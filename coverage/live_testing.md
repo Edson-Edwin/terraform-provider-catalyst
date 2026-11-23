@@ -29,6 +29,7 @@ All Terraform type names below use the `catalyst_` prefix.
 | `web_client_versions` | `make testacc-web-client-versions` | Existing hosted client, `ZohoCatalyst.webapp.ALL` and the expected live `CATALYST_TEST_WEB_CLIENT_LIVE_HISTORY_ID`. |
 | `project_environments`, `slate_apps`, `pipeline`, `smarttrain_materials` | `make testacc-extended-discovery DISCOVERY_TEST=TYPE` | Substitute one type name from this row. Pipeline and SmartTrain need `CATALYST_TEST_PIPELINE_ID` and `CATALYST_TEST_SMARTTRAIN_BOT_ID` respectively. SmartTrain also requires Development and an explicit organization. Use the scope from the relevant data-source docs. |
 | `organizations` | `make testacc-extended-discovery DISCOVERY_TEST=organizations` | OAuth access to organization discovery in the configured data center. Unset `CATALYST_ORGANIZATION_ID` for account-wide testing. |
+| `datastream_channels` | `make testacc-extended-discovery DISCOVERY_TEST=datastream_channels` | An existing channel ID as `CATALYST_TEST_DATASTREAM_CHANNEL_ID`, plus `ZohoCatalyst.datastreams.channel.READ`. |
 
 ## Managed lifecycle gates
 

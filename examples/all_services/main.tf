@@ -220,6 +220,7 @@ variable "extra_discovery" {
     organizations = optional(bool, false)
     environments  = optional(bool, false)
     slate         = optional(bool, false)
+    datastreams   = optional(bool, false)
     pipeline_id   = optional(string)
     bot_id        = optional(string)
   })
@@ -238,6 +239,11 @@ data "catalyst_project_environments" "selected" {
 
 data "catalyst_slate_apps" "selected" {
   count      = var.extra_discovery.slate ? 1 : 0
+  project_id = var.project_id
+}
+
+data "catalyst_datastream_channels" "selected" {
+  count      = var.extra_discovery.datastreams ? 1 : 0
   project_id = var.project_id
 }
 
@@ -478,6 +484,7 @@ output "web_client_versions" { value = one(data.catalyst_web_client_versions.sel
 output "environments" { value = one(data.catalyst_project_environments.selected[*].environments) }
 output "organizations" { value = one(data.catalyst_organizations.visible[*].organizations) }
 output "slate_apps" { value = one(data.catalyst_slate_apps.selected[*].apps) }
+output "datastream_channels" { value = one(data.catalyst_datastream_channels.selected[*].channels) }
 output "pipeline_name" { value = one(data.catalyst_pipeline.selected[*].name) }
 output "smarttrain_materials" { value = one(data.catalyst_smarttrain_materials.selected[*].materials) }
 

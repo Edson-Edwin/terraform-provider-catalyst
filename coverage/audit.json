@@ -949,29 +949,58 @@
       "id": "datastreams.channel",
       "priority": "P3",
       "review": "source_reviewed",
-      "api_contract": "unknown",
+      "api_contract": "documented",
       "operations": {
         "create": "not_implemented",
-        "read": "not_implemented",
+        "read": "implemented",
         "update": "not_implemented",
         "delete": "not_implemented",
         "import": "not_implemented"
       },
-      "evidence": "Zoho documents channel creation, configuration and deletion in the console. The SDK subscribe operation establishes a runtime WebSocket subscription.",
+      "evidence": "The documented channel list and exact-ID API expose project-scoped channel metadata. Terraform reads IDs, names, retention and access-control type with offline protocol verification.",
       "blockers": [
         "api_contract",
-        "implementation"
+        "implementation",
+        "live_fixture",
+        "live_verification"
       ],
-      "next_action": "Find the supported lifecycle for channels, including access settings and safe deletion.",
+      "next_action": "Verify both channel reads with an isolated Development channel. Obtain a supported management API for creation, access-control updates and exact-ID deletion.",
       "sources": [
         "coverage/capabilities.json",
         "docs/guides/service_expansion.md",
         "https://docs.catalyst.zoho.com/en/cloud-scale/help/data-streams/channels-overview/",
-        "https://docs.catalyst.zoho.com/en/sdk/javascript/v1/cloudscale/data-streams/websocket-connection/"
+        "https://docs.catalyst.zoho.com/en/sdk/javascript/v1/cloudscale/data-streams/websocket-connection/",
+        "https://docs.catalyst.zoho.com/en/api/code-reference/cloud-scale/data-streams/get-all-channels/",
+        "https://docs.catalyst.zoho.com/en/api/code-reference/cloud-scale/data-streams/get-channel-details/",
+        "https://docs.catalyst.zoho.com/en/cloud-scale/help/data-streams/implementation/manage-channels/",
+        "internal/catalyst/datastreams.go"
       ],
       "remaining_gaps": [
-        "channel identity and lifecycle contract",
-        "access configuration and reset behavior"
+        "live response and permissions",
+        "channel lifecycle API",
+        "role and custom logic access-control semantics"
+      ],
+      "read_fields": [
+        {
+          "api_field": "id",
+          "data_source": "catalyst_datastream_channels",
+          "attribute": "channels.id"
+        },
+        {
+          "api_field": "name",
+          "data_source": "catalyst_datastream_channels",
+          "attribute": "channels.name"
+        },
+        {
+          "api_field": "control_type",
+          "data_source": "catalyst_datastream_channels",
+          "attribute": "channels.control_type"
+        },
+        {
+          "api_field": "retention",
+          "data_source": "catalyst_datastream_channels",
+          "attribute": "channels.retention_hours"
+        }
       ]
     },
     {

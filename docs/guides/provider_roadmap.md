@@ -29,7 +29,7 @@ The provider coverage test now checks the audit and registered schema together.
 The provider also reads specific job pool capacity, Stratus bucket versioning
 and regional URLs, bucket CORS rules, object versions and Web Client Hosting
 history. The latest iteration adds organization and environment discovery
-alongside Slate app, pipeline and SmartTrain metadata reads. All five await live verification.
+alongside Slate app, pipeline, SmartTrain and Data Streams metadata reads. Live verification is pending.
 Provisioning and settings changes still require verified management contracts.
 
 Current-status notes distinguish historical billing and live-fixture evidence from
@@ -80,8 +80,8 @@ and [vendor issue](https://github.com/catalystbyzoho/zcatalyst-cli/issues/1).
 ## Current baseline
 
 The [capability manifest](../../coverage/capabilities.json) tracks **59 draft
-capability areas**: **16 managed subsets, 18 discovery-only areas and 25
-unimplemented areas**, represented by **13 resources and 22 data sources**.
+capability areas**: **16 managed subsets, 19 discovery-only areas and 24
+unimplemented areas**, represented by **13 resources and 23 data sources**.
 One resource may implement several capability areas. These counts are not a
 percentage of all Catalyst features; `inventory_complete` is explicitly false.
 
@@ -136,6 +136,7 @@ with any additional persistent objects found in the current catalogs.
 | `slate.application_configuration` | List app IDs and names. Audit app configuration readback and safe lifecycle operations. |
 | `pipelines.pipeline_configuration` | Read pipeline identity and status. Audit definition fields and management separately from runtime execution. |
 | `convokraft.smarttrain_material` | Read material identity and status. Verify the route and exact ownership before managing training material. |
+| `datastreams.channel` | List channels and look up a channel by ID. Verify live access settings and a supported management API for channel writes. |
 | `nosql.table` | Establish supported table provisioning, key/TTL changes and deletion semantics. |
 | `nosql.index` | Establish local/global index creation, async readiness and deletion; depends on table management. |
 
@@ -153,7 +154,6 @@ with any additional persistent objects found in the current catalogs.
 | `circuits.definition` | Audit definition versioning, readback, updates and deletion in an eligible region. |
 | `signals.event_bus` | Verify the current Signals inventory and management contract separately from legacy Event Listeners. |
 | `signals.rule` | Audit persistent trigger/rule CRUD and initially disabled fixtures to prevent unintended execution. |
-| `datastreams.channel` | Establish lifecycle and access rules for durable channels. The SDK subscribes through runtime WebSocket sessions. |
 | `hosting.domain_mapping` | Verify mapping/DNS/TLS readiness and unmapping using a disposable domain. |
 | `mail.domain_and_sender` | Verify domain/sender ownership and DNS verification without sending mail during lifecycle tests. |
 | `mail.template` | Establish template definition CRUD and sensitive-value handling. |
@@ -193,8 +193,8 @@ platform gaps alongside either claim.
 
 ### 1. Establish the coverage baseline offline
 
-- [x] Map the local provider's 13 resources and 22 data sources to the draft manifest. The schema test also checks example and documentation presence.
-- [x] Record operation-level implementation, sources, blockers and next actions for the 59 reviewed capability areas. The audit counts 16 managed subsets, 18 discovery-only areas and 25 unimplemented areas.
+- [x] Map the local provider's 13 resources and 23 data sources to the draft manifest. The schema test also checks example and documentation presence.
+- [x] Record operation-level implementation, sources, blockers and next actions for the 59 reviewed capability areas. The audit counts 16 managed subsets, 19 discovery-only areas and 24 unimplemented areas.
 - [ ] **First pull request.** Reconcile the official product/service index against the REST catalog, SDK packages, and CLI provisioning/deployment commands. Pin the review date and source versions. Give every catalog entry a destination in the manifest or a documented reason for exclusion. Include services appearing only in help or release notes. [Catalyst service index](https://docs.catalyst.zoho.com/en/)
 - [x] Record the documented application-user lifecycle and environment operations alongside existing provider fields and open ownership questions. [Catalog review](../../coverage/catalog_review.md)
 - [x] Trace Web Client Hosting version upload, readback, activation and delete. Record active-version protection and the remaining API questions. [Catalog review](../../coverage/catalog_review.md#web-client-hosting)
@@ -217,7 +217,7 @@ platform gaps alongside either claim.
 
 ### 3. Prove the provider users can try today
 
-- [x] Map the **13 registered resources and 22 data sources** to tests and fixtures. [Live acceptance matrix](../../coverage/live_testing.md)
+- [x] Map the **13 registered resources and 23 data sources** to tests and fixtures. [Live acceptance matrix](../../coverage/live_testing.md)
 - [ ] Record results and any missing variant cases on the candidate revision. Distinguish passed, failed, skipped and fixture-blocked runs.
 - [ ] Start with project lookup, table metadata, pool capacity, bucket versioning and CORS. Run the existing discovery gates, including `make testacc-infrastructure-details`. For every lookup, check correct identity, empty results where valid, missing objects, permission failures, ordering and pagination where applicable.
 - [ ] Exercise Function and AppSail deployment, the three managed cron target types, Gateway configuration/rulesets, Stratus objects and multipart transfers, configuration rows/items and role assignment. Record File Store compatibility separately. Apply the resource checklist below to each advertised variant.

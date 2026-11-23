@@ -22,6 +22,7 @@ func TestInfrastructureDetailsThroughTerraform(t *testing.T) {
 	const pipeline = "catalyst_pipeline"
 	const smartTrain = "catalyst_smarttrain_materials"
 	const organizations = "catalyst_organizations"
+	const channels = "catalyst_datastream_channels"
 	const poolID = "9007199254740993123"
 	const poolPath = "/baas/v1/project/123/job_scheduling/jobpool/" + poolID
 	const corsPath = "/baas/v1/project/123/bucket/cors?bucket_name=my-bucket"
@@ -31,12 +32,16 @@ func TestInfrastructureDetailsThroughTerraform(t *testing.T) {
 	const environmentsPath = "/baas/v1/project/123/environment"
 	const pipelinePath = "/baas/v1/project/123/pipeline/9007199254740993123"
 	const smartTrainPath = "/baas/v1/project/123/convokraft/api/v1/bots/456/rag_training_data?type=DEVELOPED"
+	const channelPath = "/baas/v1/project/123/datastreams/channel"
 	poolConfig := map[string]any{"project_id": "123", "id": poolID}
 	corsConfig := map[string]any{"project_id": "123", "bucket_name": "my-bucket"}
 	versionsConfig := map[string]any{"project_id": "123", "bucket_name": "my-bucket", "object_key": "assets/data.json"}
 	webClientConfig := map[string]any{"project_id": "123"}
 	pipelineConfig := map[string]any{"project_id": "123", "id": "9007199254740993123"}
 	smartTrainConfig := map[string]any{"project_id": "123", "bot_id": "456"}
+	channelConfig := map[string]any{"project_id": "123", "channel_id": "9007199254740993123"}
+	channelState := map[string]any{"id": "9007199254740993123", "name": "news", "control_type": 0, "retention_hours": 48}
+	const channelResponse = `{"project_id":123,"id":9007199254740993123,"name":"news","control_type":0,"retention":"48","created_by":{"email_id":"private@example.com"}}`
 	poolState := func(memory, count any) map[string]any {
 		return map[string]any{"project_id": "123", "id": poolID, "name": "My Pool", "type": "Function",
 			"capacity_memory_mb": memory, "capacity_count": count}
@@ -111,6 +116,17 @@ func TestInfrastructureDetailsThroughTerraform(t *testing.T) {
 			}}, 200},
 		{"empty organizations", organizations, "/baas/v1/orgs", `{"status":"success","data":[]}`, map[string]any{}, map[string]any{"organizations": []any{}}, 200},
 		{"organization access denied", organizations, "/baas/v1/orgs", "private@example.com", map[string]any{}, nil, 403},
+		{"channel metadata", channels, channelPath + "/9007199254740993123", `{"status":"success","data":` + channelResponse + `}`, channelConfig,
+			map[string]any{"project_id": "123", "channel_id": "9007199254740993123", "channels": []any{channelState}}, 200},
+		{"channel inventory", channels, channelPath, `{"status":"success","data":[` + channelResponse + `,{"project_id":"123","id":"2","name":"alerts"}]}`, webClientConfig,
+			map[string]any{"project_id": "123", "channel_id": nil, "channels": []any{
+				map[string]any{"id": "2", "name": "alerts", "control_type": nil, "retention_hours": nil}, channelState,
+			}}, 200},
+		{"empty channel inventory", channels, channelPath, `{"status":"success","data":[]}`, webClientConfig,
+			map[string]any{"project_id": "123", "channel_id": nil, "channels": []any{}}, 200},
+		{"channel from another project", channels, channelPath, `{"status":"success","data":[{"project_id":"234","id":"2","name":"unexpected"}]}`, webClientConfig, nil, 200},
+		{"wrong channel", channels, channelPath + "/9007199254740993123", `{"status":"success","data":{"project_id":"123","id":"2","name":"unexpected"}}`, channelConfig, nil, 200},
+		{"denied channel inventory", channels, channelPath, "private@example.com", webClientConfig, nil, 403},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			clearEnvironment(t)

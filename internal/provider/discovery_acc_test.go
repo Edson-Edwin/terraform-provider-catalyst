@@ -212,6 +212,7 @@ func TestAccExtendedDiscovery(t *testing.T) {
 		{"slate_apps", "apps", "", ""},
 		{"pipeline", "name", "id", "CATALYST_TEST_PIPELINE_ID"},
 		{"smarttrain_materials", "materials", "bot_id", "CATALYST_TEST_SMARTTRAIN_BOT_ID"},
+		{"datastream_channels", "channels", "channel_id", "CATALYST_TEST_DATASTREAM_CHANNEL_ID"},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
 			var arguments string

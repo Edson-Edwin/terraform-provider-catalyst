@@ -22,6 +22,7 @@ and deprecated sections are commented out independently.
 | Web Client Hosting | | `catalyst_web_client_versions` |
 | Organizations and project environments | | `catalyst_organizations`, `catalyst_project_environments` |
 | Slate | | `catalyst_slate_apps` |
+| Data Streams | | `catalyst_datastream_channels` |
 | Pipelines and ConvoKraft | | `catalyst_pipeline`, `catalyst_smarttrain_materials` |
 | NoSQL | `catalyst_nosql_item` | `catalyst_nosql_tables`, `catalyst_nosql_table` |
 | Data Store | `catalyst_datastore_row` | `catalyst_datastore_tables`, `catalyst_datastore_table` |

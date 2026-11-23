@@ -23,7 +23,7 @@ The former `TerraformProviderTests` project was deleted during that cleanup, so
 earlier fixture IDs must be verified or replaced before any new live run.
 `Project-Rainfall` is excluded from destructive testing. This audit stage is offline.
 
-The provider now registers 13 resources and 22 data sources. Recent discovery
+The provider now registers 13 resources and 23 data sources. Recent discovery
 types have offline Terraform protocol tests and await live verification.
 
 - `data.catalyst_job_pool` reads an existing pool by ID and exposes its configured
@@ -42,6 +42,8 @@ types have offline Terraform protocol tests and await live verification.
   [Zoho pipeline read reference](https://docs.catalyst.zoho.com/en/api/code-reference/pipelines/get-pipeline-details/)
 - `data.catalyst_smarttrain_materials` reads allowlisted material metadata through
   the full sample URL for a Development bot. [Zoho SmartTrain read reference](https://docs.catalyst.zoho.com/en/api/code-reference/convokraft/get-training-materials/)
+- `data.catalyst_datastream_channels` lists channels or reads one by exact ID.
+  It projects basic configuration metadata. [Zoho Data Streams read reference](https://docs.catalyst.zoho.com/en/api/code-reference/cloud-scale/data-streams/get-all-channels/)
 
 ## Authentication and regional safeguards (2026-10-24)
 

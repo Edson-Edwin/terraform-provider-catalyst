@@ -11,6 +11,7 @@ project_id = "YOUR_EXISTING_PROJECT_ID"
 #   organizations = true
 #   environments = true
 #   slate        = true
+#   datastreams  = true
 #   pipeline_id  = "YOUR_EXISTING_PIPELINE_ID"
 #   bot_id       = "YOUR_EXISTING_SMARTTRAIN_BOT_ID"
 # }

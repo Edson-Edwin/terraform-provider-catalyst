@@ -458,11 +458,13 @@
       "service": "datastreams",
       "object": "channel",
       "phase": 6,
-      "status": "unimplemented",
-      "api_evidence": "unknown",
+      "status": "discovery",
+      "api_evidence": "documented",
       "resources": [],
-      "data_sources": [],
-      "note": "Durable Data Streams channels and access configuration are documented in the console. Runtime WebSocket subscriptions are excluded. A supported channel management API has not been verified."
+      "data_sources": [
+        "catalyst_datastream_channels"
+      ],
+      "note": "The documented channel list and exact-ID API expose project-scoped channel metadata. Terraform reads IDs, names, retention and access-control type with offline protocol verification."
     },
     {
       "id": "hosting.client_deployment",
