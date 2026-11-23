@@ -1491,7 +1491,7 @@
         "delete": "not_implemented",
         "import": "not_implemented"
       },
-      "evidence": "Exact user lookup already exposes allowlisted access metadata. Zoho documents signup and user deletion. Adding a user to an existing application organization takes a ZAAID. Neither create route has been verified for Terraform ownership.",
+      "evidence": "Exact user lookup already exposes allowlisted access metadata. Zoho documents signup and user deletion. Adding a user to an existing application organization takes a ZAAID. Neither create route has been verified for Terraform ownership. The page data source uses the official offset/count route and omits profiles.",
       "blockers": [
         "api_contract",
         "implementation",
@@ -1503,13 +1503,15 @@
         "https://docs.catalyst.zoho.com/en/api/code-reference/cloud-scale/authentication/add-new-user/",
         "https://docs.catalyst.zoho.com/en/api/code-reference/cloud-scale/authentication/delete-user/",
         "internal/provider/auth_user_data_source.go",
-        "coverage/catalog_review.md"
+        "coverage/catalog_review.md",
+        "https://docs.catalyst.zoho.com/en/api/code-reference/cloud-scale/authentication/get-all-users/",
+        "internal/catalyst/auth_users.go"
       ],
       "remaining_gaps": [
-        "paginated user discovery",
         "signup/invitation lifecycle",
         "profile mutation support and privacy",
-        "independent user ownership and deletion"
+        "independent user ownership and deletion",
+        "live page bounds and application-organization visibility"
       ],
       "read_fields": [
         {
@@ -1531,6 +1533,31 @@
           "api_field": "status",
           "data_source": "catalyst_auth_user",
           "attribute": "status"
+        },
+        {
+          "api_field": "user_id",
+          "data_source": "catalyst_auth_users",
+          "attribute": "users.id"
+        },
+        {
+          "api_field": "role_details.role_id",
+          "data_source": "catalyst_auth_users",
+          "attribute": "users.role_id"
+        },
+        {
+          "api_field": "role_details.role_name",
+          "data_source": "catalyst_auth_users",
+          "attribute": "users.role_name"
+        },
+        {
+          "api_field": "user_type",
+          "data_source": "catalyst_auth_users",
+          "attribute": "users.user_type"
+        },
+        {
+          "api_field": "status",
+          "data_source": "catalyst_auth_users",
+          "attribute": "users.status"
         }
       ]
     },

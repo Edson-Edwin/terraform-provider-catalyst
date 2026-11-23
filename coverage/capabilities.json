@@ -650,9 +650,10 @@
       "api_evidence": "documented",
       "resources": [],
       "data_sources": [
-        "catalyst_auth_user"
+        "catalyst_auth_user",
+        "catalyst_auth_users"
       ],
-      "note": "Exact user lookup already exposes allowlisted access metadata. Zoho documents signup and user deletion. Adding a user to an existing application organization takes a ZAAID. Neither create route has been verified for Terraform ownership."
+      "note": "Exact user lookup already exposes allowlisted access metadata. Zoho documents signup and user deletion. Adding a user to an existing application organization takes a ZAAID. Neither create route has been verified for Terraform ownership. The page data source returns allowlisted access metadata for a bounded offset page."
     },
     {
       "id": "environments.production_lifecycle",

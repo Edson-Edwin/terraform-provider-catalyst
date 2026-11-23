@@ -81,7 +81,7 @@ and [vendor issue](https://github.com/catalystbyzoho/zcatalyst-cli/issues/1).
 
 The [capability manifest](../../coverage/capabilities.json) tracks **59 draft
 capability areas**: **16 managed subsets, 19 discovery-only areas and 24
-unimplemented areas**, represented by **13 resources and 23 data sources**.
+unimplemented areas**, represented by **13 resources and 24 data sources**.
 One resource may implement several capability areas. These counts are not a
 percentage of all Catalyst features; `inventory_complete` is explicitly false.
 
@@ -129,7 +129,7 @@ with any additional persistent objects found in the current catalogs.
 | `stratus.bucket_cors` | Read existing rules with the new data source. Verify the read in a disposable bucket and establish a supported write/reset API. |
 | `stratus.bucket` | Establish bucket create/read/update/delete, naming and environment behavior; prerequisite for storage settings. |
 | `stratus.object_versions` | Read version IDs, latest flags and metadata. Verify the read with a versioned fixture. |
-| `authentication.application_user` | Read existing user access metadata. Audit user list, signup, identity membership, consent and delete ownership. |
+| `authentication.application_user` | Read user access metadata by ID or page. Audit signup, identity membership, consent and delete ownership. |
 | `hosting.client_deployment` | Read client version history. Verify live output, artifact drift and activation/delete ownership before adding writes. |
 | `organizations.organization` | Read organization identities and the default flag. Audit minimum scope and organization lifecycle. |
 | `environments.inventory` | List IDs, names and status. Confirm live read and supported scope. |
@@ -193,7 +193,7 @@ platform gaps alongside either claim.
 
 ### 1. Establish the coverage baseline offline
 
-- [x] Map the local provider's 13 resources and 23 data sources to the draft manifest. The schema test also checks example and documentation presence.
+- [x] Map the local provider's 13 resources and 24 data sources to the draft manifest. The schema test also checks example and documentation presence.
 - [x] Record operation-level implementation, sources, blockers and next actions for the 59 reviewed capability areas. The audit counts 16 managed subsets, 19 discovery-only areas and 24 unimplemented areas.
 - [ ] **First pull request.** Reconcile the official product/service index against the REST catalog, SDK packages, and CLI provisioning/deployment commands. Pin the review date and source versions. Give every catalog entry a destination in the manifest or a documented reason for exclusion. Include services appearing only in help or release notes. [Catalyst service index](https://docs.catalyst.zoho.com/en/)
 - [x] Record the documented application-user lifecycle and environment operations alongside existing provider fields and open ownership questions. [Catalog review](../../coverage/catalog_review.md)
@@ -217,7 +217,7 @@ platform gaps alongside either claim.
 
 ### 3. Prove the provider users can try today
 
-- [x] Map the **13 registered resources and 23 data sources** to tests and fixtures. [Live acceptance matrix](../../coverage/live_testing.md)
+- [x] Map the **13 registered resources and 24 data sources** to tests and fixtures. [Live acceptance matrix](../../coverage/live_testing.md)
 - [ ] Record results and any missing variant cases on the candidate revision. Distinguish passed, failed, skipped and fixture-blocked runs.
 - [ ] Start with project lookup, table metadata, pool capacity, bucket versioning and CORS. Run the existing discovery gates, including `make testacc-infrastructure-details`. For every lookup, check correct identity, empty results where valid, missing objects, permission failures, ordering and pagination where applicable.
 - [ ] Exercise Function and AppSail deployment, the three managed cron target types, Gateway configuration/rulesets, Stratus objects and multipart transfers, configuration rows/items and role assignment. Record File Store compatibility separately. Apply the resource checklist below to each advertised variant.

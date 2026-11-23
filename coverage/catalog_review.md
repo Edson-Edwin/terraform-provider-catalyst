@@ -32,7 +32,7 @@ ZAAID in these APIs represents application tenancy. The provider's
 | Operation or field | Provider support or open question |
 | --- | --- |
 | `GET /project-user/{user_id}` with users READ | `data.catalyst_auth_user` reads by exact ID. `user_id` and `role_details.role_id` retain precision. Role name, user type and status are projected. The provider omits email, name, profile and membership from state. |
-| `GET /project-user?start=…&end=…` with users READ | Documented offset-based list. Audit project and application-organization visibility, termination and deterministic ordering before exposing a list. Evaluate whether Terraform actually needs broad user discovery. |
+| `GET /project-user?start=…&end=…` with users READ | The paged data source maps the documented start/count request and exposes only IDs and access metadata. Verify tenant visibility and pagination live. [User list reference](https://docs.catalyst.zoho.com/en/api/code-reference/cloud-scale/authentication/get-all-users/) |
 | `POST /project-user/signup` with users CREATE | Documented platform, user fields and optional redirect. Establish when it creates a new identity or sends an invitation, whether confirmation is needed before the ID can be read, and how to recover an ambiguous create. |
 | `POST /project-user` with users CREATE | Documented add into existing app organization. The ZAAID and membership are immutable according to the docs. Confirm whether a replacement would revoke access to a shared identity. |
 | Role assignment | Existing `catalyst_auth_user_role` owns the role assignment of a pre-existing user. Profile/account mutations need independent review. |

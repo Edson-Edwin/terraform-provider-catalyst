@@ -23,7 +23,7 @@ The former `TerraformProviderTests` project was deleted during that cleanup, so
 earlier fixture IDs must be verified or replaced before any new live run.
 `Project-Rainfall` is excluded from destructive testing. This audit stage is offline.
 
-The provider now registers 13 resources and 23 data sources. Recent discovery
+The provider now registers 13 resources and 24 data sources. Recent discovery
 types have offline Terraform protocol tests and await live verification.
 
 - `data.catalyst_job_pool` reads an existing pool by ID and exposes its configured

@@ -110,7 +110,7 @@ verified TLS 1.2 or newer and block redirects; see [regional security policies](
 | API Gateway | Enable/disable and complete ruleset ownership; supported Function/client targets and authentication modes |
 | Job Scheduling | Webhook, Job Function and AppSail schedules; pool discovery with capacity details |
 | Projects | Discovery; experimental project creation/deletion with deletion protection |
-| Authentication | User access metadata; experimental existing-user role assignment |
+| Authentication | Exact-ID and paged user access metadata, plus experimental existing-user role assignment |
 | Cache | Existing segment discovery only |
 | File Store | Deprecated file management and folder discovery for legacy projects |
 

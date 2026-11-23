@@ -160,7 +160,7 @@ func (p *CatalystProvider) DataSources(_ context.Context) []func() datasource.Da
 		NewTablesDataSource, NewFoldersDataSource, NewCacheSegmentsDataSource,
 		NewBucketsDataSource, NewStratusBucketDataSource, NewStratusCORSDataSource, NewStratusVersionsDataSource,
 		NewFunctionsDataSource, NewNoSQLTablesDataSource, NewNoSQLTableDataSource, NewDataStoreTableDataSource,
-		NewAuthUserDataSource, NewWebClientVersionsDataSource, NewSlateAppsDataSource,
+		NewAuthUserDataSource, NewAuthUsersDataSource, NewWebClientVersionsDataSource, NewSlateAppsDataSource,
 		NewPipelineDataSource, NewSmartTrainMaterialsDataSource, NewDataStreamChannelsDataSource,
 	}
 }

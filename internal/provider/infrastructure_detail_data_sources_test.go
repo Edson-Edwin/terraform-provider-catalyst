@@ -23,6 +23,8 @@ func TestInfrastructureDetailsThroughTerraform(t *testing.T) {
 	const smartTrain = "catalyst_smarttrain_materials"
 	const organizations = "catalyst_organizations"
 	const channels = "catalyst_datastream_channels"
+	const users = "catalyst_auth_users"
+	const usersPath = "/baas/v1/project/123/project-user"
 	const poolID = "9007199254740993123"
 	const poolPath = "/baas/v1/project/123/job_scheduling/jobpool/" + poolID
 	const corsPath = "/baas/v1/project/123/bucket/cors?bucket_name=my-bucket"
@@ -127,6 +129,17 @@ func TestInfrastructureDetailsThroughTerraform(t *testing.T) {
 		{"channel from another project", channels, channelPath, `{"status":"success","data":[{"project_id":"234","id":"2","name":"unexpected"}]}`, webClientConfig, nil, 200},
 		{"wrong channel", channels, channelPath + "/9007199254740993123", `{"status":"success","data":{"project_id":"123","id":"2","name":"unexpected"}}`, channelConfig, nil, 200},
 		{"denied channel inventory", channels, channelPath, "private@example.com", webClientConfig, nil, 403},
+		{"first user page", users, usersPath + "?end=50&start=0", `{"status":"success","data":[{"user_id":9007199254740993123,"email_id":"private@example.com","first_name":"excluded","user_type":"App User","status":"ACTIVE","role_details":{"role_id":34,"role_name":"Reader"}},{"user_id":1}]}`, webClientConfig,
+			map[string]any{"project_id": "123", "start": 0, "limit": 50, "users": []any{
+				map[string]any{"id": "1", "role_id": nil, "role_name": nil, "user_type": nil, "status": nil},
+				map[string]any{"id": "9007199254740993123", "role_id": "34", "role_name": "Reader", "user_type": "App User", "status": "ACTIVE"},
+			}}, 200},
+		{"empty later user page", users, usersPath + "?end=5&start=200", `{"status":"success","data":[]}`,
+			map[string]any{"project_id": "123", "start": 200, "limit": 5}, map[string]any{"project_id": "123", "start": 200, "limit": 5, "users": []any{}}, 200},
+		{"duplicate user IDs", users, usersPath + "?end=50&start=0", `{"status":"success","data":[{"user_id":"2"},{"user_id":2}]}`, webClientConfig, nil, 200},
+		{"denied user page", users, usersPath + "?end=50&start=0", "private@example.com", webClientConfig, nil, 403},
+		{"invalid page size", users, "", "", map[string]any{"project_id": "123", "limit": 201}, nil, 0},
+		{"invalid page offset", users, "", "", map[string]any{"project_id": "123", "start": -1}, nil, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			clearEnvironment(t)

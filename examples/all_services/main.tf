@@ -221,6 +221,7 @@ variable "extra_discovery" {
     environments  = optional(bool, false)
     slate         = optional(bool, false)
     datastreams   = optional(bool, false)
+    auth_users    = optional(bool, false)
     pipeline_id   = optional(string)
     bot_id        = optional(string)
   })
@@ -273,6 +274,11 @@ data "catalyst_nosql_table" "configuration" {
 
 data "catalyst_filestore_folders" "legacy" {
   count      = var.legacy_filestore == null ? 0 : 1
+  project_id = var.project_id
+}
+
+data "catalyst_auth_users" "first_page" {
+  count      = var.extra_discovery.auth_users ? 1 : 0
   project_id = var.project_id
 }
 

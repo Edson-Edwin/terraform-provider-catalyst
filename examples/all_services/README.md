@@ -28,7 +28,7 @@ and deprecated sections are commented out independently.
 | Data Store | `catalyst_datastore_row` | `catalyst_datastore_tables`, `catalyst_datastore_table` |
 | API Gateway | `catalyst_api_gateway`, `catalyst_api_gateway_ruleset` | None |
 | Job Scheduling | `catalyst_webhook_cron`, `catalyst_function_cron`, `catalyst_appsail_cron` | `catalyst_job_pools`, `catalyst_job_pool` |
-| Authentication | `catalyst_auth_user_role` (experimental) | `catalyst_auth_user` |
+| Authentication | `catalyst_auth_user_role` (experimental) | `catalyst_auth_user`, `catalyst_auth_users` |
 | Cache | None; discovery only | `catalyst_cache_segments` |
 | Legacy File Store | `catalyst_filestore_file` (deprecated) | `catalyst_filestore_folders` (deprecated) |
 
