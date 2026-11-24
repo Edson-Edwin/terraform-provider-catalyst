@@ -174,6 +174,16 @@ func (c *Client) requestContent(ctx context.Context, method, path string, body [
 }
 
 func (c *Client) requestContentForProject(ctx context.Context, method, path string, body []byte, contentType, projectHeader string) (*http.Response, error) {
+	var headers http.Header
+	if projectHeader != "" {
+		headers = make(http.Header)
+		headers.Set("X-CATALYST-projectid", projectHeader)
+		headers.Set("X-CATALYST-Environment", c.config.Environment)
+	}
+	return c.requestWithHeaders(ctx, method, path, body, contentType, headers)
+}
+
+func (c *Client) requestWithHeaders(ctx context.Context, method, path string, body []byte, contentType string, headers http.Header) (*http.Response, error) {
 	refreshed, retries := false, 0
 	for {
 		if err := ctx.Err(); err != nil {
@@ -193,12 +203,11 @@ func (c *Client) requestContentForProject(ctx context.Context, method, path stri
 			req.Header.Set("Content-Type", contentType)
 		}
 		req.Header.Set("Environment", c.config.Environment)
-		if projectHeader != "" {
-			req.Header.Set("X-CATALYST-projectid", projectHeader)
-			req.Header.Set("X-CATALYST-Environment", c.config.Environment)
-		}
 		if c.config.OrganizationID != "" {
 			req.Header.Set("CATALYST-ORG", c.config.OrganizationID)
+		}
+		for key, values := range headers {
+			req.Header[key] = values
 		}
 		res, err := c.http.Do(req)
 		if err != nil {

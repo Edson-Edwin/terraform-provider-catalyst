@@ -17,6 +17,31 @@ import (
 const cronID = "9007199254740993124"
 const cronJSON = `{"status":"success","data":{"id":9007199254740993124,"cron_name":"test","cron_type":"CronExpression","cron_execution_type":"pre-defined","cron_expression":"0 0 1 1 *","cron_status":false,"end_time":"1893456000","cron_detail":{"timezone":"UTC"},"job_meta":{"job_name":"test","jobpool_id":"123","target_type":"Webhook","source_type":"Cron","url":"https://example.com","request_method":"get","job_config":{"number_of_retries":"0"}}}}`
 
+func TestCircuitCronManagedSubset(t *testing.T) {
+	for _, scenario := range []struct {
+		name, job string
+		valid     bool
+	}{
+		{"defaults", `"target_type":"Circuit","target_id":"1234","test_cases":{ }`, true},
+		{"undefined test cases", `"target_type":"Circuit","target_id":"1234","test_cases":null`, true},
+		{"explicit test cases", `"target_type":"Circuit","target_id":"1234","test_cases":{"input":"keep"}`, false},
+		{"explicit params", `"target_type":"Circuit","target_id":"1234","params":{"input":"keep"}`, false},
+		{"conflicting target details", `"target_type":"Circuit","target_id":"1234","target_details":{"id":"1235"}`, false},
+		{"foreign target", `"target_type":"Function","target_id":"1234"`, false},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			fixture := strings.Replace(cronJSON, `"target_type":"Webhook"`, scenario.job, 1)
+			client := testClient(t, Config{AccessToken: "fixture"}, func(w http.ResponseWriter, _ *http.Request) {
+				writeResponse(t, w, fixture)
+			})
+			result, err := client.GetCircuitCron(t.Context(), projectID, cronID)
+			if (err == nil) != scenario.valid || (scenario.valid && result.Job.TargetID != "1234") {
+				t.Fatalf("unexpected Circuit cron acceptance: %v", err)
+			}
+		})
+	}
+}
+
 func testCron() Cron {
 	enabled := false
 	return Cron{Name: "test", Type: "CronExpression", ExecutionType: "pre-defined", Expression: "0 0 1 1 *", Enabled: &enabled, EndTime: 1893456000, Schedule: CronSchedule{Timezone: "UTC"}, Job: CronJob{Name: "test", PoolID: "123", TargetType: "Webhook", SourceType: "Cron", URL: "https://example.com", Method: "get", Headers: map[string]string{}, Params: map[string]string{}}}

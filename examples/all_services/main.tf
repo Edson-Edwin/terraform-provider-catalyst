@@ -1,4 +1,4 @@
-# All 13 registered resources and 15 data sources in one configuration.
+# All 15 registered resources and 26 data sources in one configuration.
 # Optional objects default to null: no writes occur until you configure them.
 # Start with an existing isolated Development project. See README.md and
 # terraform.tfvars.example for prerequisites and inputs. This is a catalog of
@@ -13,13 +13,19 @@ terraform {
 # Credentials: CATALYST_ACCESS_TOKEN OR the three CATALYST_CLIENT_ID,
 # CATALYST_CLIENT_SECRET and CATALYST_REFRESH_TOKEN environment variables.
 provider "catalyst" {
-  data_center = "in"
+  data_center = var.data_center
   environment = "Development"
+}
+
+variable "data_center" {
+  type        = string
+  default     = "in"
+  description = "Data center of the existing Development project. Circuit schedules require an eligible data center."
 }
 
 variable "project_id" {
   type        = string
-  description = "Existing isolated India Development project; all features except experimental_project use it."
+  description = "Existing isolated Development project used by all features except experimental_project."
 }
 
 variable "application_environment" {
@@ -118,6 +124,26 @@ variable "appsail_schedule" {
   })
   default     = null
   description = "Existing AppSail pool; requires appsail configuration. Creates a disabled daily schedule. end_time is fixed Unix seconds."
+}
+
+variable "circuit_schedule" {
+  type = object({
+    job_pool_id = string
+    circuit_id  = string
+    end_time    = number
+  })
+  default     = null
+  description = "Experimental disabled schedule using an existing Circuit and pool in an eligible Development data center."
+}
+
+variable "smarttrain_material" {
+  type = object({
+    bot_id = string
+    title  = string
+    url    = string
+  })
+  default     = null
+  description = "Experimental: register one public HTTPS training material with an existing SmartTrain-enabled Development bot."
 }
 
 variable "authentication" {
@@ -221,9 +247,11 @@ variable "extra_discovery" {
     environments  = optional(bool, false)
     slate         = optional(bool, false)
     datastreams   = optional(bool, false)
+    browser_grids = optional(bool, false)
     auth_users    = optional(bool, false)
     pipeline_id   = optional(string)
     bot_id        = optional(string)
+    import_job_id = optional(string)
   })
   default     = {}
   description = "Optional read-only lookups. Enable only services available to these project credentials."
@@ -231,6 +259,11 @@ variable "extra_discovery" {
 
 data "catalyst_organizations" "visible" {
   count = var.extra_discovery.organizations ? 1 : 0
+}
+
+data "catalyst_project_import_job" "selected" {
+  count = var.extra_discovery.import_job_id == null ? 0 : 1
+  id    = var.extra_discovery.import_job_id
 }
 
 data "catalyst_project_environments" "selected" {
@@ -245,6 +278,11 @@ data "catalyst_slate_apps" "selected" {
 
 data "catalyst_datastream_channels" "selected" {
   count      = var.extra_discovery.datastreams ? 1 : 0
+  project_id = var.project_id
+}
+
+data "catalyst_browser_grids" "selected" {
+  count      = var.extra_discovery.browser_grids ? 1 : 0
   project_id = var.project_id
 }
 
@@ -455,6 +493,26 @@ resource "catalyst_appsail_cron" "daily" {
 }
 
 # Experimental and deprecated features: opt in separately after reviewing docs.
+resource "catalyst_circuit_cron" "experimental" {
+  count       = var.circuit_schedule == null ? 0 : 1
+  project_id  = var.project_id
+  job_pool_id = var.circuit_schedule.job_pool_id
+  circuit_id  = var.circuit_schedule.circuit_id
+  name        = "tf_example_circuit"
+  job_name    = "tf_circuit"
+  expression  = "0 9 * * *"
+  end_time    = var.circuit_schedule.end_time
+  enabled     = false
+}
+
+resource "catalyst_smarttrain_material" "experimental" {
+  count      = var.smarttrain_material == null ? 0 : 1
+  project_id = var.project_id
+  bot_id     = var.smarttrain_material.bot_id
+  title      = var.smarttrain_material.title
+  url        = var.smarttrain_material.url
+}
+
 resource "catalyst_auth_user_role" "experimental" {
   count           = var.authentication == null ? 0 : (var.authentication.assignment == null ? 0 : 1)
   project_id      = var.project_id
@@ -489,8 +547,10 @@ output "stratus_object_versions" { value = one(data.catalyst_stratus_object_vers
 output "web_client_versions" { value = one(data.catalyst_web_client_versions.selected[*].versions) }
 output "environments" { value = one(data.catalyst_project_environments.selected[*].environments) }
 output "organizations" { value = one(data.catalyst_organizations.visible[*].organizations) }
+output "imported_project_id" { value = one(data.catalyst_project_import_job.selected[*].project_id) }
 output "slate_apps" { value = one(data.catalyst_slate_apps.selected[*].apps) }
 output "datastream_channels" { value = one(data.catalyst_datastream_channels.selected[*].channels) }
+output "browser_grids" { value = one(data.catalyst_browser_grids.selected[*].grids) }
 output "pipeline_name" { value = one(data.catalyst_pipeline.selected[*].name) }
 output "smarttrain_materials" { value = one(data.catalyst_smarttrain_materials.selected[*].materials) }
 

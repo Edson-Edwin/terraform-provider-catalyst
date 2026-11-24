@@ -28,9 +28,10 @@ records the first application-user, environment and Stratus field crosswalks.
 The provider coverage test now checks the audit and registered schema together.
 The provider also reads specific job pool capacity, Stratus bucket versioning
 and regional URLs, bucket CORS rules, object versions and Web Client Hosting
-history. The latest iteration adds organization and environment discovery
-alongside Slate app, pipeline, SmartTrain and Data Streams metadata reads. Live verification is pending.
-Provisioning and settings changes still require verified management contracts.
+history. It also reads organization, environment, Slate, pipeline, SmartTrain,
+Data Streams, SmartBrowz Grid and IaC import job metadata. The experimental
+Circuit cron and SmartTrain material resources have offline lifecycle tests.
+Live verification is pending.
 
 Current-status notes distinguish historical billing and live-fixture evidence from
 today's state. A [project-creation support request](project_creation_support_request.md)
@@ -80,8 +81,8 @@ and [vendor issue](https://github.com/catalystbyzoho/zcatalyst-cli/issues/1).
 ## Current baseline
 
 The [capability manifest](../../coverage/capabilities.json) tracks **59 draft
-capability areas**: **16 managed subsets, 19 discovery-only areas and 24
-unimplemented areas**, represented by **13 resources and 24 data sources**.
+capability areas**: **18 managed subsets, 20 discovery-only areas and 21
+unimplemented areas**, represented by **15 resources and 26 data sources**.
 One resource may implement several capability areas. These counts are not a
 percentage of all Catalyst features; `inventory_complete` is explicitly false.
 
@@ -135,16 +136,16 @@ with any additional persistent objects found in the current catalogs.
 | `environments.inventory` | List IDs, names and status. Confirm live read and supported scope. |
 | `slate.application_configuration` | List app IDs and names. Audit app configuration readback and safe lifecycle operations. |
 | `pipelines.pipeline_configuration` | Read pipeline identity and status. Audit definition fields and management separately from runtime execution. |
-| `convokraft.smarttrain_material` | Read material identity and status. Verify the route and exact ownership before managing training material. |
 | `datastreams.channel` | List channels and look up a channel by ID. Verify live access settings and a supported management API for channel writes. |
 | `nosql.table` | Establish supported table provisioning, key/TTL changes and deletion semantics. |
 | `nosql.index` | Establish local/global index creation, async readiness and deletion; depends on table management. |
+| `smartbrowz.persistent_configuration_audit` | Verify grid metadata live. Establish grid and template configuration ownership before adding writes. |
+| `projects.iac_bootstrap` | Read an existing import job and its completed project ID. Verify live OAuth and identify a supported unattended import contract. |
 
 ## Unimplemented areas
 
 | Capability ID | Next action and dependency |
 | --- | --- |
-| `scheduling.circuit_cron` | Verify the target lifecycle in an eligible region with a disposable Circuit fixture. |
 | `datastore.table_permission` | Establish permission read/write/reset semantics and role/table ownership. |
 | `datastore.index` | Identify a supported index management contract before implementation. |
 | `stratus.bucket_policy` | Audit policies and public access with complete reset/readback behavior. |
@@ -160,14 +161,12 @@ with any additional persistent objects found in the current catalogs.
 | `notifications.configuration` | Identify persistent app/platform configuration APIs; exclude sending notifications. |
 | `search.configuration` | Identify persistent index/search configuration APIs; exclude executing searches. |
 | `zia.persistent_configuration_audit` | Inventory any durable configurable objects; exclude inference calls. |
-| `smartbrowz.persistent_configuration_audit` | Inventory persistent settings if available; exclude screenshots/PDF jobs. |
 | `convokraft.bot_configuration` | Audit bot/training/configuration ownership, sensitive data and async behavior. |
 | `quickml.deployment_configuration` | Audit persistent deployment configuration separately from predictions. |
 | `devops.alert_and_event_configuration` | Audit alert/subscription configuration and test without triggering notifications. |
 | `environments.production_lifecycle` | Zoho documents console-based enable/disable. Confirm supported lifecycle and readiness APIs. |
 | `environments.deployment` | Zoho documents console-only promotion and status. Track reverse migration and rollback separately. |
 | `mdm.application_version` | Check management API availability in an eligible data center. Zoho documents console app hosting and version history. |
-| `projects.iac_bootstrap` | The official CLI imports a project ZIP with browser confirmation. Verify a supported unattended contract before implementation. |
 
 ## Gaps within implemented subsets
 
@@ -180,6 +179,8 @@ with any additional persistent objects found in the current catalogs.
 | Database configuration data | Existing rows/items require existing schemas. Broader field types and reset semantics need separate audits. |
 | Authentication | Existing-user role assignment needs a disposable user and live verification; it does not provision authentication, users or roles. |
 | Gateway | Live-test client routes with a hosted client. Throttling/system-route ownership remains unimplemented. |
+| Circuit cron | Verify disabled expression crons with a disposable Circuit and pool in an eligible data center. Other schedule forms and job inputs still need verification. |
+| SmartTrain material | Run the experimental HTTPS source lifecycle in an isolated Development bot. Confirm training status and canonical URL behavior. |
 | Environments | Environment selection is implemented; environment creation, promotion and rollback are separate unsupported management lifecycles. |
 
 ## Full coverage implementation checklist

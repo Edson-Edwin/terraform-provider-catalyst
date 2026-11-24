@@ -150,27 +150,31 @@
       "review": "source_reviewed",
       "api_contract": "documented",
       "operations": {
-        "create": "not_implemented",
-        "read": "not_implemented",
-        "update": "not_implemented",
-        "delete": "not_implemented",
-        "import": "not_implemented"
+        "create": "implemented",
+        "read": "implemented",
+        "update": "implemented",
+        "delete": "implemented",
+        "import": "implemented"
       },
-      "evidence": "Zoho documents Circuit targets with regional restrictions. An eligible fixture and a Terraform target lifecycle are still needed.",
+      "evidence": "The documented Circuit target contract is implemented for pre-defined expression schedules with empty inputs. Offline Terraform tests cover create, read, import, same-ID update, stable plan and confirmed deletion.",
       "blockers": [
-        "api_contract",
-        "implementation",
-        "live_fixture"
+        "live_fixture",
+        "live_verification"
       ],
-      "next_action": "Verify the documented Circuit target in an eligible data center using a disabled schedule and a disposable Circuit and job pool. Zoho lists India, EU, AU and CA as unavailable.",
+      "next_action": "Run the disabled lifecycle in an eligible Development project with an existing Circuit and Circuit pool. Zoho lists India, EU, AU and CA as unavailable.",
       "sources": [
         "coverage/capabilities.json",
-        "docs/guides/service_expansion.md",
-        "https://docs.catalyst.zoho.com/en/job-scheduling/help/jobpool/introduction/",
+        "internal/provider/circuit_cron_resource.go",
+        "internal/provider/circuit_cron_resource_test.go",
+        "https://docs.catalyst.zoho.com/en/api/code-reference/job-scheduling/cron/create-cron/create-cron-cron-exp/",
         "https://docs.catalyst.zoho.com/en/api/code-reference/job-scheduling/cron/update-cron/update-cron-cron-expressions/",
-        "https://docs.catalyst.zoho.com/en/job-scheduling/help/cron/introduction/"
+        "https://docs.catalyst.zoho.com/en/job-scheduling/getting-started/components-of-job-scheduling/"
       ],
-      "remaining_gaps": []
+      "remaining_gaps": [
+        "live OAuth and eligible Circuit fixture",
+        "calendar, periodic and one-time schedule forms",
+        "Circuit test cases and custom job input round-trip"
+      ]
     },
     {
       "id": "scheduling.recurring_calendar_schedule",
@@ -1295,27 +1299,75 @@
       "id": "smartbrowz.persistent_configuration_audit",
       "priority": "P3",
       "review": "source_reviewed",
-      "api_contract": "unknown",
+      "api_contract": "documented",
       "operations": {
         "create": "not_implemented",
-        "read": "not_implemented",
+        "read": "implemented",
         "update": "not_implemented",
         "delete": "not_implemented",
         "import": "not_implemented"
       },
-      "evidence": "The inspected SDK exposes browser grid retrieval and stop operations plus rendering and enrichment requests. A managed configuration lifecycle was not established.",
+      "evidence": "Offline Terraform protocol tests verify the documented GET list and exact-ID metadata lookup. The JavaScript SDK corroborates GET for exact-ID reads; the REST example incorrectly shows PUT. Configuration writes and template management remain open.",
       "blockers": [
         "api_contract",
-        "implementation"
+        "implementation",
+        "live_verification"
       ],
-      "next_action": "Distinguish durable templates/settings from grid sessions and individual rendering requests.",
+      "next_action": "Verify OAuth routing and capacity fields with one existing grid. Confirm supported grid definition writes and template metadata contracts before adding Terraform management.",
       "sources": [
-        "coverage/capabilities.json",
-        "docs/guides/service_expansion.md",
-        "https://github.com/catalystbyzoho/zcatalyst-sdk-js/blob/9e870262459c4ed13e99e7db6fb68148199a56e7/packages/smartbrowz/src/index.ts",
-        "https://github.com/catalystbyzoho/zcatalyst-sdk-js/blob/9e870262459c4ed13e99e7db6fb68148199a56e7/packages/smartbrowz/src/browser-grid.ts"
+        "https://docs.catalyst.zoho.com/en/api/code-reference/smartbrowz/browser-grid/list-all-grids/",
+        "https://docs.catalyst.zoho.com/en/api/code-reference/smartbrowz/browser-grid/list-specific-grid/",
+        "https://docs.catalyst.zoho.com/en/smartbrowz/help/browser-grid/manage-grid/",
+        "https://github.com/catalystbyzoho/zcatalyst-sdk-js/blob/9e870262459c4ed13e99e7db6fb68148199a56e7/packages/smartbrowz/src/browser-grid.ts",
+        "internal/catalyst/browser_grid.go"
       ],
-      "remaining_gaps": []
+      "remaining_gaps": [
+        "live metadata readback",
+        "grid definition create/update/delete",
+        "durable template configuration management"
+      ],
+      "read_fields": [
+        {
+          "api_field": "data[].id",
+          "data_source": "catalyst_browser_grids",
+          "attribute": "grids.id"
+        },
+        {
+          "api_field": "data[].name",
+          "data_source": "catalyst_browser_grids",
+          "attribute": "grids.name"
+        },
+        {
+          "api_field": "data[].memory",
+          "data_source": "catalyst_browser_grids",
+          "attribute": "grids.memory_mb"
+        },
+        {
+          "api_field": "data[].endpoint_type",
+          "data_source": "catalyst_browser_grids",
+          "attribute": "grids.endpoint_type"
+        },
+        {
+          "api_field": "data[].config_type",
+          "data_source": "catalyst_browser_grids",
+          "attribute": "grids.config_type"
+        },
+        {
+          "api_field": "data[].max_nodes_count",
+          "data_source": "catalyst_browser_grids",
+          "attribute": "grids.max_nodes"
+        },
+        {
+          "api_field": "data[].max_session_count",
+          "data_source": "catalyst_browser_grids",
+          "attribute": "grids.max_sessions"
+        },
+        {
+          "api_field": "data[].max_concurrent_count",
+          "data_source": "catalyst_browser_grids",
+          "attribute": "grids.max_concurrent"
+        }
+      ]
     },
     {
       "id": "convokraft.bot_configuration",
@@ -1623,29 +1675,45 @@
       "api_contract": "official_cli_candidate",
       "operations": {
         "create": "not_implemented",
-        "read": "not_implemented",
+        "read": "implemented",
         "update": "not_implemented",
         "delete": "not_implemented",
         "import": "not_implemented"
       },
-      "evidence": "Zoho's IaC import creates a new project from a project-template ZIP. Current CLI documentation describes browser session confirmation. This workflow has a separate identity and lifecycle from direct project creation.",
+      "evidence": "The CLI creates a new project from a template ZIP after browser confirmation. Terraform reads an existing import job by ID using the CLI's exact GET route, and exposes the project ID only on Completed. Offline protocol tests cover pending, completed, failed, denied and mismatched responses.",
       "blockers": [
         "api_contract",
         "account_eligibility",
-        "implementation"
+        "implementation",
+        "live_fixture",
+        "live_verification"
       ],
-      "next_action": "Confirm whether Zoho supports a browser-free import mode and a stable status-to-project-ID contract. Audit the template fields for supported provisionable configurations.",
+      "next_action": "Verify the status GET with scoped OAuth and an existing manually confirmed job. Ask Zoho for a supported unattended initiation contract.",
       "sources": [
         "https://docs.catalyst.zoho.com/en/cli/v1/export-and-import-projects/import-project/",
         "https://docs.catalyst.zoho.com/en/getting-started/set-up-a-catalyst-project/iac-settings/",
         "coverage/catalog_review.md",
         "https://github.com/catalystbyzoho/zcatalyst-cli/blob/ed1eef8f32f870201c2a3c72b607318ca11a0861/src/commands/iac/import.ts",
-        "https://github.com/catalystbyzoho/zcatalyst-cli/blob/ed1eef8f32f870201c2a3c72b607318ca11a0861/src/endpoints/lib/iac.ts"
+        "https://github.com/catalystbyzoho/zcatalyst-cli/blob/ed1eef8f32f870201c2a3c72b607318ca11a0861/src/endpoints/lib/iac.ts",
+        "https://docs.catalyst.zoho.com/en/cli/v1/export-and-import-projects/export-import-job-status/",
+        "https://github.com/catalystbyzoho/zcatalyst-cli/blob/ed1eef8f32f870201c2a3c72b607318ca11a0861/src/endpoints/lib/iac.ts",
+        "internal/catalyst/project_import.go"
       ],
       "remaining_gaps": [
-        "unattended eligibility",
-        "async import job recovery and exactly-once project identity",
-        "template-defined child ownership"
+        "browser-free initiation",
+        "live OAuth status and resulting project ID"
+      ],
+      "read_fields": [
+        {
+          "api_field": "data.status",
+          "data_source": "catalyst_project_import_job",
+          "attribute": "status"
+        },
+        {
+          "api_field": "data.project_details.id",
+          "data_source": "catalyst_project_import_job",
+          "attribute": "project_id"
+        }
       ]
     },
     {
@@ -1742,29 +1810,30 @@
       "review": "source_reviewed",
       "api_contract": "documented",
       "operations": {
-        "create": "not_implemented",
+        "create": "implemented",
         "read": "implemented",
-        "update": "not_implemented",
-        "delete": "not_implemented",
-        "import": "not_implemented"
+        "update": "replacement",
+        "delete": "implemented",
+        "import": "implemented"
       },
-      "evidence": "The provider reads existing material metadata through the full GET example path. The documented method and sample use different path prefixes, and live verification is pending.",
+      "evidence": "Offline Terraform lifecycle exercises single-URL create, async inventory readback, import, title replacement, stable plans and exact-ID deletion. The provider uses the full REST sample request paths for all operations.",
       "blockers": [
-        "api_contract",
-        "implementation",
         "live_fixture",
         "live_verification"
       ],
-      "next_action": "Verify the exact read route and SmartTrain capability with an existing Development bot. Confirm identity, URL normalization, async readiness and exact delete behavior before enabling managed writes.",
+      "next_action": "Verify the full lifecycle in an isolated SmartTrain-enabled Development bot using a generated, publicly hosted test document and scoped OAuth.",
       "sources": [
         "https://docs.catalyst.zoho.com/en/api/code-reference/convokraft/get-training-materials/",
         "https://docs.catalyst.zoho.com/en/convokraft/help/smarttrain/",
-        "internal/catalyst/convokraft.go"
+        "internal/catalyst/convokraft.go",
+        "https://docs.catalyst.zoho.com/en/api/code-reference/convokraft/add-training-material/",
+        "https://docs.catalyst.zoho.com/en/api/code-reference/convokraft/delete-training-material/",
+        "internal/provider/smarttrain_material_resource_test.go"
       ],
       "remaining_gaps": [
-        "live GET routing and response envelope",
-        "create recovery without adoption of someone else's material",
-        "replacement and exact-ID deletion contract"
+        "live OAuth routing and canonical URL behavior",
+        "training completion and status behavior",
+        "other source types"
       ],
       "read_fields": [
         {

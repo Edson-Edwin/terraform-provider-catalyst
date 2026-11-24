@@ -98,7 +98,7 @@ headers are never forwarded to the Stratus transfer host.
 | NoSQL table TTL configuration | No table-management lifecycle implemented. Existing typed item JSON can contain expiry values when the table already has a configured TTL attribute. |
 | Data Store schema, indexes and permissions | Row CRUD is implemented, but table/column/index/permission ownership and reset/deletion contracts remain unverified. Project-wide import/export is not proof of safe individual-resource CRUD. |
 | Authentication login setup, custom roles/defaults and permissions | Not implemented; no supported public management lifecycle established. Existing-user role assignment remains experimental and live-unverified because no disposable user is available. |
-| Scheduling | Webhook, Function and AppSail schedules are supported. Circuit scheduling lacks an eligible verified test project. Job-pool and broader configuration management remain incomplete. |
+| Scheduling | Webhook, Function and AppSail schedules are supported. Experimental Circuit expression schedules have offline lifecycle coverage and need an eligible test project for live verification. Job-pool and broader configuration management remain incomplete. |
 | Gateway | Expanded targets and authentication modes are available. Client routes have offline-only verification; configured throttling and system routes remain unsupported and are rejected rather than silently discarded. |
 
 Missing provider management does not mean Catalyst lacks these features. The

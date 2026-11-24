@@ -23,9 +23,17 @@ The former `TerraformProviderTests` project was deleted during that cleanup, so
 earlier fixture IDs must be verified or replaced before any new live run.
 `Project-Rainfall` is excluded from destructive testing. This audit stage is offline.
 
-The provider now registers 13 resources and 24 data sources. Recent discovery
-types have offline Terraform protocol tests and await live verification.
+The provider now registers 15 resources and 26 data sources. The 59 tracked
+areas include 18 managed subsets, 20 discovery-only areas, and 21 unimplemented
+areas. These additions have offline tests and await live verification.
 
+- `catalyst_circuit_cron` manages pre-defined expression schedules with empty
+  job inputs. Live verification requires a Development Circuit and Circuit pool
+  in an eligible data center. [Zoho scheduling requirements](https://docs.catalyst.zoho.com/en/job-scheduling/getting-started/components-of-job-scheduling/)
+- `data.catalyst_browser_grids` lists or looks up configured grids and returns
+  their IDs, names, configuration types and capacity. [Zoho Grid read API](https://docs.catalyst.zoho.com/en/api/code-reference/smartbrowz/browser-grid/list-all-grids/)
+- `data.catalyst_project_import_job` reads an existing CLI or console IaC
+  import job. Once completed, it exposes the resulting project ID. [Pinned Catalyst CLI status route](https://github.com/catalystbyzoho/zcatalyst-cli/blob/ed1eef8f32f870201c2a3c72b607318ca11a0861/src/endpoints/lib/iac.ts)
 - `data.catalyst_job_pool` reads an existing pool by ID and exposes its configured
   memory or target count when reported. [Zoho job pool API](https://docs.catalyst.zoho.com/en/api/code-reference/job-scheduling/jobpool/get-jobpool/)
 - `data.catalyst_stratus_bucket` reads the validated regional URL and versioning
@@ -40,6 +48,9 @@ types have offline Terraform protocol tests and await live verification.
   `data.catalyst_slate_apps` use the pinned CLI discovery contracts.
 - `data.catalyst_pipeline` reads an existing pipeline's name and status by ID.
   [Zoho pipeline read reference](https://docs.catalyst.zoho.com/en/api/code-reference/pipelines/get-pipeline-details/)
+- `catalyst_smarttrain_material` registers an HTTPS source for an existing
+  Development bot. It waits for a visible material record and reports training
+  status. Changes replace the record. [Zoho material creation API](https://docs.catalyst.zoho.com/en/api/code-reference/convokraft/add-training-material/)
 - `data.catalyst_smarttrain_materials` reads allowlisted material metadata through
   the full sample URL for a Development bot. [Zoho SmartTrain read reference](https://docs.catalyst.zoho.com/en/api/code-reference/convokraft/get-training-materials/)
 - `data.catalyst_datastream_channels` lists channels or reads one by exact ID.

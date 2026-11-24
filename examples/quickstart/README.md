@@ -9,6 +9,8 @@ The provider runs on your computer. You do not need to host it, sign up for the
 Terraform Registry or wait for a production release. Start with the offline check;
 continue to account access and deployment only when you want to test those steps.
 
+To test a storage resource from a fresh checkout, use the [Stratus preview test](STRATUS.md).
+
 ## What you can test
 
 | Stage | What it checks | Expected result |

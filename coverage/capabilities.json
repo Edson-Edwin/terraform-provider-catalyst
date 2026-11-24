@@ -85,11 +85,13 @@
       "service": "scheduling",
       "object": "circuit_cron",
       "phase": 3,
-      "status": "unimplemented",
+      "status": "managed",
       "api_evidence": "documented",
-      "resources": [],
+      "resources": [
+        "catalyst_circuit_cron"
+      ],
       "data_sources": [],
-      "note": "Public target contract exists, but vendor documentation states Circuits are unavailable in India, EU, AU and CA. No eligible Circuit test project or verified full lifecycle is available; resource remains unimplemented. Maintainer confirmed that no eligible test project is available on 2026-10-23."
+      "note": "Experimental pre-defined expression schedules with empty job inputs. Offline Terraform lifecycle passed. Requires a disposable Circuit and Circuit pool in an eligible Development data center for live verification."
     },
     {
       "id": "scheduling.recurring_calendar_schedule",
@@ -576,11 +578,13 @@
       "service": "smartbrowz",
       "object": "persistent_configuration_audit",
       "phase": 7,
-      "status": "unimplemented",
-      "api_evidence": "unknown",
+      "status": "discovery",
+      "api_evidence": "documented",
       "resources": [],
-      "data_sources": [],
-      "note": "Management API and lifecycle verification required."
+      "data_sources": [
+        "catalyst_browser_grids"
+      ],
+      "note": "Read existing SmartBrowz Browser Grids by project or exact ID. Projects return configured capacity and type metadata. Grid definition writes and durable template configuration remain open."
     },
     {
       "id": "convokraft.bot_configuration",
@@ -682,11 +686,13 @@
       "service": "projects",
       "object": "iac_bootstrap",
       "phase": 4,
-      "status": "unimplemented",
+      "status": "discovery",
       "api_evidence": "official_cli_candidate",
       "resources": [],
-      "data_sources": [],
-      "note": "Zoho's IaC import creates a new project from a project-template ZIP. Current CLI documentation describes browser session confirmation. This workflow has a separate identity and lifecycle from direct project creation."
+      "data_sources": [
+        "catalyst_project_import_job"
+      ],
+      "note": "Read existing IaC import job status and the resulting project ID on completion through the official CLI route. Browser confirmation is required to start a new import. OAuth status readback awaits live verification."
     },
     {
       "id": "signals.event_bus",
@@ -717,13 +723,15 @@
       "service": "convokraft",
       "object": "smarttrain_material",
       "phase": 5,
-      "status": "discovery",
+      "status": "managed",
       "api_evidence": "documented",
-      "resources": [],
+      "resources": [
+        "catalyst_smarttrain_material"
+      ],
       "data_sources": [
         "catalyst_smarttrain_materials"
       ],
-      "note": "The provider reads existing material metadata through the full GET example path. The documented method and sample use different path prefixes, and live verification is pending."
+      "note": "Experimental URL material create/read/import/replacement and exact-ID deletion for an existing Development bot. Discovery continues to omit source URLs. Offline lifecycle verified; live routing and training behavior pending."
     },
     {
       "id": "organizations.organization",

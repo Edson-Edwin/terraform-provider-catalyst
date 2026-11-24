@@ -155,18 +155,18 @@ func (p *CatalystProvider) Configure(ctx context.Context, req provider.Configure
 
 func (p *CatalystProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		NewProjectDataSource, NewProjectsDataSource, NewOrganizationsDataSource, NewProjectEnvironmentsDataSource,
+		NewProjectDataSource, NewProjectsDataSource, NewOrganizationsDataSource, NewProjectEnvironmentsDataSource, NewProjectImportJobDataSource,
 		NewJobPoolsDataSource, NewJobPoolDataSource,
 		NewTablesDataSource, NewFoldersDataSource, NewCacheSegmentsDataSource,
 		NewBucketsDataSource, NewStratusBucketDataSource, NewStratusCORSDataSource, NewStratusVersionsDataSource,
 		NewFunctionsDataSource, NewNoSQLTablesDataSource, NewNoSQLTableDataSource, NewDataStoreTableDataSource,
 		NewAuthUserDataSource, NewAuthUsersDataSource, NewWebClientVersionsDataSource, NewSlateAppsDataSource,
-		NewPipelineDataSource, NewSmartTrainMaterialsDataSource, NewDataStreamChannelsDataSource,
+		NewPipelineDataSource, NewSmartTrainMaterialsDataSource, NewDataStreamChannelsDataSource, NewBrowserGridsDataSource,
 	}
 }
 
 func (p *CatalystProvider) Resources(_ context.Context) []func() resource.Resource {
-	return []func() resource.Resource{NewWebhookCronResource, NewFilestoreFileResource, NewFunctionResource, NewAppSailResource, NewGatewayResource, NewGatewayRulesetResource, NewStratusObjectResource, NewFunctionCronResource, NewAppSailCronResource, NewProjectResource, NewNoSQLItemResource, NewAuthUserRoleResource, NewDataStoreRowResource}
+	return []func() resource.Resource{NewWebhookCronResource, NewFilestoreFileResource, NewFunctionResource, NewAppSailResource, NewGatewayResource, NewGatewayRulesetResource, NewStratusObjectResource, NewFunctionCronResource, NewAppSailCronResource, NewCircuitCronResource, NewProjectResource, NewNoSQLItemResource, NewAuthUserRoleResource, NewDataStoreRowResource, NewSmartTrainMaterialResource}
 }
 
 // New constructs a provider factory for the plugin server and tests.
