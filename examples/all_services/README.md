@@ -1,8 +1,8 @@
 # All currently registered Catalyst resources and data sources
 
-`main.tf` contains all **13 resource types and 15 data source types** currently
-registered by this provider. It uses one provider, configured for India
-Development. It demonstrates supported subsets, not complete Catalyst service
+`main.tf` contains all **15 resource types and 26 data source types** currently
+registered by this provider. It uses one provider, configured for India Development by default.
+Set `data_center` to match your project when enabling the Circuit schedule. It demonstrates supported subsets, not complete Catalyst service
 coverage. AppSail and Function applications must be built separately.
 
 All optional resource inputs default to null or an empty map. Supplying only
@@ -15,7 +15,7 @@ and deprecated sections are commented out independently.
 
 | Service | Resource blocks | Data source blocks |
 | --- | --- | --- |
-| Projects | `catalyst_project` (experimental, separate additional project) | `catalyst_projects`, `catalyst_project` |
+| Projects | `catalyst_project` (experimental, separate additional project) | `catalyst_projects`, `catalyst_project`, `catalyst_project_import_job` |
 | AppSail | `catalyst_appsail` | None |
 | Functions | `catalyst_function` (map supports multiple Functions/types) | `catalyst_functions` |
 | Stratus | `catalyst_stratus_object`, including optional multipart transfers | `catalyst_stratus_buckets`, `catalyst_stratus_bucket`, `catalyst_stratus_bucket_cors`, `catalyst_stratus_object_versions` |
@@ -23,11 +23,12 @@ and deprecated sections are commented out independently.
 | Organizations and project environments | | `catalyst_organizations`, `catalyst_project_environments` |
 | Slate | | `catalyst_slate_apps` |
 | Data Streams | | `catalyst_datastream_channels` |
-| Pipelines and ConvoKraft | | `catalyst_pipeline`, `catalyst_smarttrain_materials` |
+| SmartBrowz | | `catalyst_browser_grids` |
+| Pipelines and ConvoKraft | `catalyst_smarttrain_material` (experimental) | `catalyst_pipeline`, `catalyst_smarttrain_materials` |
 | NoSQL | `catalyst_nosql_item` | `catalyst_nosql_tables`, `catalyst_nosql_table` |
 | Data Store | `catalyst_datastore_row` | `catalyst_datastore_tables`, `catalyst_datastore_table` |
 | API Gateway | `catalyst_api_gateway`, `catalyst_api_gateway_ruleset` | None |
-| Job Scheduling | `catalyst_webhook_cron`, `catalyst_function_cron`, `catalyst_appsail_cron` | `catalyst_job_pools`, `catalyst_job_pool` |
+| Job Scheduling | `catalyst_webhook_cron`, `catalyst_function_cron`, `catalyst_appsail_cron`, `catalyst_circuit_cron` (experimental) | `catalyst_job_pools`, `catalyst_job_pool` |
 | Authentication | `catalyst_auth_user_role` (experimental) | `catalyst_auth_user`, `catalyst_auth_users` |
 | Cache | None; discovery only | `catalyst_cache_segments` |
 | Legacy File Store | `catalyst_filestore_file` (deprecated) | `catalyst_filestore_folders` (deprecated) |

@@ -2,7 +2,7 @@
 
 The Catalyst provider lets Terraform manage supported [Zoho Catalyst](https://catalyst.zoho.com/) application infrastructure. Each user supplies their own OAuth credentials and selects a data center and environment.
 
-This is a community provider, not an official Zoho or HashiCorp product. It is under development and is **not yet available from the public Terraform Registry**. The current implementation registers **13 resource types and 15 data source types**; some capabilities are experimental or deprecated. These counts do not represent complete Catalyst service coverage.
+This is a community provider, not an official Zoho or HashiCorp product. It is under development and is **not yet available from the public Terraform Registry**. The current implementation registers **15 resource types and 26 data source types**; some capabilities are experimental or deprecated. These counts do not represent complete Catalyst service coverage.
 
 - [Provider documentation and configuration](docs/index.md)
 - **[Trial guide for testers](examples/quickstart/README.md)** — start here to check and try the provider.
@@ -104,12 +104,13 @@ verified TLS 1.2 or newer and block redirects; see [regional security policies](
 | Organizations and project environments | Visible organization IDs and names, and existing environment metadata |
 | Slate | Existing app identities |
 | Data Streams | Existing channel inventory, exact-ID lookup, and reported retention and access-control metadata |
-| Pipelines and ConvoKraft | Existing pipeline metadata and SmartTrain training-material metadata |
+| SmartBrowz | Existing Browser Grid configuration and capacity metadata |
+| Pipelines and ConvoKraft | Existing pipeline metadata, SmartTrain material discovery, and experimental HTTPS material management |
 | NoSQL | Configuration items and existing table/index metadata |
 | Data Store | Configuration rows and existing table/column metadata |
 | API Gateway | Enable/disable and complete ruleset ownership; supported Function/client targets and authentication modes |
-| Job Scheduling | Webhook, Job Function and AppSail schedules; pool discovery with capacity details |
-| Projects | Discovery; experimental project creation/deletion with deletion protection |
+| Job Scheduling | Webhook, Job Function and AppSail schedules, experimental Circuit expression schedules, and pool discovery |
+| Projects | Discovery, experimental IaC import job lookup, and experimental project creation/deletion with deletion protection |
 | Authentication | Exact-ID and paged user access metadata, plus experimental existing-user role assignment |
 | Cache | Existing segment discovery only |
 | File Store | Deprecated file management and folder discovery for legacy projects |

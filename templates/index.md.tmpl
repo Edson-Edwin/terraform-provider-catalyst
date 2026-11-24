@@ -251,7 +251,7 @@ coverage does not establish live service availability in every region.
 
 ## Supported Services
 
-These links describe **13 resource types and 12 data source types**, not complete
+These links describe **15 resource types and 26 data source types**, not complete
 service coverage. Data sources only read existing infrastructure.
 
 | Service | Resources | Data sources |
@@ -263,12 +263,13 @@ service coverage. Data sources only read existing infrastructure.
 | Organizations and project environments | | [Organizations](data-sources/organizations.md), [Environment inventory](data-sources/project_environments.md) |
 | Slate | | [Slate apps](data-sources/slate_apps.md) |
 | Data Streams | | [Channels](data-sources/datastream_channels.md) |
-| Pipelines and ConvoKraft | | [Pipeline metadata](data-sources/pipeline.md), [SmartTrain materials](data-sources/smarttrain_materials.md) |
+| SmartBrowz | | [Browser Grid metadata](data-sources/browser_grids.md) |
+| Pipelines and ConvoKraft | [SmartTrain material (experimental)](resources/smarttrain_material.md) | [Pipeline metadata](data-sources/pipeline.md), [SmartTrain materials](data-sources/smarttrain_materials.md) |
 | NoSQL | [Configuration item](resources/nosql_item.md) | [Tables](data-sources/nosql_tables.md), [table schema](data-sources/nosql_table.md) |
 | Data Store | [Configuration row](resources/datastore_row.md) | [Tables](data-sources/datastore_tables.md), [table schema](data-sources/datastore_table.md) |
 | API Gateway | [Gateway](resources/api_gateway.md), [complete ruleset](resources/api_gateway_ruleset.md) | None |
-| Job Scheduling | [Webhook](resources/webhook_cron.md), [Job Function](resources/function_cron.md), [AppSail](resources/appsail_cron.md) | [Job pools](data-sources/job_pools.md), [Pool details](data-sources/job_pool.md) |
-| Projects | [Project (experimental)](resources/project.md) | [Project](data-sources/project.md), [projects](data-sources/projects.md) |
+| Job Scheduling | [Webhook](resources/webhook_cron.md), [Job Function](resources/function_cron.md), [AppSail](resources/appsail_cron.md), [Circuit (experimental)](resources/circuit_cron.md) | [Job pools](data-sources/job_pools.md), [Pool details](data-sources/job_pool.md) |
+| Projects | [Project (experimental)](resources/project.md) | [Project](data-sources/project.md), [projects](data-sources/projects.md), [IaC import status](data-sources/project_import_job.md) |
 | Authentication | [User role assignment (experimental)](resources/auth_user_role.md) | [User access metadata](data-sources/auth_user.md), [Paged user access](data-sources/auth_users.md) |
 | Cache | None | [Segments](data-sources/cache_segments.md) |
 | File Store | [File (deprecated)](resources/filestore_file.md) | [Folders (deprecated)](data-sources/filestore_folders.md) |

@@ -31,6 +31,8 @@ All Terraform type names below use the `catalyst_` prefix.
 | `project_environments`, `slate_apps`, `pipeline`, `smarttrain_materials` | `make testacc-extended-discovery DISCOVERY_TEST=TYPE` | Substitute one type name from this row. Pipeline and SmartTrain need `CATALYST_TEST_PIPELINE_ID` and `CATALYST_TEST_SMARTTRAIN_BOT_ID` respectively. SmartTrain also requires Development and an explicit organization. Use the scope from the relevant data-source docs. |
 | `organizations` | `make testacc-extended-discovery DISCOVERY_TEST=organizations` | OAuth access to organization discovery in the configured data center. Unset `CATALYST_ORGANIZATION_ID` for account-wide testing. |
 | `datastream_channels` | `make testacc-extended-discovery DISCOVERY_TEST=datastream_channels` | An existing channel ID as `CATALYST_TEST_DATASTREAM_CHANNEL_ID`, plus `ZohoCatalyst.datastreams.channel.READ`. |
+| `browser_grids` | `make testacc-extended-discovery DISCOVERY_TEST=browser_grids` | An existing grid ID as `CATALYST_TEST_BROWSER_GRID_ID`, explicit organization, and `ZohoCatalyst.grid.read`. |
+| `project_import_job` | [Standalone Terraform example](../examples/data-sources/catalyst_project_import_job/) | Existing manually confirmed IaC import job ID in Development, explicit organization, and `ZohoCatalyst.project.import.READ`. For a completed job, compare the returned project ID to the console. |
 
 ## Managed lifecycle gates
 
@@ -43,6 +45,8 @@ created by the current run. Keep borrowed fixtures and unrelated projects.
 | `function` | `make testacc-function`, `make testacc-function-variants`, `make testacc-function-background` | Generated packages for the advertised Node/runtime types. Use the Function execution test separately for runtime evidence. |
 | `appsail` | `make testacc-appsail`, `make testacc-appsail-languages`, `make testacc-appsail-health` | Generated deployment packages and supported runtimes. Node 24 has an additional `TestAccAppSailNode24` case. |
 | `webhook_cron`, `function_cron`, `appsail_cron` | `make testacc-cron`, `make testacc-webhook-cron-schedules`, `make testacc-function-cron`, `make testacc-function-cron-schedules`, `make testacc-appsail-cron` | Existing job pools for the target type and generated Functions or AppSail services. Recheck disabled, timezone, calendar and periodic variants as advertised. |
+| `circuit_cron` | `CATALYST_TEST_ALLOW_CIRCUIT_CRON_CREATE=1 make testacc-circuit-cron` | Eligible Development data center, existing Circuit and Circuit Job Pool in the disposable project. Set `CATALYST_TEST_CIRCUIT_ID` and `CATALYST_TEST_CIRCUIT_POOL_ID`. The test leaves the cron disabled and verifies deletion. |
+| `smarttrain_material` | [Standalone Terraform example](../examples/resources/catalyst_smarttrain_material/) | Existing disposable SmartTrain-enabled Development bot, explicit organization, scoped OAuth, and a public test document you control. Test apply, import using the reported URL, replace the title, verify a stable plan and check exact-ID absence after destroy. |
 | `api_gateway`, `api_gateway_ruleset` | `make testacc-gateway` | Dedicated project for full ruleset ownership. Separately verify client routes with a hosted client. |
 | `stratus_object` | `make testacc-stratus-object`, `make testacc-stratus-multipart` | Private unversioned bucket for generated keys. Check bytes and metadata after repair, then verify exact-key cleanup. |
 | `datastore_row`, `nosql_item` | `make testacc-datastore-row`, `make testacc-nosql-item` | Isolated existing schemas and test rows/items. |

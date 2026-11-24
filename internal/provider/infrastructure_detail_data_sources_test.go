@@ -22,7 +22,12 @@ func TestInfrastructureDetailsThroughTerraform(t *testing.T) {
 	const pipeline = "catalyst_pipeline"
 	const smartTrain = "catalyst_smarttrain_materials"
 	const organizations = "catalyst_organizations"
+	const importJob = "catalyst_project_import_job"
+	const importJobPath = "/baas/v1/project/import/9007199254740993123"
 	const channels = "catalyst_datastream_channels"
+	const grids = "catalyst_browser_grids"
+	const gridPath = "/browser360/v1/project/123/browser-grid"
+	const gridResponse = `{"id":9007199254740993123,"name":"Puppeteer","project_details":{"id":"123"},"memory":"1024","endpoint_type":1,"config_type":2,"max_nodes_count":3,"max_session_count":2,"max_concurrent_count":6,"api_key":"private@example.com","endpoint":"wss://example.com?secret=excluded"}`
 	const users = "catalyst_auth_users"
 	const usersPath = "/baas/v1/project/123/project-user"
 	const poolID = "9007199254740993123"
@@ -44,6 +49,9 @@ func TestInfrastructureDetailsThroughTerraform(t *testing.T) {
 	channelConfig := map[string]any{"project_id": "123", "channel_id": "9007199254740993123"}
 	channelState := map[string]any{"id": "9007199254740993123", "name": "news", "control_type": 0, "retention_hours": 48}
 	const channelResponse = `{"project_id":123,"id":9007199254740993123,"name":"news","control_type":0,"retention":"48","created_by":{"email_id":"private@example.com"}}`
+	gridConfig := map[string]any{"project_id": "123", "grid_id": "9007199254740993123"}
+	importJobConfig := map[string]any{"id": "9007199254740993123"}
+	gridState := map[string]any{"id": "9007199254740993123", "name": "Puppeteer", "memory_mb": 1024, "endpoint_type": 1, "config_type": 2, "max_nodes": 3, "max_sessions": 2, "max_concurrent": 6}
 	poolState := func(memory, count any) map[string]any {
 		return map[string]any{"project_id": "123", "id": poolID, "name": "My Pool", "type": "Function",
 			"capacity_memory_mb": memory, "capacity_count": count}
@@ -140,6 +148,24 @@ func TestInfrastructureDetailsThroughTerraform(t *testing.T) {
 		{"denied user page", users, usersPath + "?end=50&start=0", "private@example.com", webClientConfig, nil, 403},
 		{"invalid page size", users, "", "", map[string]any{"project_id": "123", "limit": 201}, nil, 0},
 		{"invalid page offset", users, "", "", map[string]any{"project_id": "123", "start": -1}, nil, 0},
+		{"grid list projection", grids, gridPath, `{"status":"success","data":[` + gridResponse + `,{"id":"2","name":"Selenium","project_details":{"id":123}}]}`, webClientConfig,
+			map[string]any{"project_id": "123", "grid_id": nil, "grids": []any{map[string]any{"id": "2", "name": "Selenium", "memory_mb": nil, "endpoint_type": nil, "config_type": nil, "max_nodes": nil, "max_sessions": nil, "max_concurrent": nil}, gridState}}, 200},
+		{"grid exact read", grids, gridPath + "/9007199254740993123", `{"status":"success","data":` + gridResponse + `}`, gridConfig,
+			map[string]any{"project_id": "123", "grid_id": "9007199254740993123", "grids": []any{gridState}}, 200},
+		{"grid in another project", grids, gridPath + "/9007199254740993123", `{"status":"success","data":` + strings.Replace(gridResponse, `"id":"123"`, `"id":"456"`, 1) + `}`, gridConfig, nil, 200},
+		{"empty grid list", grids, gridPath, `{"status":"success","data":[]}`, webClientConfig, map[string]any{"project_id": "123", "grid_id": nil, "grids": []any{}}, 200},
+		{"grid denied", grids, gridPath, "private@example.com", webClientConfig, nil, 403},
+		{"invalid grid ID", grids, "", "", map[string]any{"project_id": "123", "grid_id": "../bad"}, nil, 0},
+		{"completed project import", importJob, importJobPath, `{"status":"success","data":{"id":9007199254740993123,"status":"Completed","project_details":{"id":"9007199254740993124"},"logs":{"processing_errors":"private@example.com"}}}`, importJobConfig,
+			map[string]any{"id": "9007199254740993123", "status": "Completed", "project_id": "9007199254740993124"}, 200},
+		{"processing project import", importJob, importJobPath, `{"status":"success","data":{"id":"9007199254740993123","status":"Processing","project_details":{"id":null}}}`, importJobConfig,
+			map[string]any{"id": "9007199254740993123", "status": "Processing", "project_id": nil}, 200},
+		{"failed project import", importJob, importJobPath, `{"status":"success","data":{"id":"9007199254740993123","status":"Error_Processing","project_details":{"id":"12"}}}`, importJobConfig,
+			map[string]any{"id": "9007199254740993123", "status": "Error_Processing", "project_id": nil}, 200},
+		{"wrong project import ID", importJob, importJobPath, `{"status":"success","data":{"id":"123","status":"Completed","project_details":{"id":"12"}}}`, importJobConfig, nil, 200},
+		{"completed project import without project", importJob, importJobPath, `{"status":"success","data":{"id":"9007199254740993123","status":"Completed"}}`, importJobConfig, nil, 200},
+		{"denied project import status", importJob, importJobPath, "private@example.com", importJobConfig, nil, 403},
+		{"invalid project import ID", importJob, "", "", map[string]any{"id": "../bad"}, nil, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			clearEnvironment(t)
@@ -156,6 +182,9 @@ func TestInfrastructureDetailsThroughTerraform(t *testing.T) {
 				}
 				if tc.typeName == smartTrain && (r.Header.Get("X-CATALYST-projectid") != "123" || r.Header.Get("X-CATALYST-Environment") != "Development") {
 					t.Fatal("missing SmartTrain routing headers")
+				}
+				if tc.typeName == importJob && (r.Header.Get("Accept") != "application/vnd.catalyst.v2+json" || r.Header.Get("X-CATALYST-Environment") != "Development") {
+					t.Fatal("missing official CLI headers for IaC import status")
 				}
 				return &http.Response{StatusCode: tc.status, Body: io.NopCloser(strings.NewReader(tc.body)), Header: make(http.Header)}, nil
 			})}})()

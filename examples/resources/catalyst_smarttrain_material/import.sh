@@ -1,0 +1,1 @@
+terraform import catalyst_smarttrain_material.example PROJECT_ID/BOT_ID/MATERIAL_ID

@@ -8,6 +8,10 @@ BREAKING CHANGES:
 
 FEATURES:
 
+- Add experimental Circuit expression schedules and HTTPS-based ConvoKraft SmartTrain material management, with offline Terraform lifecycle coverage.
+- Read SmartBrowz Browser Grid configuration and existing Catalyst IaC import jobs, including the resulting project ID when an import completes. These data sources have offline verification.
+- Add a clean-checkout Stratus trial for independent testers using a disposable object in an existing India Development bucket.
+
 - Add a guided source preview with an offline installation check, read-only project discovery and an optional disposable AppSail deploy/update/destroy example. The launcher keeps credentials in child-process environment, remembers trial routing and app identity, and retains Terraform state for recovery. Add automated launcher isolation tests and a narrowly scoped secret-scanner exception for a public Make enum.
 
 - Add regional project/Stratus checks across both environments and authentication modes, SHA-256 validation of signed downloads, and disposable-object lifecycle checks with exact-key cleanup. Add a protected-environment CI matrix and offline verification of fixture isolation and cleanup failures. Authenticated live coverage remains pending regional fixtures.

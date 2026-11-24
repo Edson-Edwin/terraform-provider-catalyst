@@ -1,7 +1,8 @@
 # Copy to terraform.tfvars, replace ALL placeholders and remove any sections
 # you do not want to deploy. Omitted optional sections perform no writes.
-# Prerequisites must belong to the same existing India Development project.
+# Prerequisites must belong to the same existing Development project.
 project_id = "YOUR_EXISTING_PROJECT_ID"
+# data_center defaults to "in". Set it to your project's data center if different.
 
 # Optional read-only lookups. Enable them when you have matching permissions.
 # job_pool_lookup_id      = "YOUR_EXISTING_JOB_POOL_ID"
@@ -13,8 +14,10 @@ project_id = "YOUR_EXISTING_PROJECT_ID"
 #   slate        = true
 #   auth_users   = true
 #   datastreams  = true
+#   browser_grids = true
 #   pipeline_id  = "YOUR_EXISTING_PIPELINE_ID"
 #   bot_id       = "YOUR_EXISTING_SMARTTRAIN_BOT_ID"
+#   import_job_id = "YOUR_EXISTING_PROJECT_IMPORT_JOB_ID"
 # }
 # stratus_version_lookup = {
 #   bucket_name = "your-existing-versioned-bucket"
@@ -82,6 +85,20 @@ appsail_schedule = {
   path        = "/health"
   end_time    = 1893456000
 }
+
+# EXPERIMENTAL: use only with an eligible Development data center, Circuit, and pool.
+# circuit_schedule = {
+#   job_pool_id = "YOUR_EXISTING_CIRCUIT_POOL_ID"
+#   circuit_id  = "YOUR_EXISTING_CIRCUIT_ID"
+#   end_time    = 1893456000
+# }
+
+# EXPERIMENTAL: use a disposable bot and a public training document you control.
+# smarttrain_material = {
+#   bot_id = "YOUR_EXISTING_SMARTTRAIN_BOT_ID"
+#   title  = "Terraform trial"
+#   url    = "https://YOUR_OWN_HOST/terraform-trial.txt"
+# }
 
 # OPTIONAL user discovery; omit if no disposable application user exists.
 # authentication = {

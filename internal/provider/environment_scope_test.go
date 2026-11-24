@@ -152,7 +152,7 @@ func TestEnvironmentScopeGuardsAllResources(t *testing.T) {
 			}
 		}
 	}
-	if count != 12 {
+	if count != 14 {
 		t.Fatalf("review scope coverage when resource registrations change: %d", count)
 	}
 }

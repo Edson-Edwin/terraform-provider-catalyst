@@ -16,6 +16,9 @@ and opt-in AppSail trial commands. Run `python3 scripts/try-provider.py check`
 before sharing it. The default command only plans the read-only example; deployment
 and deletion require explicit commands and Terraform's normal confirmation.
 
+For an independent live preview check, use the [Stratus tester walkthrough](examples/quickstart/STRATUS.md).
+Record the tester's commit, region, and create, update, stable-plan and deletion results.
+
 Before changing visibility, scan history and the current source with Gitleaks
 using the checked-in `.gitleaks.toml`, inspect every finding and review the diff.
 The sole exception recognizes a fixed public `all` enum in GNUmakefile; it must

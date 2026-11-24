@@ -1,0 +1,1 @@
+terraform import catalyst_circuit_cron.example PROJECT_ID/CRON_ID

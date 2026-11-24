@@ -62,12 +62,13 @@ type CronJob struct {
 	Body          string            `json:"request_body"`
 	Retry         CronRetry         `json:"job_config"`
 	TargetID      ID                `json:"target_id,omitempty"`
+	TestCases     json.RawMessage   `json:"test_cases,omitempty"`
 	TargetDetails *struct {
 		ID ID `json:"id"`
 	} `json:"target_details,omitempty"`
 }
 
-// Cron is the supported pre-defined CronExpression webhook configuration.
+// Cron contains the supported pre-defined scheduling configuration.
 // Profile details and other API fields are deliberately not retained.
 type Cron struct {
 	ID            ID           `json:"id,omitempty"`
@@ -118,7 +119,7 @@ func (c *Client) writeCron(ctx context.Context, method, projectID, id string, cr
 	switch cron.Job.TargetType {
 	case "Webhook":
 		job["url"], job["request_method"], job["headers"], job["request_body"] = cron.Job.URL, cron.Job.Method, cron.Job.Headers, cron.Job.Body
-	case "Function", "AppSail":
+	case "Function", "AppSail", "Circuit":
 		if !ValidID(string(cron.Job.TargetID)) {
 			return nil, errors.New("the scheduled target requires a positive numeric target ID")
 		}
@@ -162,6 +163,9 @@ func (c *Client) GetFunctionCron(ctx context.Context, projectID, id string) (*Cr
 }
 func (c *Client) GetAppSailCron(ctx context.Context, projectID, id string) (*Cron, error) {
 	return c.getCronTarget(ctx, projectID, id, "AppSail")
+}
+func (c *Client) GetCircuitCron(ctx context.Context, projectID, id string) (*Cron, error) {
+	return c.getCronTarget(ctx, projectID, id, "Circuit")
 }
 func (c *Client) getCronTarget(ctx context.Context, projectID, id, target string) (*Cron, error) {
 	if !ValidID(id) {
@@ -216,6 +220,9 @@ func (c *Client) WaitFunctionCronDeleted(ctx context.Context, projectID, id stri
 }
 func (c *Client) WaitAppSailCronDeleted(ctx context.Context, projectID, id string) error {
 	return c.waitCronTargetDeleted(ctx, projectID, id, "AppSail")
+}
+func (c *Client) WaitCircuitCronDeleted(ctx context.Context, projectID, id string) error {
+	return c.waitCronTargetDeleted(ctx, projectID, id, "Circuit")
 }
 func (c *Client) waitCronTargetDeleted(ctx context.Context, projectID, id, target string) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
@@ -306,7 +313,7 @@ func (c *Client) readCron(ctx context.Context, res *http.Response, projectID, id
 	if cron.Type == "OneTime" && (cron.Detail.TimeOfExecution == nil || *cron.Detail.TimeOfExecution <= 0) {
 		return cron, errors.New("incomplete one-time execution timestamp")
 	}
-	if target == "Function" || target == "AppSail" {
+	if target == "Function" || target == "AppSail" || target == "Circuit" {
 		if cron.Job.TargetDetails != nil {
 			if cron.Job.TargetID != "" && cron.Job.TargetID != cron.Job.TargetDetails.ID {
 				return cron, errors.New("mismatched scheduled target identities")
@@ -317,5 +324,30 @@ func (c *Client) readCron(ctx context.Context, res *http.Response, projectID, id
 			return cron, errors.New("the Catalyst API returned incomplete scheduled target metadata")
 		}
 	}
+	if target == "Circuit" {
+		if cron.Type != "CronExpression" || cron.EndTime <= 0 || len(cron.Job.Params) != 0 || !emptyCronTestCases(cron.Job.TestCases) {
+			return cron, errors.New("the Circuit cron has a schedule or job inputs outside the managed expression subset")
+		}
+	}
 	return cron, nil
+}
+
+func emptyCronTestCases(raw json.RawMessage) bool {
+	if len(raw) == 0 {
+		return true
+	}
+	var value any
+	if json.Unmarshal(raw, &value) != nil {
+		return false
+	}
+	switch value := value.(type) {
+	case nil:
+		return true
+	case []any:
+		return len(value) == 0
+	case map[string]any:
+		return len(value) == 0
+	default:
+		return false
+	}
 }

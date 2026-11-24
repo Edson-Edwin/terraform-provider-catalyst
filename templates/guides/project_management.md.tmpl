@@ -143,8 +143,7 @@ checks Terraform import/protection/refresh/stable plans, deletes its exact creat
 ID and compares the project ID inventory with its starting baseline. Repeat with
 each authentication mode separately before claiming both modes are verified.
 
-Offline tests, a console-created fixture and a configured CI workflow do not replace
-a successful authenticated lifecycle run. Hosted CI is separately blocked by billing.
+Live project creation remains unverified in the tested OAuth context.
 
 When asking your administrator or Catalyst support for help, provide the region,
 organization ID and this non-secret diagnostic: authenticated project listing
@@ -154,3 +153,22 @@ non-interactive endpoint and OAuth client prerequisites permit creation. Separat
 ask whether a supported project rename/timezone mutation API or atomic ownership
 mechanism exists. Never include access tokens, refresh tokens or client
 secrets in the request.
+
+## Read an IaC import job
+
+Run `catalyst iac:import` for the project template and confirm the import in your
+browser. Save the returned job ID. The experimental `data.catalyst_project_import_job`
+reads the job with Development routing, an explicit organization, and
+`ZohoCatalyst.project.import.READ`. Use its `project_id` once `status` is
+`Completed`. Pending and failed jobs return a null `project_id`.
+[Zoho CLI import guide](https://docs.catalyst.zoho.com/en/cli/v1/export-and-import-projects/import-project/)
+
+```terraform
+data "catalyst_project_import_job" "bootstrap" {
+  id = var.iac_import_job_id
+}
+
+output "imported_project_id" {
+  value = data.catalyst_project_import_job.bootstrap.project_id
+}
+```
